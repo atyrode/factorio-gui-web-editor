@@ -1,0 +1,16 @@
+services:
+  labtorio:
+    build:
+      context: .
+    restart: unless-stopped
+    expose:
+      - "8080"
+    networks:
+      web:
+        aliases:
+          - labtorio
+
+networks:
+  web:
+    external: true
+    name: web

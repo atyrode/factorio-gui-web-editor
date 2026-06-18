@@ -17,9 +17,15 @@ REQUIRED_FILES = [
     "README.md",
     "AGENTS.md",
     "docs/README.md",
+    "docs/hosting.md",
     "docs/spec-factory.md",
     "docs/roadmap.md",
     "docs/factorio-style-sources.md",
+    "Dockerfile",
+    "compose.yaml",
+    "deploy/labtorio.Caddyfile",
+    "deploy/edge-compose.yaml.example",
+    "deploy/edge.Caddyfile.example",
 ]
 
 REQUIRED_ANCHORS = [
@@ -74,9 +80,15 @@ def main() -> int:
             "README.md",
             "AGENTS.md",
             "docs/README.md",
+            "docs/hosting.md",
             "docs/spec-factory.md",
             "docs/roadmap.md",
             "docs/factorio-style-sources.md",
+            "Dockerfile",
+            "compose.yaml",
+            "deploy/labtorio.Caddyfile",
+            "deploy/edge-compose.yaml.example",
+            "deploy/edge.Caddyfile.example",
         ]
     )
 

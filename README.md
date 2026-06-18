@@ -103,6 +103,12 @@ scripts/check.sh
 The check validates JavaScript syntax when `node` is available and then runs
 structural source/anchor checks. It does not replace human visual review.
 
+## Hosting
+
+The app can run as an internal Docker service behind a shared Caddy edge proxy.
+See [docs/hosting.md](docs/hosting.md) for the `labtorio.tyrode.dev` deployment
+shape and the reason this repository does not bind host ports `80` or `443`.
+
 ## License
 
 No license has been selected yet. Treat the repository as source-available until
