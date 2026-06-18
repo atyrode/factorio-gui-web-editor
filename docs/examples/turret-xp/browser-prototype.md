@@ -1,8 +1,8 @@
 # Browser Prototype Contract
 
-The browser prototype is a design lab, not the shipped mod GUI. It exists so
-the team can review visual direction before writing or rewriting Factorio Lua
-GUI code.
+The Turret XP prototype is an example design lab inside the standalone editor,
+not the final in-game GUI. It exists so the team can review visual direction
+before writing or rewriting Factorio Lua GUI code.
 
 Tool location: [../../../index.html](../../../index.html)
 
@@ -90,10 +90,10 @@ Factorio's real GUI.
 
 ## Stop Conditions
 
-Stop and revise the spec/prototype before Lua work if:
+Stop and revise the spec/prototype before export or Lua work if:
 
-- the prototype resembles the old two-column dashboard;
-- the prototype resembles the failed focused-tabs dashboard;
+- the prototype resembles the old Turret XP two-column dashboard;
+- the prototype resembles the previous Turret XP focused-tabs direction;
 - editing progression hides the affected stats;
 - Build Plan feels like a separate screen;
 - the empty picker regresses from the table-first shape;

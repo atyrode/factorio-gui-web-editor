@@ -2,24 +2,25 @@
 
 This directory contains the split working spec for the next Turret XP GUI
 design. It is produced by [../../spec-factory.md](../../spec-factory.md) and
-assembled from focused contracts so the browser prototype and later Lua
-implementation can target named surfaces instead of chat memory.
+assembled from focused contracts so the browser prototype and future Lua
+export or implementation can target named surfaces instead of chat memory.
 
 These files own the current design slices used by the standalone browser
 prototype. Turret XP is the first example project bundled with the editor.
 
 ## Assembly Order
 
-1. [factorio-style-notes.md](factorio-style-notes.md): public Factorio web,
-   Mod Portal, and API-docs styling notes used to shape local tokens.
+1. [factorio-style-sources.md](../../factorio-style-sources.md): public
+   Factorio web, Mod Portal, and API-docs styling notes used to shape local
+   tokens.
 2. [core-picker.md](core-picker.md): empty-turret picker contract.
 3. [workbench.md](workbench.md): installed-core workbench shell contract.
 4. [build-plan.md](build-plan.md): Build Plan mode contract.
 5. [stat-inspector.md](stat-inspector.md): pinned consequence panel contract.
 6. [browser-prototype.md](browser-prototype.md): prototype tool contract,
    fixture coverage, and stop conditions.
-7. [browser-builder-roadmap.md](browser-builder-roadmap.md): future
-   Factorio-constrained builder, shared model, Lua skeleton export, and website
+7. [roadmap.md](../../roadmap.md): future
+   Factorio-constrained builder, shared model, Lua skeleton export, and web demo
    renderer roadmap.
 
 ## Current Product Shape
@@ -37,10 +38,10 @@ The accepted high-level shape is:
 
 ## Implementation Rule
 
-New Turret XP GUI code SHOULD target this split spec or update it first. The
-browser prototype at [../../../index.html](../../../index.html) is the first
-implementation target. Lua implementation is intentionally out of scope for
-this example until the browser prototype passes human visual review.
+New work on the Turret XP example SHOULD target this split spec or update it
+first. The browser prototype at [../../../index.html](../../../index.html) is
+the first implementation target. Lua implementation is intentionally out of
+scope for this example until the browser prototype passes human visual review.
 
 The broader builder and shared-renderer direction is tracked in
 [../../roadmap.md](../../roadmap.md). It is intentionally sequential: static

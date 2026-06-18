@@ -522,7 +522,7 @@
         h("div", {}, h("h3", {}, "Defense"), h("p", {}, "HP " + statText("hp", liveStats)), h("p", {}, "Shield " + statText("shield", liveStats)), h("p", {}, "Resistance " + statText("resistance", liveStats))),
         h("div", {}, h("h3", {}, "Offense"), h("p", {}, "Damage " + statText("damage", liveStats)), h("p", {}, "DPS " + statText("dps", liveStats)), h("p", {}, "Range " + statText("range", liveStats))),
         h("div", {}, h("h3", {}, "Build delta"), h("p", {}, "Plan damage " + statText("damage", planStats)), h("p", {}, "Plan DPS " + statText("dps", planStats)), h("p", {}, "Plan range " + statText("range", planStats))),
-        h("div", {}, h("h3", {}, "History"), h("p", {}, "Kills and XP sources live here in Lua."), h("p", {}, "This drawer is secondary by spec."))
+        h("div", {}, h("h3", {}, "History"), h("p", {}, "Kills and XP sources would be wired by the target Lua implementation."), h("p", {}, "This drawer is secondary by spec."))
       )
     );
   }

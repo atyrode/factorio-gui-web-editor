@@ -15,7 +15,8 @@ The first bundled product spec built from this factory is the
 GUI work has two separate problems:
 
 - deciding what experience should exist;
-- implementing that experience correctly in Factorio GUI code.
+- implementing that experience correctly in the browser renderer, exported
+  model, or Factorio Lua code.
 
 These must not happen in the same undocumented pass. When design intent is
 only carried in chat, screenshots, or half-built Lua, the next edit can
@@ -160,36 +161,32 @@ Recommended minimum fixture fields:
 ```text
 id:
 screen:
-turret:
-core:
-level:
-xp:
-unspent_core_points:
-unspent_augment_points:
-specialization:
-sub_specialization:
-elements:
-build_mode:
-follow_build:
-copied_target:
-inventory_cores:
-platform_cores:
-dev_mode:
+mode:
+primary_subject:
+data_sources:
+selection_state:
+mutation_target:
+flags:
 expected_primary_job:
+notes:
 ```
+
+A spec MAY add domain fields. The Turret XP example adds turret, core, level,
+XP, unspent points, specialization, elements, build-plan state, copied targets,
+inventory cores, platform cores, and developer controls because those are
+example data, not factory-wide requirements.
 
 Fixtures should cover:
 
-- empty turret, no cores available;
-- empty turret, inventory cores available;
-- empty turret, platform cores available;
-- installed new core;
-- installed high-level core with unspent points;
-- installed specialized core with elements;
-- build-plan mode with previewed deltas;
-- copied build with conflicts;
-- Follow build active;
-- developer controls enabled.
+- empty or minimum-data state;
+- common populated state;
+- alternate data sources or ownership contexts;
+- high-value state with pending choices;
+- specialized or advanced state;
+- planning, preview, or comparison mode when the GUI supports one;
+- copied/imported state with conflicts;
+- enabled and disabled automation or follow modes;
+- optional developer or debug controls when they are part of the surface.
 
 Fixtures are not only test data. They are design tools. If a screen looks good
 only in the simplest fixture, the spec is not ready.
@@ -228,7 +225,7 @@ Rules:
 - Include approximate width intent when it matters.
 - Do not use decorative boxes that imply nesting without purpose.
 
-Example:
+Example from the bundled Turret XP spec:
 
 ```text
 Turret XP Workbench
@@ -438,7 +435,8 @@ required fixtures and answer:
 - Does the empty state feel intentional instead of like a missing list?
 - Does Factorio interface scale change the hierarchy or cause clipping?
 
-If any answer fails, revise the product spec before writing more Lua.
+If any answer fails, revise the product spec before writing more renderer,
+export, or Lua code.
 
 ## Change Workflow
 

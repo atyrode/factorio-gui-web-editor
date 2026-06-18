@@ -1,17 +1,17 @@
 # Browser Builder And Shared Renderer Roadmap
 
-This roadmap captures the larger direction raised during the GUI redesign
-discussion. It is aspirational, but concrete enough to split into future
-issues. The current static prototype does not need to complete every phase.
+This roadmap captures the standalone editor direction. It is aspirational, but
+concrete enough to split into future issues. The current static prototype does
+not need to complete every phase.
 
 ## End State
 
 The strongest long-term target is one shared Factorio GUI layout model that can
 drive three surfaces:
 
-1. a browser review tool for fast design iteration;
-2. the in-game Factorio Lua GUI implementation;
-3. a read-only or lightly interactive official web page demo.
+1. a browser design and review tool for fast iteration;
+2. a Factorio Lua GUI skeleton or implementation for a selected layout;
+3. a read-only or lightly interactive web demo for a selected example.
 
 The ideal is not just visual similarity. The ideal is that browser and in-game
 UI are generated from the same constrained model, with explicit places where
@@ -53,8 +53,8 @@ Future builder operations SHOULD include:
 - choose approved layout variants;
 - toggle density modes;
 - tune bounded widths, min/max sizes, and column counts;
-- choose Stat Inspector placement from approved positions;
-- choose drawer placement from approved positions;
+- choose pinned inspector or side-panel placement from approved positions;
+- choose drawer, popup, or modal placement from approved positions;
 - mark components pinned, scrollable, hidden, or drawer-owned;
 - select local style tokens;
 - validate constraints continuously;
@@ -69,7 +69,7 @@ Future builder operations SHOULD NOT include, at least initially:
 - arbitrary nested boxes without component contracts;
 - arbitrary CSS values with no Factorio equivalent;
 - direct behavior generation beyond structural event hook placeholders;
-- using an old product GUI architecture as the editor model.
+- using any imported example's legacy architecture as the editor model.
 
 ## Shared Model Sketch
 
@@ -110,7 +110,7 @@ example-specific IDs.
   "constraints": [
     "no_absolute_positioning",
     "inspector_outside_editor_scroll",
-    "no_old_two_column_dashboard"
+    "no_legacy_example_layout"
   ]
 }
 ```
@@ -139,8 +139,8 @@ Initial entries:
 - scroll-pane policy and maximum-size rules;
 - stretchable versus fixed-size interaction risks;
 - stable anchor and action-name requirements;
-- prohibited resemblance checks from the GUI spec;
-- style token mapping to `prototypes/styles.lua`, `flib`, or local styles;
+- example-specific rejected-shape checks from product specs;
+- style token mapping to Factorio style definitions, `flib`, or local styles;
 - event-surface notes for frames, scroll panes, and compound controls;
 - portability warnings where browser behavior cannot match Factorio exactly.
 
@@ -176,7 +176,7 @@ Status: current seed scope.
 
 - Render required fixtures.
 - Use Factorio-inspired local tokens.
-- Keep old product GUI code as feature inventory only.
+- Use legacy Turret XP GUI behavior as example feature inventory only.
 - Prove progression and stat feedback can live on the same surface.
 
 ### Phase 1: Layout Model Export
@@ -207,12 +207,13 @@ Status: current seed scope.
 - Add structural tests comparing model anchors to Lua GUI anchors.
 - Start measuring where 1:1 parity is possible and where it is approximate.
 
-### Phase 5: Official Web Demo
+### Phase 5: Read-Only Web Demo Surface
 
-- Reuse the browser renderer on the public docs/site if licensing and package
-  size remain acceptable.
+- Reuse the browser renderer in static exported/demo artifacts if licensing and
+  package size remain acceptable.
 - Keep it read-only or fixture-driven unless editing has a clear user benefit.
-- Use it to explain the mod's progression workbench to players.
+- Use it to explain selected example GUIs or exported layouts without launching
+  Factorio.
 
 ## Open Questions
 
@@ -238,12 +239,12 @@ Status: current seed scope.
       `ClaudeMetz/UntitledGuiGuide`, against current official API docs.
 - [ ] Capture graphical Factorio style-inspector notes for vanilla widgets that
       target GUIs want to mimic.
-- [ ] Add a graphical-client GUI style dump beside `scripts/gui-snapshots.sh`
-      screenshots for script-visible `LuaGuiElement` and `LuaStyle` fields.
+- [ ] Add a graphical-client GUI style dump beside future screenshot artifacts
+      for script-visible `LuaGuiElement` and `LuaStyle` fields.
 - [ ] Add layout model export.
 - [ ] Add Lua skeleton export.
 - [ ] Write the Factorio GUI constraint catalog.
 - [ ] Add constrained builder controls.
 - [ ] Add model-to-browser and model-to-Lua renderers.
 - [ ] Add structural tests that compare model anchors and Lua anchors.
-- [ ] Explore public website reuse of the browser renderer.
+- [ ] Explore read-only demo/export reuse of the browser renderer.

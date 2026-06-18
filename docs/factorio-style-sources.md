@@ -1,6 +1,7 @@
-# Factorio Style Notes For Browser Prototype
+# Factorio Style Source Notes
 
-This note records the public UI surfaces inspected for the browser prototype:
+This note records the public UI and style sources inspected for the browser
+renderer and future Factorio exports:
 
 - <https://factorio.com/>
 - <https://mods.factorio.com/>
@@ -18,10 +19,9 @@ This note records the public UI surfaces inspected for the browser prototype:
 - <https://github.com/JanSharp/FactorioGUIEditor>
 - <https://github.com/ClaudeMetz/UntitledGuiGuide/wiki>
 
-The prototype uses these sources as style references. It MUST NOT vendor large
-Wube CSS files, copy minified page styles wholesale, or bundle Wube image
-assets. It MAY load the public Titillium Web font from Factorio's CDN with a
-local fallback.
+The editor uses these sources as style references. It MUST NOT vendor large Wube
+CSS files, copy minified page styles wholesale, or bundle Wube image assets. It
+MAY load the public Titillium Web font from Factorio's CDN with a local fallback.
 
 Official Factorio API documentation remains authoritative for runtime GUI
 behavior. Raiguard's Factorio GUI style guide is the highest-value community
@@ -52,7 +52,7 @@ render GUI surfaces. Captured style-inspector notes should become local tokens,
 component constraints, or fixture comments before implementation.
 
 A companion mod can still automate part of this workflow in graphical Factorio.
-For app/mod-owned GUI elements, it can dump the script-visible `LuaGuiElement`
+For script-owned GUI elements, it can dump the script-visible `LuaGuiElement`
 tree and readable `LuaStyle` fields to JSON. Use that for repeatable checks of
 element names, style names, declared dimensions, spacing, padding, alignment,
 and stretch/squash flags. Keep manual `Ctrl+F6` captures for renderer-computed
@@ -91,9 +91,9 @@ visual language:
 - dark scrollbars with gray thumbs and orange hover;
 - buttons that feel pressed through inset shadow and small vertical offset.
 
-## Local Prototype Tokens
+## Local Browser Tokens
 
-The browser prototype owns a local token layer rather than copying source CSS:
+The browser renderer owns a local token layer rather than copying source CSS:
 
 | Token | Purpose |
 | --- | --- |
@@ -111,7 +111,7 @@ The browser prototype owns a local token layer rather than copying source CSS:
 
 ## Component Translation Targets
 
-| Browser component | Factorio Lua target later |
+| Browser component | Factorio Lua export target later |
 | --- | --- |
 | Window shell | `frame` in `player.gui.relative` or `screen` fallback |
 | Title bar | draggable frame title / flow |
@@ -126,10 +126,11 @@ The browser prototype owns a local token layer rather than copying source CSS:
 
 ## Visual Risk Checklist
 
-Reject prototype revisions that:
+Reject editor or example revisions that:
 
-- use the old left-stats/right-Evolution dashboard split;
-- isolate Progression, Stats, and Automation into mutually exclusive tabs;
+- turn a rejected example-specific layout into an editor-wide model constraint;
+- hide related editing, feedback, and automation controls behind mutually
+  exclusive tabs unless the product spec explicitly accepts that shape;
 - show large dead slabs of empty gray panel;
 - hide changed stats while editing ranks or Build Plan targets;
 - use green/red as decoration instead of numeric meaning;

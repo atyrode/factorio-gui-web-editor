@@ -1,6 +1,6 @@
 # Factorio GUI Web Editor
 
-A browser-based lab for designing Factorio-style mod GUIs before writing Lua.
+A browser-based lab for designing Factorio-style GUI layouts before writing Lua.
 
 The current app is a static prototype seeded with the Turret XP GUI redesign as
 the first example project. The longer-term goal is a constrained editor that
