@@ -45,6 +45,25 @@ labtorio.tyrode.dev {
 Point DNS for `labtorio.tyrode.dev` at the host running the edge proxy. Caddy
 will request and renew the HTTPS certificate automatically.
 
+## Hot Reload Development
+
+For visible styling work, the same public domain can be switched to Vite dev
+mode without changing the edge proxy route:
+
+```sh
+docker compose -f compose.yaml -f compose.dev.yaml up -d
+```
+
+The override runs `node:24-trixie-slim`, mounts the repository at `/app`, and
+serves Vite on internal port `8080`. It sets `LABTORIO_HMR_HOST` to
+`labtorio.tyrode.dev` and `LABTORIO_HMR_CLIENT_PORT` to `443`, so browser HMR
+uses the public HTTPS route. Stop using the override and rebuild the static
+container before treating the service as production again:
+
+```sh
+docker compose up -d --build
+```
+
 ## Coexisting Projects
 
 Any other project-level Caddy container on the same host cannot keep binding

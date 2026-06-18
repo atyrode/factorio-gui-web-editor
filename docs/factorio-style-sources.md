@@ -22,6 +22,9 @@ renderer and future Factorio exports:
 The editor uses these sources as style references. It MUST NOT vendor large Wube
 CSS files, copy minified page styles wholesale, or bundle Wube image assets. It
 MAY load the public Titillium Web font from Factorio's CDN with a local fallback.
+When exact visual parity is the goal, inspect the public CSS and HTML in a
+scratch location only, then re-express the relevant subset as local tokens,
+shadows, sizing rules, and component states.
 
 Official Factorio API documentation remains authoritative for runtime GUI
 behavior. Raiguard's Factorio GUI style guide is the highest-value community
@@ -74,8 +77,13 @@ behavior.
 
 ## Observed Public Web Tokens
 
-The Factorio website, Mod Portal, and API docs share a compact mechanical visual
-language:
+The Factorio website and Mod Portal share the same public `main.css` family.
+The API docs add a docs-specific stylesheet but keep the same top-bar,
+panel/inset vocabulary, compact rhythm, and typography. Together they provide a
+useful browser-side reference for the editor skin, while in-game captures remain
+necessary for runtime GUI parity.
+
+The observed public web language is compact and mechanical:
 
 - dark brown/black page background;
 - dense gray panels with hard corners;
@@ -91,9 +99,35 @@ language:
 - dark scrollbars with gray thumbs and orange hover;
 - buttons that feel pressed through inset shadow and small vertical offset.
 
+Observed reusable values from the official public domains:
+
+| Value | Observed role |
+| --- | --- |
+| `#201810` | website page background |
+| `#313031` | main panel fill |
+| `#414040` | lighter panel/inset fill |
+| `#242324` | dark inset/hole fill |
+| `#2e2623` | hard panel edge |
+| `#ffe6c0` | headings and active text |
+| `#e39827` / `#ffa900` | hover and selected orange |
+| `#7dcaed` | links and secondary blue |
+| `#8e8e8e` | neutral button and field fill |
+| `36px` | default button/textfield height |
+| `38px` | slot size |
+| `16px x 15px` | checkbox mark surface |
+
 ## Local Browser Tokens
 
-The browser renderer owns a local token layer rather than copying source CSS:
+The browser renderer owns a local token layer rather than copying source CSS.
+The current CSS is split by responsibility:
+
+- `src/styles/base.css`: reset-adjacent base tokens, page background, typography;
+- `src/styles/layout.css`: site chrome and page shells;
+- `src/styles/factorio-atoms.css`: reusable frame, inset, button, field,
+  checkbox, tab, slot, table, notice, scroll-pane, and window atoms;
+- `src/styles/editor.css`: editor-specific canvas and rail layout;
+- `src/styles/docs.css`: Markdown documentation rendering;
+- `src/styles/style-atlas.css`: atom review surface.
 
 | Token | Purpose |
 | --- | --- |
@@ -106,6 +140,16 @@ The browser renderer owns a local token layer rather than copying source CSS:
 | `fx-orange` | selected tab/button accent |
 | `fx-blue` | links and secondary info values |
 | `fx-muted` | disabled or secondary text |
+
+## Style Atlas Workflow
+
+`/style-atlas` is the first review surface for visual parity. It should contain
+every reusable atom before that atom becomes important in the editor. Tune the
+atlas against official website/Mod Portal/API docs observations first, then
+against graphical Factorio captures.
+
+When an in-game capture contradicts the public website skin, prefer the in-game
+capture for editor primitives that will generate Lua.
 
 ## Component Translation Targets
 

@@ -1,0 +1,168 @@
+.fx-document-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.fx-docnav,
+.fx-document {
+  background: var(--fx-panel);
+  border: 4px solid var(--fx-edge);
+  box-shadow:
+    0 0 3px 0 var(--fx-edge-shadow),
+    inset 3px 0 2px -2px var(--fx-edge-shadow),
+    inset 0 3px 2px -2px #8f8c8b,
+    inset -3px 0 2px -2px var(--fx-edge-shadow),
+    inset 0 -3px 3px -3px var(--fx-shadow);
+}
+
+.fx-docnav {
+  align-self: start;
+  position: sticky;
+  top: 20px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+}
+
+.fx-docnav a {
+  display: block;
+  padding: 8px 10px;
+  color: var(--fx-text);
+  border: 2px solid transparent;
+}
+
+.fx-docnav a:hover,
+.fx-docnav a[aria-current="page"] {
+  color: var(--fx-gold);
+  text-decoration: none;
+  background: var(--fx-panel-dark);
+  border-color: #171514;
+  box-shadow:
+    inset 2px 2px 3px rgba(0, 0, 0, 0.72),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.fx-document {
+  min-width: 0;
+  padding: 22px;
+}
+
+.fx-document header {
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid rgba(255, 230, 192, 0.14);
+}
+
+.fx-document h1 {
+  margin-bottom: 8px;
+  font-size: 26px;
+}
+
+.fx-document h2 {
+  margin-top: 24px;
+  margin-bottom: 8px;
+  font-size: 19px;
+}
+
+.fx-document h3,
+.fx-document h4 {
+  margin-top: 18px;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.fx-document p,
+.fx-document li {
+  max-width: 78ch;
+  color: var(--fx-text-soft);
+  line-height: 1.5;
+}
+
+.fx-document p + p,
+.fx-document ul + p,
+.fx-document ol + p,
+.fx-document p + ul,
+.fx-document p + ol,
+.fx-markdown-table + p,
+.fx-document pre + p {
+  margin-top: 12px;
+}
+
+.fx-document ul,
+.fx-document ol {
+  max-width: 78ch;
+  margin: 10px 0 0;
+}
+
+.fx-document code {
+  padding: 1px 4px;
+  color: var(--fx-gold);
+  background: #1d1b1a;
+  border: 1px solid #3d3630;
+}
+
+.fx-document pre {
+  max-width: 100%;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 12px;
+  background: #1d1b1a;
+  border: 4px solid #141414;
+  box-shadow:
+    inset 2px 2px 3px rgba(0, 0, 0, 0.75),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.fx-document pre code {
+  padding: 0;
+  color: #e8e1d5;
+  background: transparent;
+  border: 0;
+}
+
+.fx-markdown-table {
+  max-width: 100%;
+  overflow: auto;
+  margin-top: 12px;
+}
+
+.fx-markdown-table table {
+  width: max-content;
+  min-width: min(100%, 680px);
+  border-collapse: collapse;
+  color: var(--fx-text-soft);
+}
+
+.fx-markdown-table th,
+.fx-markdown-table td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  border: 2px solid #1b1715;
+}
+
+.fx-markdown-table th {
+  color: var(--fx-gold);
+  background: var(--fx-panel-dark);
+}
+
+.fx-markdown-table td {
+  background: #2b2a2b;
+}
+
+@media (max-width: 900px) {
+  .fx-document-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .fx-docnav {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .fx-document {
+    padding: 14px;
+  }
+}

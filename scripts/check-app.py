@@ -12,8 +12,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_FILES = [
     "index.html",
+    "compose.dev.yaml",
     "src/styles.css",
     "src/App.jsx",
+    "src/components/DocumentPage.jsx",
+    "src/components/EditorPage.jsx",
+    "src/components/SiteChrome.jsx",
+    "src/components/StyleAtlasPage.jsx",
+    "src/components/factorioGui.jsx",
+    "src/styles/base.css",
+    "src/styles/docs.css",
+    "src/styles/editor.css",
+    "src/styles/factorio-atoms.css",
+    "src/styles/layout.css",
+    "src/styles/style-atlas.css",
     "src/docs.js",
     "src/main.jsx",
     "package.json",
@@ -77,14 +89,9 @@ def main() -> int:
     if (ROOT / "docs" / "examples").exists():
         raise AssertionError("bundled example docs directory still exists")
 
-    source_blob = "\n".join(
-        read(relative)
-        for relative in [
+    scanned_files = [
             "index.html",
-            "src/App.jsx",
-            "src/docs.js",
-            "src/main.jsx",
-            "src/styles.css",
+            "compose.dev.yaml",
             "package.json",
             "package-lock.json",
             "vite.config.js",
@@ -101,8 +108,13 @@ def main() -> int:
             "deploy/labtorio.Caddyfile",
             "deploy/edge-compose.yaml.example",
             "deploy/edge.Caddyfile.example",
-        ]
+    ]
+    scanned_files.extend(
+        str(path.relative_to(ROOT))
+        for path in sorted((ROOT / "src").rglob("*"))
+        if path.is_file()
     )
+    source_blob = "\n".join(read(relative) for relative in scanned_files)
 
     for anchor in REQUIRED_ANCHORS:
         assert_contains(source_blob, anchor, "app source")

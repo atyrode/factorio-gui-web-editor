@@ -1,0 +1,54 @@
+.fx-atlas-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.fx-atlas-header {
+  padding: 0 8px;
+}
+
+.fx-atlas-header h1 {
+  font-size: 26px;
+}
+
+.fx-atlas-header p {
+  margin-top: 4px;
+  color: var(--fx-muted);
+}
+
+.fx-atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.fx-atlas-section {
+  min-width: 0;
+}
+
+.fx-atlas-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.fx-atlas-tab-panel {
+  margin-top: 4px;
+}
+
+.fx-atlas-window-preview {
+  padding: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--fx-panel-dark);
+}
+
+.fx-atlas-window-preview .fx-gui-window {
+  min-height: 300px;
+}
+
+@media (max-width: 900px) {
+  .fx-atlas-grid {
+    grid-template-columns: 1fr;
+  }
+}

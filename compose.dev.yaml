@@ -1,0 +1,10 @@
+services:
+  labtorio:
+    image: node:24-trixie-slim
+    working_dir: /app
+    command: npm run dev -- --host 0.0.0.0 --port 8080 --strictPort
+    environment:
+      LABTORIO_HMR_HOST: labtorio.tyrode.dev
+      LABTORIO_HMR_CLIENT_PORT: "443"
+    volumes:
+      - .:/app

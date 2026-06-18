@@ -169,6 +169,8 @@ Status: current seed scope.
 - Render a title bar, drag-handle strip, and empty body.
 - Use Factorio-inspired local tokens without copying Wube assets.
 - Validate that no bundled domain example is required by the app.
+- Maintain a style atlas route for atom-by-atom visual review before expanding
+  editor features.
 
 ### Phase 1: Layout Model Export
 

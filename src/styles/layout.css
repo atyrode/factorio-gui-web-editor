@@ -1,0 +1,70 @@
+.fx-sitebar {
+  background: rgba(0, 0, 0, 0.50);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.fx-sitebar__inner {
+  width: min(100%, 1232px);
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fx-sitebar__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.fx-sitebar__brand strong {
+  color: var(--fx-gold);
+  font-size: 20px;
+}
+
+.fx-sitebar__brand span {
+  color: var(--fx-muted);
+  font-size: 17px;
+}
+
+.fx-sitebar__nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.fx-sitebar__nav a[aria-current="page"] {
+  color: var(--fx-gold);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.fx-editor-shell,
+.fx-document-shell,
+.fx-atlas-shell {
+  width: min(100%, 1240px);
+  min-height: calc(100vh - 56px);
+  margin: 0 auto;
+  padding: 20px;
+}
+
+@media (max-width: 700px) {
+  .fx-sitebar__inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fx-sitebar__nav {
+    justify-content: flex-start;
+  }
+
+  .fx-editor-shell,
+  .fx-document-shell,
+  .fx-atlas-shell {
+    padding: 10px;
+  }
+}
