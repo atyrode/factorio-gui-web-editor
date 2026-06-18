@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Factorio GUI Web Editor</title>
+    <link rel="stylesheet" href="https://cdn.factorio.com/assets/fonts/titillium-web.css">
+    <link rel="stylesheet" href="src/styles.css">
+  </head>
+  <body>
+    <header class="fx-sitebar">
+      <div class="fx-sitebar__inner">
+        <div>
+          <strong>Factorio GUI</strong>
+          <span>Web Editor</span>
+        </div>
+        <nav aria-label="Project links">
+          <a href="docs/spec-factory.md">Spec Factory</a>
+          <a href="docs/roadmap.md">Roadmap</a>
+          <a href="docs/examples/turret-xp/README.md">Turret XP Example</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="fx-lab">
+      <aside class="fx-lab__rail" aria-label="Prototype controls">
+        <section class="fx-panel fx-panel--compact">
+          <h1>Example Fixtures</h1>
+          <div id="fixture-list" class="fx-fixture-list"></div>
+        </section>
+        <section class="fx-panel fx-panel--compact">
+          <h2>Current Constraints</h2>
+          <ul class="fx-checklist">
+            <li>Render from named fixtures.</li>
+            <li>Prefer Factorio GUI primitives.</li>
+            <li>Avoid freeform pixel dragging.</li>
+            <li>Keep anchors stable for export.</li>
+            <li>Do not vendor Factorio image assets.</li>
+            <li>Turret XP is the default example.</li>
+          </ul>
+        </section>
+      </aside>
+
+      <section class="fx-lab__stage" aria-label="Prototype preview">
+        <div id="prototype-root"></div>
+      </section>
+    </main>
+
+    <script src="examples/turret-xp/fixtures.js"></script>
+    <script src="src/app.js"></script>
+  </body>
+</html>
