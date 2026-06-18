@@ -1,5 +1,8 @@
 # Documentation
 
+The primary app header renders the spec factory, roadmap, and style source
+notes as styled in-app pages. The Markdown files remain the source of truth.
+
 - [spec-factory.md](spec-factory.md): how to write implementation-ready GUI
   specs before changing renderer or export code.
 - [roadmap.md](roadmap.md): constrained builder, shared renderer, export, and

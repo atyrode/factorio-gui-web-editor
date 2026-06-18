@@ -23,6 +23,8 @@ http://127.0.0.1:5173/
 
 - React/Vite browser app with an empty canvas.
 - A minimal window creator with editable title text.
+- Header navigation with styled in-app pages rendered from the project
+  Markdown docs, plus an Editor tab to return to the canvas.
 - Factorio-inspired local CSS token layer.
 - Stable anchors for the editor canvas and generated window shell.
 - Structural checks for required files, anchors, and forbidden copied Factorio
@@ -33,12 +35,14 @@ http://127.0.0.1:5173/
 ```text
 index.html                     Vite app entry point
 src/App.jsx                    Window editor React components
+src/docs.js                    Markdown-backed document route registry
 src/main.jsx                   React mount and stylesheet import
 src/styles.css                 Factorio-inspired local token/style layer
 docs/spec-factory.md           Workflow for writing agent-readable GUI specs
 docs/roadmap.md                Builder/shared-renderer roadmap
 docs/factorio-style-sources.md Style/source research notes
 scripts/check.sh               Local validation
+scripts/copy-static-docs.mjs   Copies Markdown docs into production builds
 ```
 
 ## Design Direction

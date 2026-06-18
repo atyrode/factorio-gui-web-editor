@@ -7,8 +7,8 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "build": "vite build",
-    "check": "vite build",
+    "build": "vite build && node scripts/copy-static-docs.mjs",
+    "check": "npm run build",
     "dev": "vite --host 127.0.0.1",
     "preview": "vite preview --host 127.0.0.1"
   },

@@ -8,6 +8,7 @@ RUN npm ci
 COPY index.html ./
 COPY src ./src
 COPY docs ./docs
+COPY scripts ./scripts
 COPY README.md ./
 RUN npm run build
 
