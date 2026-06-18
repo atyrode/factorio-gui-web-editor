@@ -13,7 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_FILES = [
     "index.html",
     "src/styles.css",
-    "src/app.js",
+    "src/App.jsx",
+    "src/main.jsx",
+    "package.json",
+    "package-lock.json",
+    "vite.config.js",
     "README.md",
     "AGENTS.md",
     "docs/README.md",
@@ -75,8 +79,12 @@ def main() -> int:
         read(relative)
         for relative in [
             "index.html",
-            "src/app.js",
+            "src/App.jsx",
+            "src/main.jsx",
             "src/styles.css",
+            "package.json",
+            "package-lock.json",
+            "vite.config.js",
             "README.md",
             "AGENTS.md",
             "docs/README.md",

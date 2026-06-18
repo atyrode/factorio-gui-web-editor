@@ -1,7 +1,8 @@
 # Hosting
 
-Labtorio is a static browser app. The repository provides an app container that
-serves the files on Docker-only port `8080`; it does not bind public host ports.
+Labtorio is a React/Vite browser app served as static files. The repository
+provides an app container that builds the React bundle and serves it on
+Docker-only port `8080`; it does not bind public host ports.
 
 Use one neutral edge proxy on the host for public HTTP and HTTPS. That proxy is
 the only container that should bind host ports `80` and `443`.

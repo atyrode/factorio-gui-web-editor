@@ -8,23 +8,20 @@ empty body. There is no bundled example project or fixture data.
 
 ## Try It Locally
 
-No build step is required.
-
 ```sh
-python3 -m http.server 8765 --bind 127.0.0.1
+npm install
+npm run dev
 ```
 
 Then open:
 
 ```text
-http://127.0.0.1:8765/
+http://127.0.0.1:5173/
 ```
-
-Opening `index.html` directly also works in most browsers.
 
 ## What Exists Now
 
-- Static browser app with an empty canvas.
+- React/Vite browser app with an empty canvas.
 - A minimal window creator with editable title text.
 - Factorio-inspired local CSS token layer.
 - Stable anchors for the editor canvas and generated window shell.
@@ -34,8 +31,9 @@ Opening `index.html` directly also works in most browsers.
 ## Project Shape
 
 ```text
-index.html                     Static app entry point
-src/app.js                     Bare window editor interactions
+index.html                     Vite app entry point
+src/App.jsx                    Window editor React components
+src/main.jsx                   React mount and stylesheet import
 src/styles.css                 Factorio-inspired local token/style layer
 docs/spec-factory.md           Workflow for writing agent-readable GUI specs
 docs/roadmap.md                Builder/shared-renderer roadmap
@@ -106,8 +104,10 @@ structural source/anchor checks. It does not replace human visual review.
 ## Hosting
 
 The app can run as an internal Docker service behind a shared Caddy edge proxy.
-See [docs/hosting.md](docs/hosting.md) for the `labtorio.tyrode.dev` deployment
-shape and the reason this repository does not bind host ports `80` or `443`.
+The Docker image builds the React app and serves the static bundle through
+Caddy. See [docs/hosting.md](docs/hosting.md) for the `labtorio.tyrode.dev`
+deployment shape and the reason this repository does not bind host ports `80`
+or `443`.
 
 ## License
 

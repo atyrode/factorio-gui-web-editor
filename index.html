@@ -5,52 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Factorio GUI Web Editor</title>
     <link rel="stylesheet" href="https://cdn.factorio.com/assets/fonts/titillium-web.css">
-    <link rel="stylesheet" href="src/styles.css">
   </head>
   <body>
-    <header class="fx-sitebar">
-      <div class="fx-sitebar__inner">
-        <div>
-          <strong>Factorio GUI</strong>
-          <span>Web Editor</span>
-        </div>
-        <nav aria-label="Project links">
-          <a href="docs/spec-factory.md">Spec Factory</a>
-          <a href="docs/roadmap.md">Roadmap</a>
-          <a href="docs/factorio-style-sources.md">Style Sources</a>
-        </nav>
-      </div>
-    </header>
-
-    <main class="fx-editor-shell">
-      <aside class="fx-rail" aria-label="Editor controls">
-        <section class="fx-panel">
-          <h1>Window</h1>
-          <label class="fx-field">
-            <span>Title</span>
-            <input id="window-title" type="text" value="Untitled window" autocomplete="off">
-          </label>
-          <div class="fx-actions">
-            <button id="create-window" class="fx-button" type="button">Create window</button>
-            <button id="reset-window" class="fx-button" type="button">Reset</button>
-          </div>
-        </section>
-        <section class="fx-panel">
-          <h2>Constraints</h2>
-          <ul class="fx-checklist">
-            <li>Use Factorio GUI primitives.</li>
-            <li>Avoid freeform pixel dragging.</li>
-            <li>Keep anchors stable for export.</li>
-            <li>Do not vendor Factorio image assets.</li>
-          </ul>
-        </section>
-      </aside>
-
-      <section class="fx-stage" aria-label="Editor canvas">
-        <div id="editor-root"></div>
-      </section>
-    </main>
-
-    <script src="src/app.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

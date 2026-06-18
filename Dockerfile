@@ -1,9 +1,19 @@
-FROM caddy:2-alpine
+FROM node:24-trixie-slim AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY index.html ./
+COPY src ./src
+COPY docs ./docs
+COPY README.md ./
+RUN npm run build
+
+FROM caddy:2.9-alpine
 
 COPY deploy/labtorio.Caddyfile /etc/caddy/Caddyfile
-COPY index.html /srv/labtorio/index.html
-COPY src /srv/labtorio/src
-COPY docs /srv/labtorio/docs
-COPY README.md /srv/labtorio/README.md
+COPY --from=build /app/dist /srv/labtorio
 
 EXPOSE 8080
