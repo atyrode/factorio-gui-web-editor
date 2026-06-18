@@ -2,10 +2,9 @@
 
 A browser-based lab for designing Factorio-style GUI layouts before writing Lua.
 
-The current app is a static prototype seeded with the Turret XP GUI redesign as
-the first example project. The longer-term goal is a constrained editor that
-works with Factorio GUI primitives, validates layouts against Factorio-style
-constraints, and can eventually export a layout model or Lua skeleton.
+The current app is intentionally bare. It starts with an empty canvas and can
+create one Factorio-like window shell with a title bar, drag-handle strip, and
+empty body. There is no bundled example project or fixture data.
 
 ## Try It Locally
 
@@ -25,39 +24,35 @@ Opening `index.html` directly also works in most browsers.
 
 ## What Exists Now
 
-- Static browser renderer for the Turret XP example.
-- Fixture picker for representative GUI states.
+- Static browser app with an empty canvas.
+- A minimal window creator with editable title text.
 - Factorio-inspired local CSS token layer.
-- Progression editing with immediate stat-inspector feedback.
-- Build Plan mode with current-to-planned stat deltas.
-- Empty Core Picker, installed Workbench, conflict, and drawer examples.
-- Structural checks for required fixtures, anchors, source files, and forbidden
-  copied Factorio asset payloads.
+- Stable anchors for the editor canvas and generated window shell.
+- Structural checks for required files, anchors, and forbidden copied Factorio
+  asset payloads.
 
 ## Project Shape
 
 ```text
 index.html                     Static app entry point
-src/app.js                     Browser renderer and interactions
+src/app.js                     Bare window editor interactions
 src/styles.css                 Factorio-inspired local token/style layer
-examples/turret-xp/fixtures.js Default example data model
 docs/spec-factory.md           Workflow for writing agent-readable GUI specs
 docs/roadmap.md                Builder/shared-renderer roadmap
 docs/factorio-style-sources.md Style/source research notes
-docs/examples/turret-xp/       Current example product spec
 scripts/check.sh               Local validation
 ```
 
 ## Design Direction
 
 This should not become a freeform pixel editor. Factorio GUI layout is based on
-flows, frames, tables, scroll panes, sprite buttons, labels, checkboxes, styles,
+frames, flows, tables, scroll panes, sprite buttons, labels, checkboxes, styles,
 stretch flags, and fixed-size constraints. A useful editor must preserve those
-constraints rather than letting the browser become the source of truth.
+constraints rather than letting browser CSS become the source of truth.
 
 Accepted future directions:
 
-- fixture editing;
+- create and configure Factorio GUI primitives;
 - constrained layout variants;
 - component reordering;
 - density and bounded-size tuning;
@@ -74,7 +69,8 @@ Rejected first-pass directions:
 - arbitrary x/y dragging;
 - arbitrary nested boxes with no Factorio primitive equivalent;
 - generated Lua that pretends behavior wiring is complete;
-- vendoring Wube CSS, minified page styles, or Factorio image assets.
+- vendoring Wube CSS, minified page styles, or Factorio image assets;
+- bundled domain examples in the editor core.
 
 ## Sources
 
@@ -105,10 +101,9 @@ scripts/check.sh
 ```
 
 The check validates JavaScript syntax when `node` is available and then runs
-structural source/fixture/anchor checks. It does not replace human visual
-review.
+structural source/anchor checks. It does not replace human visual review.
 
 ## License
 
-No license has been selected yet. Treat the repository as source-available
-until a license is explicitly added.
+No license has been selected yet. Treat the repository as source-available until
+a license is explicitly added.

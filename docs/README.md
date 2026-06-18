@@ -6,5 +6,3 @@
   graphical Factorio style-dump roadmap.
 - [factorio-style-sources.md](factorio-style-sources.md): source notes for
   Factorio-like styling, public references, and inspection workflows.
-- [examples/turret-xp/README.md](examples/turret-xp/README.md): bundled Turret
-  XP example spec currently rendered by the app.

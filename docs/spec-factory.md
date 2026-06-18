@@ -1,14 +1,14 @@
 # GUI Spec Factory
 
-This document defines how this project writes Factorio GUI specs before
-changing renderer, editor, or Lua-export code. It is a process document, not a
-product spec. A product spec created from this factory must be concrete enough
-that an implementation agent can build only what is written, a reviewer can
-compare screenshots against named anchors, and the team can revise the design
-without reverse-engineering code.
+This document defines how this project writes Factorio GUI specs before changing
+renderer, editor, or Lua-export code. It is a process document, not a product
+spec. A product spec created from this factory must be concrete enough that an
+implementation agent can build only what is written, a reviewer can compare
+screenshots against named anchors, and the team can revise the design without
+reverse-engineering code.
 
-The first bundled product spec built from this factory is the
-[Turret XP example](examples/turret-xp/README.md).
+No product-specific spec is bundled with the app right now. The current editor
+surface is only a bare window shell.
 
 ## Purpose
 
@@ -18,10 +18,10 @@ GUI work has two separate problems:
 - implementing that experience correctly in the browser renderer, exported
   model, or Factorio Lua code.
 
-These must not happen in the same undocumented pass. When design intent is
-only carried in chat, screenshots, or half-built Lua, the next edit can
-accidentally preserve bad layout assumptions. This factory creates a written
-contract between design and implementation.
+These must not happen in the same undocumented pass. When design intent is only
+carried in chat, screenshots, or half-built Lua, the next edit can accidentally
+preserve bad layout assumptions. This factory creates a written contract between
+design and implementation.
 
 The contract must answer:
 
@@ -38,7 +38,7 @@ The contract must answer:
 
 - Factory: this document. It explains how to create and maintain GUI specs.
 - Product spec: a concrete GUI spec created by this factory for one UI surface.
-- Fixture: a named gameplay state used to design, test, and screenshot the GUI.
+- Fixture: a named state used to design, test, and screenshot the GUI.
 - Anchor: a named visual or structural element that must exist in a screen.
 - Contract: a precise rule for layout, behavior, data, visibility, or testing.
 - Static shell: a rendered GUI frame with real structure and placeholder data,
@@ -84,17 +84,17 @@ The code owns:
 Start with a short problem statement:
 
 - What is wrong with the current GUI?
-- What player job is failing?
+- What user job is failing?
 - What previous implementation direction is explicitly rejected?
 - What must be preserved from the existing product?
 
 The problem frame should separate functional coverage from layout inheritance.
-For example, "keep specialization choices" is a functional requirement;
-"show specialization in the old right column" is a layout assumption.
+For example, "keep destination filtering" is a functional requirement; "show
+filters in the old right column" is a layout assumption.
 
 ### 2. Feature Inventory
 
-List every player-visible feature that the current GUI supports. Do this before
+List every user-visible feature that the current GUI supports. Do this before
 designing the new structure so the redesign does not silently drop behavior.
 
 Each feature must get one of these outcomes:
@@ -111,30 +111,30 @@ Use a table with these columns:
 Feature | Current job | New location | State | Notes
 ```
 
-Do not use vague rows such as "stats" or "automation" when the feature has
-separate player jobs. Split them into observable behaviors: "toggle Follow
-build", "inspect current DPS", "preview planned range delta", and so on.
+Do not use vague rows such as "settings" or "details" when the feature has
+separate user jobs. Split them into observable behaviors: "rename item", "choose
+filter", "inspect validation warning", and so on.
 
-### 3. Player Jobs
+### 3. User Jobs
 
-Define the jobs the GUI must support. A good job is written from the player's
+Define the jobs the GUI must support. A good job is written from the user's
 point of view and implies what must be visible.
 
 Examples:
 
-- Install one exact Veteran Core into this turret.
-- Spend a point and immediately see what changed.
-- Plan a copied build without mutating the live core.
-- Confirm why Follow build is blocked.
-- Rename the core and choose which label parts float above the turret.
-- Inspect detailed stats when debugging a build.
+- Create a top-level GUI window.
+- Rename the selected layout subject.
+- Choose one item from a bounded table.
+- Edit a value and immediately see validation feedback.
+- Open details without losing the current editing context.
+- Confirm why an action is disabled.
 
 Every top-level screen or mode must map to at least one job. A screen with no
 job should not exist.
 
 ### 4. Information Architecture
 
-Group features around player jobs, not around legacy modules.
+Group features around user jobs, not around legacy modules.
 
 For each screen or mode, define:
 
@@ -148,7 +148,7 @@ For each screen or mode, define:
 - destructive or high-impact actions.
 
 Prefer fewer screens with stronger persistent context. If an action changes a
-stat, the affected stat should be visible in the same screen unless the spec
+value, the affected feedback should be visible in the same screen unless the spec
 has a clear reason not to show it.
 
 ### 5. State Fixtures
@@ -170,11 +170,6 @@ flags:
 expected_primary_job:
 notes:
 ```
-
-A spec MAY add domain fields. The Turret XP example adds turret, core, level,
-XP, unspent points, specialization, elements, build-plan state, copied targets,
-inventory cores, platform cores, and developer controls because those are
-example data, not factory-wide requirements.
 
 Fixtures should cover:
 
@@ -199,17 +194,16 @@ Create a visibility matrix for important controls and data. This prevents
 Example format:
 
 ```text
-Element                  Empty picker  Live workbench  Build plan  Details
-Core install action      yes           no              no          no
-XP progress              no            yes             yes         optional
-Live stat inspector      no            yes             yes         yes
-Build plan toggle        no            yes             yes         yes
-Follow build toggle      no            yes             yes         yes
-Full combat history      no            hidden          hidden      yes
+Element                  Empty state  Edit mode  Details
+Create action            yes          no         no
+Window title             no           yes        yes
+Primary edit controls    no           yes        yes
+Validation warnings      no           yes        yes
+Full history             no           hidden     yes
 ```
 
-Use `yes`, `no`, `hidden`, `disabled`, or `optional`, and explain any
-non-obvious entry below the table.
+Use `yes`, `no`, `hidden`, `disabled`, or `optional`, and explain any non-obvious
+entry below the table.
 
 ### 7. ASCII Wireframes
 
@@ -218,38 +212,33 @@ but they must define structure, pinning, and scroll behavior.
 
 Rules:
 
-- Name every anchor in brackets, such as `[Core Header]`.
+- Name every anchor in brackets, such as `[Window Titlebar]`.
 - Mark scroll regions explicitly with `[Scroll: ...]`.
 - Mark pinned regions explicitly with `[Pinned: ...]`.
 - Show relative hierarchy and columns.
 - Include approximate width intent when it matters.
 - Do not use decorative boxes that imply nesting without purpose.
 
-Example from the bundled Turret XP spec:
+Example:
 
 ```text
-Turret XP Workbench
+Main GUI Window
 +--------------------------------------------------------------+
-| [Core Header: slot, name, level, XP, actions]                |
-| [Mode Bar: Live | Build Plan] [Follow Build] [Warnings]      |
-+--------------------------------------+-----------------------+
-| [Scroll: Progression Editor]          | [Pinned: Stat        |
-| - Core upgrades                       |  Inspector]          |
-| - Role path                           | - Damage             |
-| - Elements                            | - DPS                |
-| - Augments                            | - Range              |
-|                                       | - HP/Shield          |
-+--------------------------------------+-----------------------+
+| [Window Titlebar: title, drag handle]                        |
++--------------------------------------------------------------+
+| [Window Body]                                                |
+| content primitives will be added by the selected spec         |
++--------------------------------------------------------------+
 ```
 
 If the intended layout changes at small interface scale, include a second
-wireframe for that scale. Do not assume the code will discover a good
-responsive shape on its own.
+wireframe for that scale. Do not assume the code will discover a good responsive
+shape on its own.
 
 ### 8. Component Contracts
 
-Each reusable component must have a contract. A contract says what the
-component owns and what it must never own.
+Each reusable component must have a contract. A contract says what the component
+owns and what it must never own.
 
 Template:
 
@@ -280,16 +269,16 @@ structural tests where possible.
 Example:
 
 ```gherkin
-Scenario: Spending a Damage point previews affected stats
-  Given the installed workbench is open for a level 100 core with one unspent core point
-  When the player clicks the Damage plus control
-  Then the Damage row shows rank 1
-  And the core point budget decreases by 1
-  And the pinned stat inspector shows the changed damage value without changing screens
+Scenario: Creating a bare window shell
+  Given the editor canvas is empty
+  When the user clicks the Create window control
+  Then one top-level window exists
+  And the window has a title bar
+  And the title bar has a drag handle anchor
 ```
 
-Keep scenarios focused. Do not write one scenario that tries to verify an
-entire screen.
+Keep scenarios focused. Do not write one scenario that tries to verify an entire
+screen.
 
 ### 10. Visual Anchors
 
@@ -305,10 +294,10 @@ For each screen, list:
 - color risks;
 - unacceptable resemblance to rejected designs.
 
-This is where taste becomes concrete enough for an agent to respect. Avoid
-plain adjectives such as "beautiful" unless the spec ties them to observable
-traits like rhythm, hierarchy, whitespace, native Factorio styles, or absence
-of dead panels.
+This is where taste becomes concrete enough for an agent to respect. Avoid plain
+adjectives such as "beautiful" unless the spec ties them to observable traits
+like rhythm, hierarchy, whitespace, native Factorio styles, or absence of dead
+panels.
 
 ### 11. Style Tokens
 
@@ -319,7 +308,8 @@ Examples:
 
 ```text
 panel_shell: native outer frame, no card nesting
-section_header: native dark strip with gold title text
+titlebar_strip: native dark strip with gold title text
+drag_handle: reserved titlebar grip area, not arbitrary movement source
 row_height: stable compact row; controls cannot resize the row on hover
 benefit_delta: muted green for numeric improvements only
 harm_delta: muted red for numeric drawbacks only
@@ -342,9 +332,8 @@ The product spec must include an implementation sequence:
 6. manual screenshot review;
 7. final validation.
 
-The plan must name stop conditions. If a static shell still resembles a
-rejected layout, implementation stops and the spec changes before behavior is
-wired.
+The plan must name stop conditions. If a static shell still resembles a rejected
+layout, implementation stops and the spec changes before behavior is wired.
 
 ### 13. Validation Plan
 
@@ -369,7 +358,7 @@ explains why a section does not apply:
 3. Design Thesis
 4. Non-Goals And Rejected Shapes
 5. Feature Inventory
-6. Player Jobs
+6. User Jobs
 7. Screens And Modes
 8. State Fixtures
 9. Visibility Matrix
@@ -386,15 +375,15 @@ explains why a section does not apply:
 
 - Use `MUST`, `SHOULD`, and `MAY` for obligations.
 - Name controls and anchors exactly once, then reuse the same names.
-- Prefer specific nouns over generic containers: `Stat Inspector`, not
-  `right panel`; `Build Plan Mode`, not `automation stuff`.
+- Prefer specific nouns over generic containers: `Details Drawer`, not `right
+  panel`; `Comparison Mode`, not `extra stuff`.
 - Every top-level screen needs a job.
 - Every scroll region needs a reason.
 - Every hidden feature needs a reveal path.
 - Every color rule needs a meaning.
 - Every destructive action needs an explicit confirmation or preservation rule.
-- Every placeholder in a static shell must point to the real component that
-  will replace it.
+- Every placeholder in a static shell must point to the real component that will
+  replace it.
 - Do not encode old layout terms unless the spec intentionally preserves them.
 - Do not use "clean", "nice", "modern", or "wow" as requirements by themselves.
   Translate them into anchors, hierarchy, spacing, density, and interaction
@@ -412,11 +401,11 @@ Suggested structural checks:
 - required anchors exist for each fixture;
 - disallowed anchors do not exist for each fixture;
 - pinned components are outside scroll containers;
-- controls that should remain visible during progression edits are not inside
-  collapsed or tab-only panes;
-- empty picker mode does not instantiate installed-workbench anchors;
-- build-plan mode and live mode share the progression editor surface while
-  changing mutation target and preview labels.
+- controls that should remain visible during editing are not inside collapsed or
+  tab-only panes;
+- empty mode does not instantiate edit-only anchors;
+- comparison modes share the same editing surface while changing mutation target
+  and preview labels.
 
 When code needs a new anchor, the product spec must be updated in the same
 change.
@@ -428,7 +417,7 @@ required fixtures and answer:
 
 - Does the first read match the screen's primary job?
 - Are persistent context elements visible without scrolling?
-- Are high-value stat changes visible beside progression edits?
+- Is high-value feedback visible beside the controls that change it?
 - Are controls aligned to a stable row rhythm?
 - Are there dead slabs, nested cards, clipped rows, or text under scrollbars?
 - Does the screen accidentally resemble a rejected layout?
@@ -440,7 +429,7 @@ export, or Lua code.
 
 ## Change Workflow
 
-Use this sequence for GUI redesign changes:
+Use this sequence for GUI design changes:
 
 1. Update the product spec.
 2. Update fixtures and contracts.
@@ -458,10 +447,10 @@ description of accidents instead of a design tool.
 Stop implementation and return to the product spec when:
 
 - the static shell resembles a rejected design;
-- a required player job has no obvious screen;
+- a required user job has no obvious screen;
 - a screen exists but has no primary job;
 - a key action requires switching away from the feedback it changes;
-- a scroll region contains controls that the player needs while editing;
+- a scroll region contains controls that the user needs while editing;
 - screenshots reveal clipping, dead panels, or incoherent hierarchy;
 - the code needs a new mode or container not named in the spec;
 - reviewer feedback is about basic layout intent rather than a small polish fix.

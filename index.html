@@ -17,36 +17,40 @@
         <nav aria-label="Project links">
           <a href="docs/spec-factory.md">Spec Factory</a>
           <a href="docs/roadmap.md">Roadmap</a>
-          <a href="docs/examples/turret-xp/README.md">Turret XP Example</a>
+          <a href="docs/factorio-style-sources.md">Style Sources</a>
         </nav>
       </div>
     </header>
 
-    <main class="fx-lab">
-      <aside class="fx-lab__rail" aria-label="Prototype controls">
-        <section class="fx-panel fx-panel--compact">
-          <h1>Example Fixtures</h1>
-          <div id="fixture-list" class="fx-fixture-list"></div>
+    <main class="fx-editor-shell">
+      <aside class="fx-rail" aria-label="Editor controls">
+        <section class="fx-panel">
+          <h1>Window</h1>
+          <label class="fx-field">
+            <span>Title</span>
+            <input id="window-title" type="text" value="Untitled window" autocomplete="off">
+          </label>
+          <div class="fx-actions">
+            <button id="create-window" class="fx-button" type="button">Create window</button>
+            <button id="reset-window" class="fx-button" type="button">Reset</button>
+          </div>
         </section>
-        <section class="fx-panel fx-panel--compact">
-          <h2>Current Constraints</h2>
+        <section class="fx-panel">
+          <h2>Constraints</h2>
           <ul class="fx-checklist">
-            <li>Render from named fixtures.</li>
-            <li>Prefer Factorio GUI primitives.</li>
+            <li>Use Factorio GUI primitives.</li>
             <li>Avoid freeform pixel dragging.</li>
             <li>Keep anchors stable for export.</li>
             <li>Do not vendor Factorio image assets.</li>
-            <li>Turret XP is the default example.</li>
           </ul>
         </section>
       </aside>
 
-      <section class="fx-lab__stage" aria-label="Prototype preview">
-        <div id="prototype-root"></div>
+      <section class="fx-stage" aria-label="Editor canvas">
+        <div id="editor-root"></div>
       </section>
     </main>
 
-    <script src="examples/turret-xp/fixtures.js"></script>
     <script src="src/app.js"></script>
   </body>
 </html>

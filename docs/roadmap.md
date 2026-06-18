@@ -1,8 +1,8 @@
 # Browser Builder And Shared Renderer Roadmap
 
 This roadmap captures the standalone editor direction. It is aspirational, but
-concrete enough to split into future issues. The current static prototype does
-not need to complete every phase.
+concrete enough to split into future issues. The current static app does not
+need to complete every phase.
 
 ## End State
 
@@ -11,7 +11,7 @@ drive three surfaces:
 
 1. a browser design and review tool for fast iteration;
 2. a Factorio Lua GUI skeleton or implementation for a selected layout;
-3. a read-only or lightly interactive web demo for a selected example.
+3. a read-only or lightly interactive web demo for a selected layout.
 
 The ideal is not just visual similarity. The ideal is that browser and in-game
 UI are generated from the same constrained model, with explicit places where
@@ -22,10 +22,10 @@ Factorio and browser behavior cannot be perfectly identical.
 The builder must edit a Factorio GUI layout model, not arbitrary browser layout.
 
 Factorio GUI is based on primitives such as frames, flows, tables, scroll panes,
-sprite buttons, labels, checkboxes, and styles. Browser CSS can emulate many of
-those, but browser CSS should not become the source of truth. The model should
-be closer to Factorio's GUI API than to Figma, absolute-positioned DOM, or a
-general web page builder.
+sprite buttons, labels, checkboxes, text fields, and styles. Browser CSS can
+emulate many of those, but browser CSS should not become the source of truth. The
+model should be closer to Factorio's GUI API than to Figma,
+absolute-positioned DOM, or a general web page builder.
 
 ## Why Freeform Dragging Is Rejected First
 
@@ -35,10 +35,10 @@ browser but translate poorly to Factorio. Known risks:
 - Factorio layout is flow/table/style driven, not absolute-position driven.
 - Stretch flags and fixed sizes can interact in surprising ways.
 - Scroll panes can clip differently from browser overflow containers.
-- Some compound elements expose click events differently than their visual
-  child structure suggests.
-- Native Factorio styles carry behavior and sizing assumptions that CSS can
-  only approximate.
+- Some compound elements expose click events differently than their visual child
+  structure suggests.
+- Native Factorio styles carry behavior and sizing assumptions that CSS can only
+  approximate.
 
 This does not mean a no-code-like tool is impossible. It means the tool must
 offer constrained operations that preserve translatability.
@@ -47,13 +47,13 @@ offer constrained operations that preserve translatability.
 
 Future builder operations SHOULD include:
 
-- choose screen fixture;
-- edit fixture data;
+- create a top-level window shell;
+- edit frame title text;
+- add approved Factorio GUI primitives;
 - reorder major spec components;
 - choose approved layout variants;
 - toggle density modes;
 - tune bounded widths, min/max sizes, and column counts;
-- choose pinned inspector or side-panel placement from approved positions;
 - choose drawer, popup, or modal placement from approved positions;
 - mark components pinned, scrollable, hidden, or drawer-owned;
 - select local style tokens;
@@ -69,48 +69,39 @@ Future builder operations SHOULD NOT include, at least initially:
 - arbitrary nested boxes without component contracts;
 - arbitrary CSS values with no Factorio equivalent;
 - direct behavior generation beyond structural event hook placeholders;
-- using any imported example's legacy architecture as the editor model.
+- bundled domain examples as editor defaults.
 
 ## Shared Model Sketch
 
-The shared model can start small. This sketch uses the bundled Turret XP
-example anchors; future schemas should separate reusable primitive fields from
-example-specific IDs.
+The shared model can start small. The first useful model is a top-level frame
+with a title bar, reserved drag handle, and empty body.
 
 ```json
 {
   "schema": "factorio-gui-layout.v0",
-  "screen": "installed_workbench",
-  "fixture": "installed_level_100_unspent",
-  "layout": {
-    "density": "compact",
-    "inspectorPlacement": "right",
-    "primaryScroll": "turret_xp_progression_editor"
+  "root": {
+    "id": "gui_window",
+    "primitive": "frame",
+    "caption": "Untitled window",
+    "children": [
+      {
+        "id": "gui_window_titlebar",
+        "primitive": "flow",
+        "direction": "horizontal",
+        "children": ["gui_window_caption", "gui_window_drag_handle"]
+      },
+      {
+        "id": "gui_window_body",
+        "primitive": "flow",
+        "direction": "vertical",
+        "children": []
+      }
+    ]
   },
-  "components": [
-    {
-      "id": "turret_xp_workbench_header",
-      "primitive": "frame",
-      "direction": "horizontal",
-      "styleToken": "header_band"
-    },
-    {
-      "id": "turret_xp_progression_editor",
-      "primitive": "scroll-pane",
-      "policy": "vertical-auto",
-      "children": ["core_upgrades", "role_path", "elements", "augments"]
-    },
-    {
-      "id": "turret_xp_stat_inspector",
-      "primitive": "frame",
-      "pinned": true,
-      "outsideScrollPane": "turret_xp_progression_editor"
-    }
-  ],
   "constraints": [
     "no_absolute_positioning",
-    "inspector_outside_editor_scroll",
-    "no_legacy_example_layout"
+    "titlebar_has_drag_handle",
+    "no_bundled_domain_example"
   ]
 }
 ```
@@ -125,11 +116,11 @@ The builder needs a catalog of Factorio GUI constraints. Official Factorio API
 docs are the authoritative source for engine behavior. Raiguard's Factorio GUI
 style guide is the preferred community source for Factorio-like composition,
 style naming, and inspection workflow. Older community documentation, including
-`ClaudeMetz/UntitledGuiGuide`, may be used cautiously as supporting context
-when it helps explain practical custom-GUI workflows. Raiguard's public
-Codeberg repositories, especially `flib`, Editor Extensions, Krastorio 2, and
-GUI-heavy utility mods, are a lead list for deeper architecture/style research;
-record concrete conclusions only after inspecting the specific repository/file.
+`ClaudeMetz/UntitledGuiGuide`, may be used cautiously as supporting context when
+it helps explain practical custom-GUI workflows. Raiguard's public Codeberg
+repositories, especially `flib`, Editor Extensions, Krastorio 2, and GUI-heavy
+utility mods, are a lead list for deeper architecture/style research; record
+concrete conclusions only after inspecting the specific repository/file.
 
 Initial entries:
 
@@ -139,7 +130,6 @@ Initial entries:
 - scroll-pane policy and maximum-size rules;
 - stretchable versus fixed-size interaction risks;
 - stable anchor and action-name requirements;
-- example-specific rejected-shape checks from product specs;
 - style token mapping to Factorio style definitions, `flib`, or local styles;
 - event-surface notes for frames, scroll panes, and compound controls;
 - portability warnings where browser behavior cannot match Factorio exactly.
@@ -154,12 +144,12 @@ test inputs. Factorio headless cannot provide the style-inspector hover overlay
 because it has no rendered GUI surface.
 
 Automated text extraction is still possible in graphical Factorio. A companion
-mod or debug remote can traverse an owned GUI tree and write a
-JSON dump with `LuaGuiElement` data such as element type, name, caption,
-children, tags, root, and assigned style plus readable `LuaStyle` fields such
-as style name, width/height, natural/min/max dimensions, margins, padding,
-spacing, font, colors, alignment, and stretch/squash flags. That dump should be
-captured next to screenshot artifacts.
+mod or debug remote can traverse an owned GUI tree and write a JSON dump with
+`LuaGuiElement` data such as element type, name, caption, children, tags, root,
+and assigned style plus readable `LuaStyle` fields such as style name,
+width/height, natural/min/max dimensions, margins, padding, spacing, font,
+colors, alignment, and stretch/squash flags. That dump should be captured next
+to screenshot artifacts.
 
 Do not mistake that dump for the full `Ctrl+F6` inspector. The inspector also
 shows renderer-computed data such as hovered relative position, rendered size,
@@ -170,19 +160,20 @@ Factorio headless through the normal mod API.
 
 ## Sequential Spike Plan
 
-### Phase 0: Static Browser Viewer
+### Phase 0: Bare Window Shell
 
 Status: current seed scope.
 
-- Render required fixtures.
-- Use Factorio-inspired local tokens.
-- Use legacy Turret XP GUI behavior as example feature inventory only.
-- Prove progression and stat feedback can live on the same surface.
+- Start with an empty canvas.
+- Create one Factorio-like window shell on command.
+- Render a title bar, drag-handle strip, and empty body.
+- Use Factorio-inspired local tokens without copying Wube assets.
+- Validate that no bundled domain example is required by the app.
 
 ### Phase 1: Layout Model Export
 
-- Serialize the current prototype into a JSON layout model.
-- Include spec anchors, primitives, component ownership, and constraints.
+- Serialize the current window shell into a JSON layout model.
+- Include anchors, primitives, component ownership, and constraints.
 - Add a Markdown export that explains the selected layout.
 - Add validation that required anchors exist in the model.
 
@@ -195,7 +186,7 @@ Status: current seed scope.
 
 ### Phase 3: Constrained Builder UI
 
-- Add controls for fixture editing, component reordering, layout variants,
+- Add controls for adding primitives, component reordering, layout variants,
   density, widths, and drawer placement.
 - Validate every change against the constraint catalog.
 - Reject or warn on combinations known to translate poorly to Factorio.
@@ -211,14 +202,13 @@ Status: current seed scope.
 
 - Reuse the browser renderer in static exported/demo artifacts if licensing and
   package size remain acceptable.
-- Keep it read-only or fixture-driven unless editing has a clear user benefit.
-- Use it to explain selected example GUIs or exported layouts without launching
-  Factorio.
+- Keep it read-only unless editing has a clear user benefit.
+- Use it to explain selected layouts without launching Factorio.
 
 ## Open Questions
 
-- How much of Factorio style definitions can be represented without copying
-  Wube assets or overfitting to one game version?
+- How much of Factorio style definitions can be represented without copying Wube
+  assets or overfitting to one game version?
 - Should the model target raw Factorio GUI primitives, `flib`, local helper
   primitives, or a layered mapping?
 - How strict should 1:1 parity be before Lua implementation starts?
@@ -230,7 +220,7 @@ Status: current seed scope.
 
 ## Issue Tracking Checklist
 
-- [ ] Build the first static browser viewer.
+- [x] Build the first bare browser window shell.
 - [ ] Extract enforceable tokens/contracts from Raiguard's Factorio GUI style
       guide, including style-inspector workflow.
 - [ ] Survey Raiguard's public Factorio repositories on Codeberg for GUI/style

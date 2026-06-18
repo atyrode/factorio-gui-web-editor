@@ -74,8 +74,8 @@ behavior.
 
 ## Observed Public Web Tokens
 
-The Factorio website, Mod Portal, and API docs share a compact mechanical
-visual language:
+The Factorio website, Mod Portal, and API docs share a compact mechanical visual
+language:
 
 - dark brown/black page background;
 - dense gray panels with hard corners;
@@ -97,43 +97,36 @@ The browser renderer owns a local token layer rather than copying source CSS:
 
 | Token | Purpose |
 | --- | --- |
-| `fx-bg` | dark page/workbench background |
+| `fx-bg` | dark page background |
 | `fx-panel` | main gray panel fill |
 | `fx-panel-light` | raised or selected panel fill |
 | `fx-panel-dark` | inset/hole fill |
 | `fx-edge` | hard panel edge |
 | `fx-gold` | headings and active primary labels |
 | `fx-orange` | selected tab/button accent |
-| `fx-blue` | links, source chips, info values |
-| `fx-green` | beneficial numeric deltas |
-| `fx-red` | harmful numeric deltas |
+| `fx-blue` | links and secondary info values |
 | `fx-muted` | disabled or secondary text |
 
 ## Component Translation Targets
 
 | Browser component | Factorio Lua export target later |
 | --- | --- |
-| Window shell | `frame` in `player.gui.relative` or `screen` fallback |
+| Window shell | `frame` in `player.gui.screen` or a relative anchor |
 | Title bar | draggable frame title / flow |
-| Slot | scripted `sprite-button` preserving Veteran Core tags |
-| Segmented mode row | flow of toggle-style buttons |
+| Drag handle | empty-widget or flow region reserved for dragging |
+| Window body | child flow/table/scroll-pane chosen by the layout model |
+| Button | `button` or `sprite-button` with stable action tags |
+| Text input | `textfield` with stable action tag |
 | Checkbox | `checkbox` with stable action tag |
-| Rank stepper | fixed-width flow with minus, value, plus buttons |
-| Progression group | shallow frame/flow with section header |
-| Stat inspector | pinned frame outside editor scroll pane |
-| Picker rows | header/body flows, not native grid-line tables |
-| Drawer | collapsible frame or anchored popup depending on Factorio fit |
 
 ## Visual Risk Checklist
 
-Reject editor or example revisions that:
+Reject editor revisions that:
 
-- turn a rejected example-specific layout into an editor-wide model constraint;
-- hide related editing, feedback, and automation controls behind mutually
-  exclusive tabs unless the product spec explicitly accepts that shape;
-- show large dead slabs of empty gray panel;
-- hide changed stats while editing ranks or Build Plan targets;
-- use green/red as decoration instead of numeric meaning;
+- depend on a bundled domain example for the default experience;
+- make browser CSS the source of truth instead of Factorio GUI primitives;
+- show large dead slabs of empty gray panel once content primitives exist;
+- use green/red as decoration instead of numeric or status meaning;
 - add nested cards for every row;
-- clip table rows or place text under scrollbars;
+- clip rows or place text under scrollbars;
 - depend on copyrighted Wube image assets for the basic look.

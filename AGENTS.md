@@ -21,12 +21,12 @@ These instructions apply to the whole repository.
 - Keep the tool constrained by Factorio GUI primitives and style behavior.
 - Prefer a model that can later render to browser DOM and Factorio Lua
   structure from the same source.
-- Do not let arbitrary CSS or freeform pixel dragging become the source of
-  truth for Factorio GUI layout.
+- Do not let arbitrary CSS or freeform pixel dragging become the source of truth
+  for Factorio GUI layout.
 - Do not vendor Wube CSS, minified page styles, Factorio images, or other
   copyrighted assets.
-- Treat the Turret XP prototype as the first example project, not as the only
-  possible project shape.
+- Keep the editor core free of bundled domain examples. Future examples should
+  live outside the core model and renderer.
 
 ## Documentation Rule
 
@@ -35,7 +35,8 @@ These instructions apply to the whole repository.
 - Keep GUI process guidance in `docs/spec-factory.md`.
 - Keep roadmap and spike sequencing in `docs/roadmap.md`.
 - Keep Factorio styling/source notes in `docs/factorio-style-sources.md`.
-- Keep example-specific specs under `docs/examples/`.
+- Keep future example-specific specs under `docs/examples/` only after an
+  example is intentionally introduced.
 - Do not duplicate the same guidance across many files; update the owning doc
   and add short cross-references only when useful.
 
@@ -46,8 +47,8 @@ These instructions apply to the whole repository.
 - Use existing project patterns before inventing new ones.
 - Use structured data/models where practical instead of parsing UI text.
 - Keep browser code dependency-light until a dependency clearly earns its cost.
-- Use stable anchors/IDs for elements that specs, checks, or future exports
-  need to reference.
+- Use stable anchors/IDs for elements that specs, checks, or future exports need
+  to reference.
 - Add comments only where they clarify non-obvious behavior or constraints.
 
 ## Factorio GUI Research
