@@ -131,11 +131,17 @@ The current CSS is split by responsibility:
 
 | Token | Purpose |
 | --- | --- |
-| `fx-bg` | dark page background |
-| `fx-panel` | main gray panel fill |
+| `fx-bg` | neutral gray page background for Labtorio readability |
+| `fx-panel` | main gray panel fill; confirmed in-game frame background `#313031` |
 | `fx-panel-light` | raised or selected panel fill |
 | `fx-panel-dark` | inset/hole fill |
-| `fx-edge` | hard panel edge |
+| `fx-edge` | neutral charcoal panel edge for in-game-like editor frames |
+| `fx-frame-shadow` | in-game-like raised frame highlight, bottom darkening, and drop shadow |
+| `fx-window-outer-border` | 6 px graphical frame edge needed for captured `size` to `content_size` math |
+| `fx-window-padding-*` | inspected top-level `frame` padding: top `6`, sides `12`, bottom `12` |
+| `fx-window-titlebar-*` | inspected `frame_header_flow`: `48` height, `42` content height, `6` bottom padding, `12` spacing |
+| `fx-window-drag-handle-*` | inspected `draggable_space_header`: `36` height and `6` left/right margins |
+| `fx-window-body-spacing` | inspected `inside_deep_frame` vertical spacing of `0` |
 | `fx-gold` | headings and active primary labels |
 | `fx-orange` | selected tab/button accent |
 | `fx-blue` | links and secondary info values |
@@ -148,8 +154,126 @@ every reusable atom before that atom becomes important in the editor. Tune the
 atlas against official website/Mod Portal/API docs observations first, then
 against graphical Factorio captures.
 
+Each atlas section is its own top-level-style GUI frame. This intentionally
+matches the in-game composition baseline: a `frame` with a title, a header
+filler, and an inner vertical content flow. Avoid wrapping the whole atlas in one
+large frame because that hides per-section frame behavior and makes it harder to
+review atom boundaries.
+
+Raised panel boxes should stay visually flat. The official public `.panel`
+pattern uses a `#313031` fill, a `4px` `#2e2623` edge, and a small `#201815`
+outer shadow before its asset border-image is applied, but that warm edge is a
+website fallback that blends into Factorio.com's brown page theme. In in-game
+GUI captures the outer frame reads as a thin charcoal/black structure with a
+faint light line along the top, stronger black weight at the bottom, and a
+drop shadow behind the frame. Close corner crops show this as a hard black
+outside corner, a one-pixel bottom/right ledge, a softer shadow cast down and
+right, and small inner highlights on the top/left edges. The local editor
+therefore uses a neutral charcoal `fx-edge` plus `fx-frame-shadow`, and reserves
+deeper inset/outset shadow stacks for inset panels, holes, buttons, fields,
+checkboxes, slots, and scroll/table cells.
+
 When an in-game capture contradicts the public website skin, prefer the in-game
 capture for editor primitives that will generate Lua.
+
+## Captured In-Game Frame Constraints
+
+The current top-level window baseline comes from graphical Factorio `Ctrl+F6`
+captures of map-editor and vanilla Blueprint Library windows. The map-editor
+capture was sample-specific; the reusable browser model should report the
+generic vanilla top-level window class, not `MapEditorGui`.
+
+| Element | Inspector class/style | Captured constraints |
+| --- | --- | --- |
+| Top-level window | `agui::Window`, style `inset_frame_container_frame`, derived from `frame` | size `708 x 395` review fixture, content `672 x 365`, top padding `6`, right/bottom/left padding `12`, `use_header_filler=true`, maximum horizontal squash `0`, maximum vertical squash `18` |
+| Header row | `agui::HorizontalFlow`, derived from `frame_header_flow` | size `672 x 48`, content `672 x 42`, clip y offset `-4`, bottom padding `6`, horizontal spacing `12`, horizontally stretchable on, vertically stretchable off |
+| Title label | `agui::Label`, derived from `frame_title` / `label` | relative `[0, -4]`, height `46`, content height `42`, top margin `-4`, bottom padding `4`, vertically stretchable on, horizontally squashable on, `single_line=true`, font `heading-1`, font color `{1, 0.901961, 0.752941}` |
+| Header filler | `agui::Filler`, derived from `draggable_space_header` / `draggable_space` / `empty_widget` | size `473 x 36`, natural height `36`, left/right margin `6`, horizontally and vertically stretchable on |
+| Body flow | `agui::VerticalFlow`, part of `inside_deep_frame` | size `672 x 317`, content `672 x 317`, vertical spacing `0`, maximum vertical squash `18` |
+
+The top-level `size` and `content_size` values only reconcile when the browser
+frame models Factorio's graphical frame edge as a 6 px border before applying
+the inspected style padding. For the current fixture, `708 - 6 - 6 - 12 - 12 =
+672` and `395 - 6 - 6 - 6 - 12 = 365`. The border must stay neutral
+charcoal/black; it is not the brown public-website panel edge.
+
+This 6 px edge should be treated as a graphical frame band, not a hard CSS
+stroke. A close top-left crop sampled as a soft ramp from the world background
+into the panel: the left edge settles through approximately `#241d1b`,
+`#2a2422`, `#2f2b29`, `#302e2e`, `#313030`, and `#313031`, while the top bevel
+starts brighter around `#62605f` and drops into the same panel fill over the
+same 6 px depth. The local renderer keeps a transparent 6 px layout border for
+box math, then paints that edge with clipped gradients so the frame reads as a
+smooth 9-slice-style bevel instead of two visible outline lines. Top-level
+windows also avoid the generic raised-panel inset shadow; their depth comes
+from the frame-band bevel and an external drop/ledge shadow. The window
+padding-box fill must stay the same `fx-panel` color that the frame-band ramp
+lands on, with no extra interior glaze, or the edge reads as a separate border
+instead of one continuous frame material.
+
+The frame sides are rendered as four trapezoid bands, not as rectangular strips.
+Each band owns the full outer edge and a shorter inner edge facing the panel, so
+adjacent bands meet on a diagonal miter at every corner. This is currently done
+with renderer-only chrome spans and `clip-path: polygon(...)`; those spans are
+not model nodes and must not be exported as Factorio GUI elements. Avoid radial
+corner fills; they read as dark blobs rather than the short mitered bevel
+visible in the in-game corner crops.
+
+The header horizontal flow is placed directly in that content area. It should
+not introduce its own margin or extra border. Its outer layout box is `672 x
+48`; the `42` content height comes from the `6` bottom padding, and its `clip`
+extends 4 px upward for the title label rendering.
+
+The Map Editor header capture also includes a `SearchBar 36 x 36` child after
+the draggable filler. That appears to be an optional header control for that
+specific GUI, not a universal top-level window requirement. The current generic
+browser window renders the title label and draggable filler only; optional
+header controls need a separate model field and export mapping before they
+should be added to every window.
+
+The header filler visual reads as a repeated 6 px bevel cadence rather than a
+flat stripe. A close-up sample showed a dark recessed half followed by a lighter
+raised half, approximated locally as `#2a2a2a`, `#2d2c2d`, `#2b2a2b`,
+`#383738`, `#3b3a3b`, `#383738` across each repeat. The filler should not have
+its own border, drop shadow, or inset top/bottom glaze; it is a flat groove
+texture inside the header flow.
+
+These values are not only visual measurements. They are layout-model facts that
+the browser DOM, JSON model, and Lua skeleton should preserve until a later
+Factorio capture proves a different primitive or style is required.
+
+The editor's Inspector checkbox emulates the `Ctrl+F6` workflow for the current
+browser model. When enabled, hovering or focusing a rendered GUI part selects
+the matching model node, highlights that part in the preview, and shows a single
+Factorio-style inspector box under the sidebar Inspector section. The box should
+describe the highlighted node only, not every node at once. Clicking a rendered
+GUI part locks the inspector to that node so values can be read or copied; while
+locked, hover/focus no longer changes the selection until the inspector is
+unlocked or another part is clicked. The highlight should read like Factorio's
+inspector wash: a translucent white overlay over the selected part, not an
+external bounding outline that changes or obscures the perceived geometry.
+The Inspector section also includes a compact component tree using the same
+stable model anchors as hover inspection. Clicking a tree row locks the selected
+component, highlights the matching preview node, and shows that node's values.
+The tree uses CLI `tree`-style connector rails and elbows so parent-child
+structure is visible at a glance without adding decorative nodes to the model.
+It is pinned to the bottom of the Inspector section and styled as a recessed
+component browser so changing inspector value height does not move it around.
+
+The editor caches its current seed state in browser `localStorage`: title,
+current top-level window, inspector toggle/selection, Lua output visibility, and
+the window location after dragging. The left editor rail also caches a resizable
+width preference so the inspector can be widened for long names and values
+without adding non-Factorio layout data to the GUI model. Inspector key/value
+rows are single-line and crop with an ellipsis at narrow widths; the full text
+is available from the browser tooltip. Dragging is intentionally limited to the
+header horizontal flow and its draggable filler, matching the Factorio pattern
+where a child header element has `drag_target` set to the top-level frame.
+Before the first drag, the window remains auto-centered; after dragging, the
+model records an explicit screen location and the Lua preview emits that
+location. The Lua output is toggled from the Inspector section and, when shown,
+occupies a full-width bottom row beneath the editor rather than only the stage
+column.
 
 ## Component Translation Targets
 

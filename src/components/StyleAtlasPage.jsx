@@ -1,7 +1,6 @@
 import {
   FxButton,
   FxCheckbox,
-  FxFrame,
   FxInset,
   FxNotice,
   FxSlotGrid,
@@ -20,21 +19,18 @@ const atlasRows = [
 ];
 
 function AtlasSection({ title, children }) {
+  const anchor = `atlas_${title.toLowerCase().replaceAll(" ", "_")}`;
+
   return (
-    <FxFrame title={title} className="fx-atlas-section">
+    <GuiWindow title={title} className="fx-atlas-section" anchor={anchor}>
       {children}
-    </FxFrame>
+    </GuiWindow>
   );
 }
 
 export function StyleAtlasPage() {
   return (
     <main className="fx-atlas-shell">
-      <header className="fx-atlas-header">
-        <h1>Style Atlas</h1>
-        <p>Reusable Factorio GUI atoms for visual review and later Lua mapping.</p>
-      </header>
-
       <div className="fx-atlas-grid">
         <AtlasSection title="Frames And Insets">
           <div className="fx-atlas-stack">
@@ -104,16 +100,6 @@ export function StyleAtlasPage() {
 
         <AtlasSection title="Tables">
           <FxTable columns={["Primitive", "Style", "State"]} rows={atlasRows} />
-        </AtlasSection>
-
-        <AtlasSection title="Window Shell">
-          <div className="fx-atlas-window-preview">
-            <GuiWindow title="Untitled window">
-              <FxInset variant="lighter">
-                <p>Window body flow</p>
-              </FxInset>
-            </GuiWindow>
-          </div>
         </AtlasSection>
 
         <AtlasSection title="Notices">

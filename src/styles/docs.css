@@ -7,13 +7,8 @@
 .fx-docnav,
 .fx-document {
   background: var(--fx-panel);
-  border: 4px solid var(--fx-edge);
-  box-shadow:
-    0 0 3px 0 var(--fx-edge-shadow),
-    inset 3px 0 2px -2px var(--fx-edge-shadow),
-    inset 0 3px 2px -2px #8f8c8b,
-    inset -3px 0 2px -2px var(--fx-edge-shadow),
-    inset 0 -3px 3px -3px var(--fx-shadow);
+  border: 1px solid var(--fx-edge);
+  box-shadow: var(--fx-frame-shadow);
 }
 
 .fx-docnav {

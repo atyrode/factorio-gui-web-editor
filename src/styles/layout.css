@@ -4,8 +4,7 @@
 }
 
 .fx-sitebar__inner {
-  width: min(100%, 1232px);
-  margin: 0 auto;
+  width: 100%;
   padding: 16px;
   display: flex;
   align-items: baseline;
@@ -46,9 +45,8 @@
 .fx-editor-shell,
 .fx-document-shell,
 .fx-atlas-shell {
-  width: min(100%, 1240px);
+  width: 100%;
   min-height: calc(100vh - 56px);
-  margin: 0 auto;
   padding: 20px;
 }
 

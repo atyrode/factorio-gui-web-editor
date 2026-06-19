@@ -60,6 +60,8 @@ docker compose -f compose.yaml -f compose.dev.yaml up -d
 
 The override keeps the same internal `labtorio:8080` target used by the edge
 proxy, but serves Vite with HMR configured for `wss://labtorio.tyrode.dev`.
+It stores container `node_modules` and Vite cache data in Docker named volumes
+so hot reload does not leave host checkout files owned by the container user.
 
 ## Design Direction
 

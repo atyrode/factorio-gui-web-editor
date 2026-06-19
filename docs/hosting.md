@@ -55,10 +55,14 @@ docker compose -f compose.yaml -f compose.dev.yaml up -d
 ```
 
 The override runs `node:24-trixie-slim`, mounts the repository at `/app`, and
-serves Vite on internal port `8080`. It sets `LABTORIO_HMR_HOST` to
-`labtorio.tyrode.dev` and `LABTORIO_HMR_CLIENT_PORT` to `443`, so browser HMR
-uses the public HTTPS route. Stop using the override and rebuild the static
-container before treating the service as production again:
+serves Vite on internal port `8080`. It keeps `/app/node_modules` and Vite's
+cache in Docker named volumes, while `vite.config.js` defaults local dev cache
+to a per-UID directory under `/tmp`. That prevents the dev container or local
+tooling from leaving root-owned or remapped Vite cache files in the host
+checkout. The override sets `LABTORIO_HMR_HOST` to `labtorio.tyrode.dev` and
+`LABTORIO_HMR_CLIENT_PORT` to `443`, so browser HMR uses the public HTTPS
+route. Stop using the override and rebuild the static container before treating
+the service as production again:
 
 ```sh
 docker compose up -d --build

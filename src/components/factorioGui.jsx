@@ -145,33 +145,212 @@ export function FxTextInput({ className = "", ...props }) {
   return <input className={["fx-text-input", className].filter(Boolean).join(" ")} {...props} />;
 }
 
-export function GuiWindow({ title, children }) {
+function inspectorProps({ active, locked, anchor, inspectedAnchor, onInspect, onInspectLock }) {
+  if (!active) {
+    return {};
+  }
+
+  return {
+    className: inspectedAnchor === anchor ? "is-inspected" : undefined,
+    tabIndex: 0,
+    onMouseEnter: () => {
+      if (!locked) {
+        onInspect?.(anchor);
+      }
+    },
+    onMouseMove: (event) => {
+      if (locked) {
+        return;
+      }
+
+      const target = event.target.closest("[data-anchor]");
+      if (target?.dataset.anchor) {
+        onInspect?.(target.dataset.anchor);
+      }
+    },
+    onClick: (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onInspectLock?.(anchor);
+    },
+    onFocus: () => {
+      if (!locked) {
+        onInspect?.(anchor);
+      }
+    }
+  };
+}
+
+export function GuiWindow({
+  title,
+  children,
+  className = "",
+  anchor = "gui_window",
+  inspectorActive = false,
+  inspectorLocked = false,
+  inspectedAnchor = anchor,
+  onInspect,
+  onInspectLock,
+  style,
+  onTitlebarPointerDown,
+  onTitlebarPointerMove,
+  onTitlebarPointerUp,
+  onTitlebarPointerCancel
+}) {
+  const rootInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+  const titlebarAnchor = `${anchor}_titlebar`;
+  const titlebarInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: titlebarAnchor,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+  const titleAnchor = `${anchor}_title`;
+  const titleInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: titleAnchor,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+  const dragAnchor = `${anchor}_drag_handle`;
+  const dragInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: dragAnchor,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+  const bodyAnchor = `${anchor}_body`;
+  const bodyInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: bodyAnchor,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+
   return (
     <section
-      className="fx-gui-window"
-      data-anchor="gui_window"
+      className={[
+        "fx-gui-window",
+        inspectorActive ? "is-inspecting" : "",
+        className,
+        rootInspector.className
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-anchor={anchor}
       data-fx-primitive="frame"
-      data-fx-style="frame"
+      data-fx-class="agui::Window"
+      data-fx-style="inset_frame_container_frame"
+      data-fx-derived-from="frame"
+      data-fx-padding-top="6"
+      data-fx-padding-bottom="12"
+      data-fx-padding-left="12"
+      data-fx-padding-right="12"
+      data-fx-graphical-border="6"
+      data-fx-use-header-filler="true"
+      style={style}
+      tabIndex={rootInspector.tabIndex}
+      onMouseEnter={rootInspector.onMouseEnter}
+      onMouseMove={rootInspector.onMouseMove}
+      onClick={rootInspector.onClick}
+      onFocus={rootInspector.onFocus}
     >
+      <span className="fx-gui-window__edge fx-gui-window__edge--top" aria-hidden="true" />
+      <span className="fx-gui-window__edge fx-gui-window__edge--right" aria-hidden="true" />
+      <span className="fx-gui-window__edge fx-gui-window__edge--bottom" aria-hidden="true" />
+      <span className="fx-gui-window__edge fx-gui-window__edge--left" aria-hidden="true" />
       <header
-        className="fx-gui-window__titlebar"
-        data-anchor="gui_window_titlebar"
+        className={["fx-gui-window__titlebar", titlebarInspector.className]
+          .filter(Boolean)
+          .join(" ")}
+        data-anchor={titlebarAnchor}
         data-fx-primitive="flow"
+        data-fx-style="frame_header_flow"
         data-fx-direction="horizontal"
+        data-fx-height="48"
+        data-fx-bottom-padding="6"
+        data-fx-horizontal-spacing="12"
+        data-fx-horizontally-stretchable="true"
+        data-fx-vertically-stretchable="false"
+        tabIndex={titlebarInspector.tabIndex}
+        onMouseEnter={titlebarInspector.onMouseEnter}
+        onMouseMove={titlebarInspector.onMouseMove}
+        onClick={titlebarInspector.onClick}
+        onPointerDown={onTitlebarPointerDown}
+        onPointerMove={onTitlebarPointerMove}
+        onPointerUp={onTitlebarPointerUp}
+        onPointerCancel={onTitlebarPointerCancel}
+        onFocus={titlebarInspector.onFocus}
       >
-        <strong>{title}</strong>
+        <strong
+          className={["fx-gui-window__title-label", titleInspector.className]
+            .filter(Boolean)
+            .join(" ")}
+          data-anchor={titleAnchor}
+          data-fx-primitive="label"
+          data-fx-style="frame_title"
+          data-fx-top-margin="-4"
+          data-fx-bottom-padding="4"
+          data-fx-horizontally-squashable="true"
+          data-fx-vertically-stretchable="true"
+          tabIndex={titleInspector.tabIndex}
+          onMouseEnter={titleInspector.onMouseEnter}
+          onMouseMove={titleInspector.onMouseMove}
+          onClick={titleInspector.onClick}
+          onFocus={titleInspector.onFocus}
+        >
+          {title}
+        </strong>
         <div
-          className="fx-gui-window__drag-handle"
-          data-anchor="gui_window_drag_handle"
+          className={["fx-gui-window__drag-handle", dragInspector.className]
+            .filter(Boolean)
+            .join(" ")}
+          data-anchor={dragAnchor}
           data-fx-primitive="empty-widget"
+          data-fx-style="draggable_space_header"
+          data-fx-role="header-filler"
+          data-fx-height="36"
+          data-fx-natural-height="36"
+          data-fx-left-margin="6"
+          data-fx-right-margin="6"
+          data-fx-horizontally-stretchable="true"
+          data-fx-vertically-stretchable="true"
+          tabIndex={dragInspector.tabIndex}
+          onMouseEnter={dragInspector.onMouseEnter}
+          onMouseMove={dragInspector.onMouseMove}
+          onClick={dragInspector.onClick}
+          onFocus={dragInspector.onFocus}
           aria-label="Drag handle"
         />
       </header>
       <div
-        className="fx-gui-window__body"
-        data-anchor="gui_window_body"
+        className={["fx-gui-window__body", bodyInspector.className].filter(Boolean).join(" ")}
+        data-anchor={bodyAnchor}
         data-fx-primitive="flow"
+        data-fx-style="inside_deep_frame"
         data-fx-direction="vertical"
+        data-fx-vertical-spacing="0"
+        data-fx-maximum-vertical-squash-size="18"
+        tabIndex={bodyInspector.tabIndex}
+        onMouseEnter={bodyInspector.onMouseEnter}
+        onMouseMove={bodyInspector.onMouseMove}
+        onClick={bodyInspector.onClick}
+        onFocus={bodyInspector.onFocus}
       >
         {children}
       </div>
