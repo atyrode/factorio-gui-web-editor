@@ -39,11 +39,11 @@ export const factorioAtomRegistry = Object.freeze([
     className: "agui::Window",
     derivedFrom: "frame",
     progress: {
-      evidence: 86,
-      model: 58,
-      renderer: 65,
-      luaExport: 55,
-      behavior: 35
+      evidence: 100,
+      model: 92,
+      renderer: 90,
+      luaExport: 82,
+      behavior: 72
     },
     fields: [
       field("className", "captured", "Top-level GUI roots can report generic or GUI-specific classes.", {
@@ -76,27 +76,27 @@ export const factorioAtomRegistry = Object.freeze([
         example: "{1476, 870}",
         source: "blueprint-library-window"
       }),
-      field("content_size", "captured", "Renderer-computed content box. It equals width minus left/right padding and height minus top/bottom padding for this capture.", {
+      field("content_size", "captured", "Renderer-computed content box. For ordinary frame-derived roots, it equals outer size minus the 6 px graphical frame band on each side and inspected padding.", {
         type: size2i,
-        example: "{1440, 840}",
-        source: "blueprint-library-window"
+        example: "{636, 943}",
+        source: "filter-select-root-window"
       }),
       field("clip_size", "captured", "Renderer clipping rectangle can extend above the frame by 4 px.", {
         type: rectangle2i,
-        example: "{{0, -4}, {1476, 874}}",
-        source: "blueprint-library-window"
+        example: "{{0, -4}, {672, 977}}",
+        source: "filter-select-root-window"
       }),
-      field("size_before_stretching", "captured", "Observed equal to outer size on this top-level window.", {
+      field("size_before_stretching", "captured", "Observed equal to outer size on ordinary full-height roots; side-frame variants can report their natural pre-clamp height instead.", {
         type: size2i,
-        example: "{1476, 870}",
-        source: "blueprint-library-window"
+        example: "{672, 973}",
+        source: "filter-select-root-window"
       }),
       field("maximum_horizontal_squash_size", "captured", "Observed zero on the top-level window.", {
         type: integer,
         example: 0,
         source: "blueprint-library-window"
       }),
-      field("maximum_vertical_squash_size", "captured", "Observed as layout-dependent values across captures; needs a derivation rule before becoming model logic.", {
+      field("maximum_vertical_squash_size", "captured", "Captured values vary by content/window type. The editor carries the full-height reference value but does not yet claim a general derivation formula.", {
         type: integer,
         example: "540 / 619 / 775 / 673 / 631 / 565",
         source: "top-level-window-captures"
@@ -121,18 +121,18 @@ export const factorioAtomRegistry = Object.freeze([
         example: "HorizontalFlow header, optional SearchPopup, content flow",
         source: "top-level-window-captures"
       }),
-      field("graphicalBorder", "inferred", "Browser renderer uses a 6 px frame band from visual analysis, but Ctrl+F6 reports padding rather than a direct border field.", {
+      field("graphicalBorder", "inferred", "Browser renderer uses a 6 px frame band because the captured size/content_size deltas do not reconcile from inspected padding alone.", {
         type: integer,
         example: 6,
-        source: "visual-corner-captures"
+        source: "top-level-window-captures"
       }),
-      field("editor seed size", "hardcoded", "The editor fixture still uses 708 x 395 until a real layout solver can size windows from children and viewport.", {
+      field("reference outer size", "captured", "The editor's current Window atom uses the full-height filter-select capture as its reference box: 672 x 973 outer, 636 x 943 content.", {
         type: size2i,
-        example: "{708, 395}",
-        source: "editor-fixture"
+        example: "{672, 973}",
+        source: "filter-select-root-window"
       }),
-      field("runtime layout solver", "missing", "No general layout solver yet for deriving size/content/clip/squash values from children and viewport."),
-      field("header actions", "notImplemented", "SearchBar, browse arrows, and CloseButton are captured in the Blueprint Library header but not modeled in the editor seed yet.", {
+      field("variant layout solver", "planned", "The current atom derives the reference box; future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation."),
+      field("optional header actions", "planned", "SearchBar, browse arrows, and CloseButton are captured in some vanilla headers but are optional top-level controls, not universal Window children.", {
         type: nodeList,
         example: "SearchBar, HorizontalFlow[BrowseArrow, BrowseArrow], CloseButton",
         source: "blueprint-library-header"
@@ -314,6 +314,7 @@ export const factorioAtomRegistry = Object.freeze([
       implemented: [
         "Editor creates a top-level frame with a titlebar, draggable filler, title label, and body flow.",
         "Inspector rows expose Window class/style/padding/sizing fields from structured data.",
+        "Reference Window geometry derives content, clip, titlebar, and body sizes from a captured full-height outer frame.",
         "Lua export emits a top-level `frame` using the captured style and padding fields."
       ],
       assumptions: [
@@ -321,32 +322,32 @@ export const factorioAtomRegistry = Object.freeze([
         "GUI-specific root classes still share the same frame-derived top-level layout contract.",
         "`relative: [0, 0]` is not trusted as screen position until moved-window captures confirm it.",
         "`maximal_height` is captured as a runtime/layout metric and is not exported until we know when Factorio expects it to be assigned.",
-        "The 6 px visual frame band is inferred from screenshots; Ctrl+F6 exposes padding, not a direct border thickness."
+        "The 6 px visual frame band is inferred from size/content deltas; Ctrl+F6 exposes padding, not a direct border thickness.",
+        "`maximum_vertical_squash_size` appears content- and variant-dependent, so the reference value is carried without generalizing it to every future Window."
       ],
       hardcoded: [
-        "Editor seed uses 708 x 395 fixture values instead of deriving size from current viewport and children.",
+        "The editor reference width is still chosen from one full-height capture until users can select width/layout variants.",
         "Browser CSS paints the frame bevel manually from captured visuals."
       ],
       missing: [
-        "General layout solver for size, content_size, clip_size, and squash sizes.",
         "Rule for deriving maximal_height from viewport, UI scale, screen location, or GUI type.",
-        "Header action controls: SearchBar, BrowseArrow group, and CloseButton.",
-        "Variant handling for content child flow styles beyond the current editor seed."
+        "Rule for deriving maximum_vertical_squash_size from content, natural height, and style variant.",
+        "Variant handling for side frames, optional SearchPopup children, and header action controls."
       ]
     }
   }),
   atomDefinition({
-    id: "frame-header-flow",
-    name: "Frame Header Flow",
+    id: "horizontal-flow",
+    name: "Horizontal Flow",
     primitive: "flow",
-    style: "frame_header_flow",
-    availability: "Editor seed",
-    summary: "Titlebar horizontal flow that owns the title label and draggable filler.",
+    style: "horizontal_flow",
+    availability: "Editor seed / captures",
+    summary: "Horizontal flow component; style variants include frame headers and inset-frame content rows.",
     className: "agui::HorizontalFlow",
-    derivedFrom: "frame_header_flow",
+    derivedFrom: "horizontal_flow",
     progress: {
-      evidence: 82,
-      model: 48,
+      evidence: 86,
+      model: 52,
       renderer: 58,
       luaExport: 42,
       behavior: 38
@@ -357,57 +358,62 @@ export const factorioAtomRegistry = Object.freeze([
         example: "agui::HorizontalFlow",
         source: "blueprint-library-header-flow"
       }),
-      field("style", "captured", "`frame_header_flow` as a frame-definition derived style.", {
+      field("style variants", "captured", "Observed horizontal flow styles include `frame_header_flow` and `inset_frame_container_horizontal_flow`; the atom identity is still Horizontal Flow.", {
         type: styleName,
-        example: "Part of frame definition / frame_header_flow",
-        source: "blueprint-library-header-flow"
+        example: "frame_header_flow / inset_frame_container_horizontal_flow",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("relative", "captured", "Header flow starts at the Window content origin.", {
+      field("relative", "captured", "Captured relative position is role-dependent: the header starts at the Window content origin, while the inset content row starts after the 48 px header.", {
         type: vector2i,
-        example: "[0, 0]",
-        source: "blueprint-library-header-flow"
+        example: "[0, 0] / [0, 48]",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("size", "captured", "Captured Blueprint Library header flow size.", {
+      field("size", "captured", "Captured size is style and parent dependent.", {
         type: size2i,
-        example: "{1440, 48}",
-        source: "blueprint-library-header-flow"
+        example: "{1440, 48} / {1440, 792}",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("content_size", "captured", "Captured as 6 px shorter than outer height because of bottom padding.", {
+      field("content_size", "captured", "Header content is 6 px shorter because of bottom padding; content-row captures can match outer size.", {
         type: size2i,
-        example: "{1440, 42}",
-        source: "blueprint-library-header-flow"
+        example: "{1440, 42} / {1440, 792}",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("clip_size", "captured", "Header clip extends 4 px upward and 4 px below the 48 px outer height.", {
+      field("clip_size", "captured", "Header clip extends 4 px upward; content row clip can have no offset.", {
         type: rectangle2i,
-        example: "{{0, -4}, {1440, 52}}",
-        source: "blueprint-library-header-flow"
+        example: "{{0, -4}, {1440, 52}} / {{0, 0}, {1440, 792}}",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("size_before_stretching", "captured", "Captured as `{395, 48}` with children before horizontal stretch.", {
+      field("size_before_stretching", "captured", "Header flow reports a natural width before filler stretch; content-row capture matched its final size.", {
         type: size2i,
-        example: "{395, 48}",
-        source: "blueprint-library-header-flow"
+        example: "{395, 48} / {1440, 792}",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("maximum_horizontal_squash_size", "captured", "Captured as 1236; likely content/viewport derived, not a static style constant.", {
+      field("maximum_horizontal_squash_size", "captured", "Captured as 1236 for a header with right-side controls and 0 for a content row; likely child/role dependent.", {
         type: integer,
-        example: 1236,
-        source: "blueprint-library-header-flow"
+        example: "1236 / 0",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("maximum_vertical_squash_size", "captured", "Captured as zero.", {
+      field("maximum_vertical_squash_size", "captured", "Captured as zero for header flow and 540 for the Blueprint Library content row.", {
         type: integer,
-        example: 0,
-        source: "blueprint-library-header-flow"
+        example: "0 / 540",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("horizontalSpacing", "captured", "Effective frame-header spacing is 12, inherited horizontal_flow spacing is 6.", {
+      field("horizontalSpacing", "captured", "Effective spacing is style-dependent; inherited horizontal_flow spacing is 6.", {
         type: integer,
-        example: "12 effective, 6 inherited",
-        source: "blueprint-library-header-flow"
+        example: "12 header, 18 content row, 6 inherited",
+        source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("bottomPadding", "captured", "Frame header flow bottom padding.", {
+      field("bottomPadding", "captured", "Frame header flow has bottom padding; ordinary content-row captures did not show this override.", {
         type: integer,
         example: 6,
         source: "blueprint-library-header-flow"
       }),
-      field("header action children", "notImplemented", "Blueprint Library captures SearchBar, browse-arrow group, and CloseButton; editor seed only has label + filler.", {
+      field("children", "captured", "HorizontalFlow children depend on role: headers can contain label/filler/actions; content rows can contain frames and nested flows.", {
+        type: nodeList,
+        example: "Label/Filler/SearchBar or Frame/FrameWithSubheader/VerticalFlow",
+        source: "blueprint-library-horizontal-flow-captures"
+      }),
+      field("header action children", "planned", "Blueprint Library captures SearchBar, browse-arrow group, and CloseButton; editor seed only has label + filler.", {
         type: nodeList,
         example: "SearchBar 36x36, HorizontalFlow 72x36, CloseButton 36x36",
         source: "blueprint-library-header-flow"
@@ -443,26 +449,54 @@ export const factorioAtomRegistry = Object.freeze([
           captureRow("class agui::HorizontalFlow", size2i, "72 x 36", "BrowseArrow group."),
           captureRow("class CloseButton", size2i, "36 x 36")
         ]
+      }),
+      atomCapture({
+        id: "blueprint-library-content-flow",
+        label: "Blueprint Library content HorizontalFlow",
+        screenTitle: "Blueprint library",
+        className: "agui::HorizontalFlow",
+        style: "inset_frame_container_horizontal_flow",
+        rows: [
+          captureRow("relative", vector2i, "[0, 48]"),
+          captureRow("size", size2i, "{1440, 792}"),
+          captureRow("content_size", size2i, "{1440, 792}"),
+          captureRow("clip_size", rectangle2i, "{{0, 0}, {1440, 792}}"),
+          captureRow("size_before_stretching", size2i, "{1440, 792}"),
+          captureRow("maximum_horizontal_squash_size", integer, 0),
+          captureRow("maximum_vertical_squash_size", integer, 540),
+          captureRow("Style", styleName, "Part of inset_frame_container_frame definition"),
+          captureRow("Derived from", styleName, "inset_frame_container_horizontal_flow"),
+          captureRow("horizontal_spacing", integer, 18),
+          captureRow("Derived from", styleName, "horizontal_flow"),
+          captureRow("horizontal_spacing", integer, 6, "Inherited horizontal_flow value.")
+        ],
+        children: [
+          captureRow("class agui::Frame", size2i, "636 x 792"),
+          captureRow("class FrameWithSubheader", size2i, "786 x 792"),
+          captureRow("class agui::VerticalFlow", size2i, "0 x 0")
+        ]
       })
     ],
     tracking: {
       assumptions: [
-        "The header flow is part of the frame definition, not a normal user-authored child.",
-        "`size_before_stretching` appears to be the minimum natural width of label + filler/action controls before the filler stretches."
+        "The atom is the component class `agui::HorizontalFlow`; `frame_header_flow` and `inset_frame_container_horizontal_flow` are style/role variants.",
+        "The frame header flow is part of the frame definition, not a normal user-authored child.",
+        "`size_before_stretching` for header roles appears to be the minimum natural width of label + filler/action controls before the filler stretches."
       ],
       missing: [
         "Header action child model.",
-        "Rule for computing maximum_horizontal_squash_size from title/action children."
+        "Frame and FrameWithSubheader child atoms.",
+        "Rule for computing horizontal flow squash sizes from children and role."
       ]
     }
   }),
   atomDefinition({
-    id: "frame-title-label",
-    name: "Frame Title Label",
+    id: "label",
+    name: "Label",
     primitive: "label",
     style: "frame_title",
     availability: "Editor seed",
-    summary: "Window caption in the header flow.",
+    summary: "Text label component; current capture covers the frame title style variant.",
     className: "agui::Label",
     derivedFrom: "frame_title",
     progress: {
@@ -517,12 +551,12 @@ export const factorioAtomRegistry = Object.freeze([
     ]
   }),
   atomDefinition({
-    id: "header-filler",
-    name: "Header Filler",
+    id: "filler",
+    name: "Filler",
     primitive: "empty-widget",
     style: "draggable_space_header",
     availability: "Editor seed",
-    summary: "Stretching drag target that fills the header between title and controls.",
+    summary: "Filler component; current capture covers the draggable header filler style variant.",
     className: "agui::Filler",
     derivedFrom: "draggable_space_header",
     progress: {
@@ -573,108 +607,12 @@ export const factorioAtomRegistry = Object.freeze([
     ]
   }),
   atomDefinition({
-    id: "inset-frame-container-horizontal-flow",
-    name: "Inset Frame Container Horizontal Flow",
-    primitive: "flow",
-    style: "inset_frame_container_horizontal_flow",
-    availability: "Blueprint Library capture",
-    summary: "Content row directly under a top-level inset frame container, used by Blueprint Library.",
-    className: "agui::HorizontalFlow",
-    derivedFrom: "inset_frame_container_horizontal_flow",
-    progress: {
-      evidence: 70,
-      model: 20,
-      renderer: 10,
-      luaExport: 0,
-      behavior: 0
-    },
-    fields: [
-      field("className", "captured", "`agui::HorizontalFlow` from the Blueprint Library content region.", {
-        type: className,
-        example: "agui::HorizontalFlow",
-        source: "blueprint-library-content-flow"
-      }),
-      field("relative", "captured", "Starts after the 48 px header flow.", {
-        type: vector2i,
-        example: "[0, 48]",
-        source: "blueprint-library-content-flow"
-      }),
-      field("size", "captured", "Content flow fills the remaining window content height in this capture.", {
-        type: size2i,
-        example: "{1440, 792}",
-        source: "blueprint-library-content-flow"
-      }),
-      field("content_size", "captured", "Equal to size for this flow capture.", {
-        type: size2i,
-        example: "{1440, 792}",
-        source: "blueprint-library-content-flow"
-      }),
-      field("clip_size", "captured", "No offset in this content flow capture.", {
-        type: rectangle2i,
-        example: "{{0, 0}, {1440, 792}}",
-        source: "blueprint-library-content-flow"
-      }),
-      field("maximum_vertical_squash_size", "captured", "Matches the parent window's 540 in this capture.", {
-        type: integer,
-        example: 540,
-        source: "blueprint-library-content-flow"
-      }),
-      field("horizontal_spacing", "captured", "Effective spacing is 18, inherited horizontal_flow spacing is 6.", {
-        type: integer,
-        example: "18 effective, 6 inherited",
-        source: "blueprint-library-content-flow"
-      }),
-      field("children", "captured", "Contains Frame, FrameWithSubheader, and an empty VerticalFlow in this window.", {
-        type: nodeList,
-        example: "Frame 636x792, FrameWithSubheader 786x792, VerticalFlow 0x0",
-        source: "blueprint-library-content-flow"
-      })
-    ],
-    captures: [
-      atomCapture({
-        id: "blueprint-library-content-flow",
-        label: "Blueprint Library content HorizontalFlow",
-        screenTitle: "Blueprint library",
-        className: "agui::HorizontalFlow",
-        style: "inset_frame_container_horizontal_flow",
-        rows: [
-          captureRow("relative", vector2i, "[0, 48]"),
-          captureRow("size", size2i, "{1440, 792}"),
-          captureRow("content_size", size2i, "{1440, 792}"),
-          captureRow("clip_size", rectangle2i, "{{0, 0}, {1440, 792}}"),
-          captureRow("size_before_stretching", size2i, "{1440, 792}"),
-          captureRow("maximum_horizontal_squash_size", integer, 0),
-          captureRow("maximum_vertical_squash_size", integer, 540),
-          captureRow("Style", styleName, "Part of inset_frame_container_frame definition"),
-          captureRow("Derived from", styleName, "inset_frame_container_horizontal_flow"),
-          captureRow("horizontal_spacing", integer, 18),
-          captureRow("Derived from", styleName, "horizontal_flow"),
-          captureRow("horizontal_spacing", integer, 6, "Inherited horizontal_flow value.")
-        ],
-        children: [
-          captureRow("class agui::Frame", size2i, "636 x 792"),
-          captureRow("class FrameWithSubheader", size2i, "786 x 792"),
-          captureRow("class agui::VerticalFlow", size2i, "0 x 0")
-        ]
-      })
-    ],
-    tracking: {
-      assumptions: [
-        "This is the second immediate child of `inset_frame_container_frame` for Blueprint Library, but not necessarily every Window body."
-      ],
-      missing: [
-        "Frame and FrameWithSubheader child atoms.",
-        "Rule for choosing body flow style based on window style."
-      ]
-    }
-  }),
-  atomDefinition({
-    id: "inside-deep-frame",
-    name: "Inside Deep Frame",
+    id: "vertical-flow",
+    name: "Vertical Flow",
     primitive: "flow",
     style: "inside_deep_frame",
     availability: "Editor seed",
-    summary: "Top-level window body container.",
+    summary: "Vertical flow component; current editor capture covers the inside_deep_frame body role.",
     className: "agui::VerticalFlow",
     derivedFrom: "inside_deep_frame",
     progress: {
@@ -688,7 +626,11 @@ export const factorioAtomRegistry = Object.freeze([
       field("className", "captured", "`agui::VerticalFlow`."),
       field("style", "captured", "`inside_deep_frame`."),
       field("verticalSpacing", "captured", "0 for the inside frame definition."),
-      field("size", "hardcoded", "672 x 317 fixture until body content drives layout."),
+      field("size", "inferred", "Reference body size derives from the current Window content height minus the 48 px header flow.", {
+        type: size2i,
+        example: "636 x 895",
+        source: "filter-select-root-window"
+      }),
       field("children", "missing", "TabbedPane/body primitive insertion is not implemented yet.")
     ],
     tracking: {
@@ -697,7 +639,7 @@ export const factorioAtomRegistry = Object.freeze([
         "Inspector exposes the body flow and lets child rows navigate to it."
       ],
       hardcoded: [
-        "Body size is still the current fixture value.",
+        "Body child content is still empty in the editor seed.",
         "Browser renderer uses CSS layout instead of a Factorio layout solver."
       ],
       missing: [
@@ -708,11 +650,11 @@ export const factorioAtomRegistry = Object.freeze([
   }),
   atomDefinition({
     id: "action-button",
-    name: "Frame Action Button",
+    name: "Action Button",
     primitive: "button",
     style: "frame_action_button",
     availability: "Blueprint Library capture / Inspector controls",
-    summary: "Small square toolbar button used by Factorio frame headers and mirrored by inspector controls.",
+    summary: "Small square action button component; current captures cover frame header styles and inspector controls.",
     progress: {
       evidence: 76,
       model: 22,

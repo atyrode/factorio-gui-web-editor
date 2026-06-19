@@ -1,23 +1,73 @@
 export const FACTORIO_GUI_MODEL_SCHEMA = "factorio-gui-layout.v0";
 export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
 
+const FRAME_GRAPHICAL_BORDER = 6;
+const FRAME_REFERENCE_OUTER_SIZE = Object.freeze({ width: 672, height: 973 });
+const FRAME_REFERENCE_MAXIMUM_VERTICAL_SQUASH_SIZE = 673;
+const FRAME_CLIP_TOP_OVERFLOW = 4;
+
+function freezeSize(size) {
+  return Object.freeze({ width: size.width, height: size.height });
+}
+
+function freezeRectangle(rectangle) {
+  return Object.freeze({
+    offset: Object.freeze({ x: rectangle.offset.x, y: rectangle.offset.y }),
+    size: freezeSize(rectangle.size)
+  });
+}
+
+function frameContentSize({
+  outerSize = FRAME_REFERENCE_OUTER_SIZE,
+  graphicalBorder = FRAME_GRAPHICAL_BORDER,
+  topPadding,
+  rightPadding,
+  bottomPadding,
+  leftPadding
+}) {
+  return freezeSize({
+    width: outerSize.width - graphicalBorder * 2 - leftPadding - rightPadding,
+    height: outerSize.height - graphicalBorder * 2 - topPadding - bottomPadding
+  });
+}
+
+function frameClipSize({
+  outerSize = FRAME_REFERENCE_OUTER_SIZE,
+  clipTopOverflow = FRAME_CLIP_TOP_OVERFLOW
+}) {
+  return freezeRectangle({
+    offset: { x: 0, y: -clipTopOverflow },
+    size: {
+      width: outerSize.width,
+      height: outerSize.height + clipTopOverflow
+    }
+  });
+}
+
+const frameContentReferenceSize = frameContentSize({
+  topPadding: 6,
+  rightPadding: 12,
+  bottomPadding: 12,
+  leftPadding: 12
+});
+
+const frameClipReferenceSize = frameClipSize({});
+
 export const frameStyleReference = Object.freeze({
   className: "agui::Window",
   style: "inset_frame_container_frame",
   derivedFrom: "frame",
-  capturedSize: { width: 708, height: 395 },
-  capturedContentSize: { width: 672, height: 365 },
-  capturedClipSize: {
-    offset: { x: 0, y: -4 },
-    size: { width: 708, height: 399 }
-  },
-  capturedSizeBeforeStretching: { width: 708, height: 395 },
-  capturedMaximalHeight: 395,
+  capturedSize: FRAME_REFERENCE_OUTER_SIZE,
+  capturedContentSize: frameContentReferenceSize,
+  capturedClipSize: frameClipReferenceSize,
+  capturedSizeBeforeStretching: FRAME_REFERENCE_OUTER_SIZE,
+  capturedMaximalHeight: FRAME_REFERENCE_OUTER_SIZE.height,
   topPadding: 6,
   rightPadding: 12,
   bottomPadding: 12,
   leftPadding: 12,
-  graphicalBorder: 6,
+  graphicalBorder: FRAME_GRAPHICAL_BORDER,
+  clipTopOverflow: FRAME_CLIP_TOP_OVERFLOW,
   useHeaderFiller: true,
   titlebarHeight: 48,
   titlebarContentHeight: 42,
@@ -35,11 +85,94 @@ export const frameStyleReference = Object.freeze({
   bodyStyle: "inside_deep_frame",
   bodyVerticalSpacing: 0,
   maximumHorizontalSquashSize: 0,
-  maximumVerticalSquashSize: 18
+  maximumVerticalSquashSize: FRAME_REFERENCE_MAXIMUM_VERTICAL_SQUASH_SIZE
 });
 
 function estimateTitleLabelWidth(caption) {
   return Math.max(1, Math.round(String(caption).length * 11.2));
+}
+
+export function getFrameContentSize(style = frameStyleReference) {
+  return frameContentSize({
+    outerSize: style.capturedSize,
+    graphicalBorder: style.graphicalBorder,
+    topPadding: style.topPadding,
+    rightPadding: style.rightPadding,
+    bottomPadding: style.bottomPadding,
+    leftPadding: style.leftPadding
+  });
+}
+
+export function getFrameClipSize(style = frameStyleReference) {
+  return frameClipSize({
+    outerSize: style.capturedSize,
+    clipTopOverflow: style.clipTopOverflow
+  });
+}
+
+export function getFrameTitlebarSize(style = frameStyleReference) {
+  const contentSize = getFrameContentSize(style);
+  return freezeSize({
+    width: contentSize.width,
+    height: style.titlebarHeight
+  });
+}
+
+export function getFrameTitlebarContentSize(style = frameStyleReference) {
+  const titlebarSize = getFrameTitlebarSize(style);
+  return freezeSize({
+    width: titlebarSize.width,
+    height: style.titlebarContentHeight
+  });
+}
+
+export function getFrameTitlebarClipSize(style = frameStyleReference) {
+  const titlebarSize = getFrameTitlebarSize(style);
+  return freezeRectangle({
+    offset: { x: 0, y: -style.clipTopOverflow },
+    size: {
+      width: titlebarSize.width,
+      height: titlebarSize.height + style.clipTopOverflow
+    }
+  });
+}
+
+export function getFrameBodySize(style = frameStyleReference) {
+  const contentSize = getFrameContentSize(style);
+  return freezeSize({
+    width: contentSize.width,
+    height: Math.max(0, contentSize.height - style.titlebarHeight)
+  });
+}
+
+function getFrameDragHandleWidth(style, titleLabelWidth) {
+  const titlebarSize = getFrameTitlebarSize(style);
+  return Math.max(
+    0,
+    titlebarSize.width -
+      titleLabelWidth -
+      style.titlebarHorizontalSpacing -
+      style.dragHandleLeftMargin -
+      style.dragHandleRightMargin
+  );
+}
+
+function getFrameTitlebarSizeBeforeStretching(style, titleLabelWidth) {
+  return freezeSize({
+    width:
+      titleLabelWidth +
+      style.titlebarHorizontalSpacing +
+      style.dragHandleLeftMargin +
+      style.dragHandleRightMargin,
+    height: style.titlebarHeight
+  });
+}
+
+function getFrameDragHandleRelative(style, titleLabelWidth) {
+  return {
+    x: titleLabelWidth + style.titlebarHorizontalSpacing + style.dragHandleLeftMargin,
+    y: 0
+  };
 }
 
 function sizePair({ width, height }) {
@@ -84,6 +217,11 @@ export function createWindowModel({
       derivedFrom: frameStyleReference.derivedFrom,
       direction: "vertical",
       location,
+      referenceSize: {
+        ...frameStyleReference.capturedSize,
+        contentWidth: frameStyleReference.capturedContentSize.width,
+        contentHeight: frameStyleReference.capturedContentSize.height
+      },
       styleReference: frameStyleReference,
       children: [
         {
@@ -199,6 +337,18 @@ export function getWindowInspectorRows(model) {
   const body = root.children[1];
   const style = root.styleReference;
   const titleLabelWidth = titleLabel.referenceSize.width;
+  const contentSize = getFrameContentSize(style);
+  const clipSize = getFrameClipSize(style);
+  const titlebarSize = getFrameTitlebarSize(style);
+  const titlebarContentSize = getFrameTitlebarContentSize(style);
+  const titlebarClipSize = getFrameTitlebarClipSize(style);
+  const bodySize = getFrameBodySize(style);
+  const dragHandleWidth = getFrameDragHandleWidth(style, titleLabelWidth);
+  const titlebarSizeBeforeStretching = getFrameTitlebarSizeBeforeStretching(
+    style,
+    titleLabelWidth
+  );
+  const dragHandleRelative = getFrameDragHandleRelative(style, titleLabelWidth);
 
   return [
     {
@@ -208,8 +358,8 @@ export function getWindowInspectorRows(model) {
       derivedFrom: root.derivedFrom,
       relative: "[0, 0]",
       size: sizePair(style.capturedSize),
-      contentSize: sizePair(style.capturedContentSize),
-      clipSize: `{{${style.capturedClipSize.offset.x}, ${style.capturedClipSize.offset.y}}, {${style.capturedClipSize.size.width}, ${style.capturedClipSize.size.height}}}`,
+      contentSize: sizePair(contentSize),
+      clipSize: `{{${clipSize.offset.x}, ${clipSize.offset.y}}, {${clipSize.size.width}, ${clipSize.size.height}}}`,
       sizeBeforeStretching: sizePair(style.capturedSizeBeforeStretching),
       maximumHorizontalSquashSize: style.maximumHorizontalSquashSize,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
@@ -225,13 +375,13 @@ export function getWindowInspectorRows(model) {
         { label: "children", value: "" },
         {
           label: "class agui::HorizontalFlow",
-          value: "672 x 48",
+          value: `${titlebarSize.width} x ${titlebarSize.height}`,
           indent: 1,
           targetId: titlebar.id
         },
         {
           label: "class agui::VerticalFlow",
-          value: "672 x 317",
+          value: `${bodySize.width} x ${bodySize.height}`,
           indent: 1,
           targetId: body.id
         }
@@ -243,11 +393,11 @@ export function getWindowInspectorRows(model) {
       style: "Part of frame definition",
       derivedFrom: "frame_header_flow",
       relative: "[0, 0]",
-      size: "{672, 48}",
-      contentSize: "{672, 42}",
-      clipSize: "{{0, -4}, {672, 52}}",
-      sizeBeforeStretching: "{199, 48}",
-      maximumHorizontalSquashSize: 600,
+      size: sizePair(titlebarSize),
+      contentSize: sizePair(titlebarContentSize),
+      clipSize: `{{${titlebarClipSize.offset.x}, ${titlebarClipSize.offset.y}}, {${titlebarClipSize.size.width}, ${titlebarClipSize.size.height}}}`,
+      sizeBeforeStretching: sizePair(titlebarSizeBeforeStretching),
+      maximumHorizontalSquashSize: Math.max(0, titlebarSize.width - 72),
       maximumVerticalSquashSize: 0,
       properties: [
         { label: "ignored_by_search", value: true, indent: 1 },
@@ -273,7 +423,7 @@ export function getWindowInspectorRows(model) {
         },
         {
           label: "class agui::Filler",
-          value: "473 x 36",
+          value: `${dragHandleWidth} x 36`,
           indent: 1,
           targetId: dragHandle.id
         },
@@ -319,12 +469,12 @@ export function getWindowInspectorRows(model) {
       title: "class agui::Filler",
       style: "Part of frame definition",
       derivedFrom: "draggable_space_header",
-      relative: "[145, 0]",
-      size: "{473, 36}",
-      contentSize: "{473, 36}",
-      clipSize: "{{0, 0}, {473, 36}}",
+      relative: `[${dragHandleRelative.x}, ${dragHandleRelative.y}]`,
+      size: `{${dragHandleWidth}, 36}`,
+      contentSize: `{${dragHandleWidth}, 36}`,
+      clipSize: `{{0, 0}, {${dragHandleWidth}, 36}}`,
       sizeBeforeStretching: "{0, 36}",
-      maximumHorizontalSquashSize: 473,
+      maximumHorizontalSquashSize: dragHandleWidth,
       maximumVerticalSquashSize: 0,
       properties: [
         { label: "right_margin", value: dragHandle.styleReference.rightMargin },
@@ -348,12 +498,12 @@ export function getWindowInspectorRows(model) {
       style: "Part of inside_deep_frame definition",
       derivedFrom: "inside_deep_frame",
       relative: "[0, 0]",
-      size: "{672, 317}",
-      contentSize: "{672, 317}",
-      clipSize: "{{0, 0}, {672, 317}}",
-      sizeBeforeStretching: "{672, 317}",
+      size: sizePair(bodySize),
+      contentSize: sizePair(bodySize),
+      clipSize: `{{0, 0}, {${bodySize.width}, ${bodySize.height}}}`,
+      sizeBeforeStretching: sizePair(bodySize),
       maximumHorizontalSquashSize: 0,
-      maximumVerticalSquashSize: body.styleReference.maximumVerticalSquashSize,
+      maximumVerticalSquashSize: style.maximumVerticalSquashSize,
       properties: [
         { label: "vertical_spacing", value: body.styleReference.verticalSpacing },
         { label: "vertical_spacing", value: 6, indent: 1 }

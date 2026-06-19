@@ -87,11 +87,18 @@ with a title bar, reserved drag handle, and empty body.
     "derivedFrom": "frame",
     "direction": "vertical",
     "location": null,
+    "referenceSize": {
+      "width": 672,
+      "height": 973,
+      "contentWidth": 636,
+      "contentHeight": 943
+    },
     "styleReference": {
       "topPadding": 6,
       "rightPadding": 12,
       "bottomPadding": 12,
       "leftPadding": 12,
+      "graphicalBorder": 6,
       "useHeaderFiller": true
     },
     "children": [
@@ -129,7 +136,7 @@ with a title bar, reserved drag handle, and empty body.
         "direction": "vertical",
         "styleReference": {
           "verticalSpacing": 0,
-          "maximumVerticalSquashSize": 18
+          "maximumVerticalSquashSize": 673
         },
         "children": []
       }

@@ -69,8 +69,8 @@
   height: 100%;
   padding: 18px;
   display: grid;
-  place-items: center;
-  overflow: hidden;
+  place-items: start center;
+  overflow: auto;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
     var(--fx-panel-dark);
@@ -79,8 +79,9 @@
 }
 
 .fx-editor-preview-window {
-  width: min(708px, 100%);
-  min-height: 395px;
+  width: var(--fx-window-reference-width);
+  height: var(--fx-window-reference-height);
+  max-width: none;
 }
 
 .fx-editor-preview-window.is-positioned {

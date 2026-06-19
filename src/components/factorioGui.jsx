@@ -1,4 +1,13 @@
 import { ChevronLeft, ChevronRight, Lock, Search, Unlock } from "lucide-react";
+import {
+  frameStyleReference,
+  getFrameBodySize,
+  getFrameClipSize,
+  getFrameContentSize,
+  getFrameTitlebarClipSize,
+  getFrameTitlebarContentSize,
+  getFrameTitlebarSize
+} from "../factorioModel.js";
 
 export function FxButton({
   children,
@@ -237,8 +246,20 @@ export function GuiWindow({
   onTitlebarPointerDown,
   onTitlebarPointerMove,
   onTitlebarPointerUp,
-  onTitlebarPointerCancel
+  onTitlebarPointerCancel,
+  styleReference = frameStyleReference
 }) {
+  const contentSize = getFrameContentSize(styleReference);
+  const clipSize = getFrameClipSize(styleReference);
+  const titlebarSize = getFrameTitlebarSize(styleReference);
+  const titlebarContentSize = getFrameTitlebarContentSize(styleReference);
+  const titlebarClipSize = getFrameTitlebarClipSize(styleReference);
+  const bodySize = getFrameBodySize(styleReference);
+  const mergedStyle = {
+    "--fx-window-reference-width": `${styleReference.capturedSize.width}px`,
+    "--fx-window-reference-height": `${styleReference.capturedSize.height}px`,
+    ...style
+  };
   const rootInspector = inspectorProps({
     active: inspectorActive,
     locked: inspectorLocked,
@@ -296,16 +317,25 @@ export function GuiWindow({
         .join(" ")}
       data-anchor={anchor}
       data-fx-primitive="frame"
-      data-fx-class="agui::Window"
-      data-fx-style="inset_frame_container_frame"
-      data-fx-derived-from="frame"
-      data-fx-padding-top="6"
-      data-fx-padding-bottom="12"
-      data-fx-padding-left="12"
-      data-fx-padding-right="12"
-      data-fx-graphical-border="6"
-      data-fx-use-header-filler="true"
-      style={style}
+      data-fx-class={styleReference.className}
+      data-fx-style={styleReference.style}
+      data-fx-derived-from={styleReference.derivedFrom}
+      data-fx-width={styleReference.capturedSize.width}
+      data-fx-height={styleReference.capturedSize.height}
+      data-fx-content-width={contentSize.width}
+      data-fx-content-height={contentSize.height}
+      data-fx-clip-offset-x={clipSize.offset.x}
+      data-fx-clip-offset-y={clipSize.offset.y}
+      data-fx-clip-width={clipSize.size.width}
+      data-fx-clip-height={clipSize.size.height}
+      data-fx-padding-top={styleReference.topPadding}
+      data-fx-padding-bottom={styleReference.bottomPadding}
+      data-fx-padding-left={styleReference.leftPadding}
+      data-fx-padding-right={styleReference.rightPadding}
+      data-fx-graphical-border={styleReference.graphicalBorder}
+      data-fx-use-header-filler={styleReference.useHeaderFiller}
+      data-fx-maximal-height={styleReference.capturedMaximalHeight}
+      style={mergedStyle}
       tabIndex={rootInspector.tabIndex}
       onMouseEnter={rootInspector.onMouseEnter}
       onMouseLeave={() => {
@@ -329,9 +359,16 @@ export function GuiWindow({
         data-fx-primitive="flow"
         data-fx-style="frame_header_flow"
         data-fx-direction="horizontal"
-        data-fx-height="48"
-        data-fx-bottom-padding="6"
-        data-fx-horizontal-spacing="12"
+        data-fx-width={titlebarSize.width}
+        data-fx-height={titlebarSize.height}
+        data-fx-content-width={titlebarContentSize.width}
+        data-fx-content-height={titlebarContentSize.height}
+        data-fx-clip-offset-x={titlebarClipSize.offset.x}
+        data-fx-clip-offset-y={titlebarClipSize.offset.y}
+        data-fx-clip-width={titlebarClipSize.size.width}
+        data-fx-clip-height={titlebarClipSize.size.height}
+        data-fx-bottom-padding={styleReference.titlebarBottomPadding}
+        data-fx-horizontal-spacing={styleReference.titlebarHorizontalSpacing}
         data-fx-horizontally-stretchable="true"
         data-fx-vertically-stretchable="false"
         tabIndex={titlebarInspector.tabIndex}
@@ -350,9 +387,9 @@ export function GuiWindow({
             .join(" ")}
           data-anchor={titleAnchor}
           data-fx-primitive="label"
-          data-fx-style="frame_title"
-          data-fx-top-margin="-4"
-          data-fx-bottom-padding="4"
+          data-fx-style={styleReference.titleLabelStyle}
+          data-fx-top-margin={styleReference.titleLabelTopMargin}
+          data-fx-bottom-padding={styleReference.titleLabelBottomPadding}
           data-fx-horizontally-squashable="true"
           data-fx-vertically-stretchable="true"
           tabIndex={titleInspector.tabIndex}
@@ -369,12 +406,12 @@ export function GuiWindow({
             .join(" ")}
           data-anchor={dragAnchor}
           data-fx-primitive="empty-widget"
-          data-fx-style="draggable_space_header"
+          data-fx-style={styleReference.dragHandleStyle}
           data-fx-role="header-filler"
-          data-fx-height="36"
-          data-fx-natural-height="36"
-          data-fx-left-margin="6"
-          data-fx-right-margin="6"
+          data-fx-height={styleReference.dragHandleHeight}
+          data-fx-natural-height={styleReference.dragHandleHeight}
+          data-fx-left-margin={styleReference.dragHandleLeftMargin}
+          data-fx-right-margin={styleReference.dragHandleRightMargin}
           data-fx-horizontally-stretchable="true"
           data-fx-vertically-stretchable="true"
           tabIndex={dragInspector.tabIndex}
@@ -389,10 +426,18 @@ export function GuiWindow({
         className={["fx-gui-window__body", bodyInspector.className].filter(Boolean).join(" ")}
         data-anchor={bodyAnchor}
         data-fx-primitive="flow"
-        data-fx-style="inside_deep_frame"
+        data-fx-style={styleReference.bodyStyle}
         data-fx-direction="vertical"
-        data-fx-vertical-spacing="0"
-        data-fx-maximum-vertical-squash-size="18"
+        data-fx-width={bodySize.width}
+        data-fx-height={bodySize.height}
+        data-fx-content-width={bodySize.width}
+        data-fx-content-height={bodySize.height}
+        data-fx-clip-offset-x="0"
+        data-fx-clip-offset-y="0"
+        data-fx-clip-width={bodySize.width}
+        data-fx-clip-height={bodySize.height}
+        data-fx-vertical-spacing={styleReference.bodyVerticalSpacing}
+        data-fx-maximum-vertical-squash-size={styleReference.maximumVerticalSquashSize}
         tabIndex={bodyInspector.tabIndex}
         onMouseEnter={bodyInspector.onMouseEnter}
         onMouseMove={bodyInspector.onMouseMove}

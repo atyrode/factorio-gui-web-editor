@@ -45,6 +45,15 @@ The progress bar is segmented by those dimensions. The headline percentage is
 only the average; it should never be read as "captured fields" or "1:1
 Factorio parity" by itself.
 
+Atom identity should name the reusable GUI component or reported class family,
+not a style-specific role. Use names such as `Window`, `Horizontal Flow`,
+`Vertical Flow`, `Label`, and `Filler`. Captured styles such as
+`frame_header_flow`, `frame_title`, `draggable_space_header`,
+`inside_deep_frame`, and `inset_frame_container_horizontal_flow` belong in the
+atom `style`, `captures`, fields, and tracking notes. If two captures are the
+same component class with different styles, keep them under one atom unless the
+editor later proves they need separate component behavior.
+
 The current seed model contains one top-level window:
 
 ```text
@@ -54,6 +63,13 @@ root agui::Window frame
 |  `- agui::Filler draggable_space_header
 `- agui::VerticalFlow inside_deep_frame
 ```
+
+The current Window reference uses the full-height filter-selection capture as
+its concrete box: outer size `672 x 973`, content size `636 x 943`, and clip
+size `{{0, -4}, {672, 977}}`. The model derives titlebar and body geometry from
+that reference box plus the captured frame edge and padding values. This is a
+reference atom, not a general layout solver for every top-level window width or
+side-frame variant.
 
 The Blueprint Library capture shows a richer `Window` variant:
 
@@ -71,9 +87,10 @@ root agui::Window inset_frame_container_frame
    `- agui::VerticalFlow
 ```
 
-The editor seed intentionally remains smaller until the body flow variants and
-header action controls are modeled. The tracker should keep these gaps visible
-as `notImplemented` rather than hiding them.
+The generic editor Window intentionally keeps optional header actions and body
+flow variants out of the baseline until those children have explicit model and
+export rules. The tracker should keep these as planned variant work rather than
+hiding them or adding them to every Window.
 
 Each node should keep stable fields:
 

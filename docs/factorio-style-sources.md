@@ -186,16 +186,24 @@ generic vanilla top-level window class, not `MapEditorGui`.
 | Element | Inspector class/style | Captured constraints |
 | --- | --- | --- |
 | Top-level window | GUI-specific class or `agui::Frame`, frame-derived styles | size/content/clip are instance-derived, top padding `6`, bottom/left/right padding generally `12`, `use_header_filler=true`, maximum horizontal squash `0` |
-| Header row | `agui::HorizontalFlow`, derived from `frame_header_flow` | size `672 x 48`, content `672 x 42`, clip y offset `-4`, bottom padding `6`, horizontal spacing `12`, horizontally stretchable on, vertically stretchable off |
+| Header row | `agui::HorizontalFlow`, derived from `frame_header_flow` | reference size `636 x 48`, content `636 x 42`, clip y offset `-4`, bottom padding `6`, horizontal spacing `12`, horizontally stretchable on, vertically stretchable off |
 | Title label | `agui::Label`, derived from `frame_title` / `label` | relative `[0, -4]`, height `46`, content height `42`, top margin `-4`, bottom padding `4`, vertically stretchable on, horizontally squashable on, `single_line=true`, font `heading-1`, font color `{1, 0.901961, 0.752941}` |
-| Header filler | `agui::Filler`, derived from `draggable_space_header` / `draggable_space` / `empty_widget` | size `473 x 36`, natural height `36`, left/right margin `6`, horizontally and vertically stretchable on |
-| Body flow | `agui::VerticalFlow`, part of `inside_deep_frame` | size `672 x 317`, content `672 x 317`, vertical spacing `0`, maximum vertical squash `18` |
+| Header filler | `agui::Filler`, derived from `draggable_space_header` / `draggable_space` / `empty_widget` | width stretches after title/action children, height `36`, natural height `36`, left/right margin `6`, horizontally and vertically stretchable on |
+| Body flow | `agui::VerticalFlow`, part of `inside_deep_frame` | reference size `636 x 895`, content `636 x 895`, vertical spacing `0`, maximum vertical squash follows the current top-level reference value |
 
 The top-level `size` and `content_size` values only reconcile when the browser
 frame models Factorio's graphical frame edge as a 6 px border before applying
-the inspected style padding. For the current fixture, `708 - 6 - 6 - 12 - 12 =
-672` and `395 - 6 - 6 - 6 - 12 = 365`. The border must stay neutral
-charcoal/black; it is not the brown public-website panel edge.
+the inspected style padding. For the current reference fixture,
+`672 - 6 - 6 - 12 - 12 = 636` and `973 - 6 - 6 - 6 - 12 = 943`.
+The border must stay neutral charcoal/black; it is not the brown
+public-website panel edge.
+
+The editor's current Window reference box is the full-height filter-selection
+capture: outer size `672 x 973`, content size `636 x 943`, clip size
+`{{0, -4}, {672, 977}}`, and `maximal_height: 973`. This gives the browser atom
+a captured full-height top-level frame instead of the earlier small
+`708 x 395` seed. Other captured widths remain evidence for future width and
+variant controls rather than replacing the current reference width automatically.
 
 This 6 px edge should be treated as a graphical frame band, not a hard CSS
 stroke. A close top-left crop sampled as a soft ramp from the world background
@@ -229,6 +237,14 @@ resolutions/UI scales show whether it comes from viewport height, screen
 location, or a style assignment. It should not be exported as a fixed Window
 style constant yet.
 
+The full-height captures do not give a stable formula for
+`maximum_vertical_squash_size`: observed values include `619`, `775`, `673`,
+`631`, and `565`, while the older Blueprint Library capture reports `540`.
+Those values are carried as capture evidence. The editor uses the current
+reference value for its reference box, but the field should not be generalized
+until captures tie it to natural content height, visible viewport, or style
+variant behavior.
+
 The frame sides are rendered as four trapezoid bands, not as rectangular strips.
 Each band owns the full outer edge and a shorter inner edge facing the panel, so
 adjacent bands meet on a diagonal miter at every corner. This is currently done
@@ -238,8 +254,8 @@ corner fills; they read as dark blobs rather than the short mitered bevel
 visible in the in-game corner crops.
 
 The header horizontal flow is placed directly in that content area. It should
-not introduce its own margin or extra border. Its outer layout box is `672 x
-48`; the `42` content height comes from the `6` bottom padding, and its `clip`
+not introduce its own margin or extra border. Its current reference layout box
+is `636 x 48`; the `42` content height comes from the `6` bottom padding, and its `clip`
 extends 4 px upward for the title label rendering.
 
 Several full-height captures include a `SearchPopup 168 x 42` child between the

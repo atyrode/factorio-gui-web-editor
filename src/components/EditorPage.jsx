@@ -139,6 +139,11 @@ function EditorCanvas({
       return Number.isFinite(parsedValue) ? parsedValue : 0;
     }
 
+    function dataNumber(target, key) {
+      const parsedValue = Number.parseFloat(target.dataset[key]);
+      return Number.isFinite(parsedValue) ? parsedValue : null;
+    }
+
     function measureTarget() {
       const target = canvas.querySelector(`[data-anchor="${inspectorPreview.anchor}"]`);
       if (!target) {
@@ -149,8 +154,8 @@ function EditorCanvas({
       const canvasRect = canvas.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       const computedStyle = window.getComputedStyle(target);
-      let left = targetRect.left - canvasRect.left;
-      let top = targetRect.top - canvasRect.top;
+      let left = targetRect.left - canvasRect.left + canvas.scrollLeft;
+      let top = targetRect.top - canvasRect.top + canvas.scrollTop;
       let width = targetRect.width;
       let height = targetRect.height;
 
@@ -168,6 +173,11 @@ function EditorCanvas({
         top += insetTop;
         width = Math.max(0, width - insetLeft - insetRight);
         height = Math.max(0, height - insetTop - insetBottom);
+      } else if (inspectorPreview.metric === "clip_size") {
+        left += dataNumber(target, "fxClipOffsetX") ?? 0;
+        top += dataNumber(target, "fxClipOffsetY") ?? 0;
+        width = dataNumber(target, "fxClipWidth") ?? width;
+        height = dataNumber(target, "fxClipHeight") ?? height;
       }
 
       setMeasurementBox({
