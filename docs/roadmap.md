@@ -17,6 +17,10 @@ The ideal is not just visual similarity. The ideal is that browser and in-game
 UI are generated from the same constrained model, with explicit places where
 Factorio and browser behavior cannot be perfectly identical.
 
+Per-atom reconstruction work follows [atom-specs.md](atom-specs.md). That
+document owns the evidence-to-model-to-renderer-to-Lua-export completion
+contract for each atom.
+
 ## Core Principle
 
 The builder must edit a Factorio GUI layout model, not arbitrary browser layout.
@@ -88,10 +92,10 @@ with a title bar, reserved drag handle, and empty body.
     "direction": "vertical",
     "location": null,
     "referenceSize": {
-      "width": 672,
-      "height": 973,
-      "contentWidth": 636,
-      "contentHeight": 943
+      "width": 1476,
+      "height": 870,
+      "contentWidth": 1440,
+      "contentHeight": 840
     },
     "styleReference": {
       "topPadding": 6,
@@ -132,11 +136,13 @@ with a title bar, reserved drag handle, and empty body.
       {
         "id": "gui_window_body",
         "primitive": "flow",
-        "style": "inside_deep_frame",
-        "direction": "vertical",
+        "style": "inset_frame_container_horizontal_flow",
+        "direction": "horizontal",
         "styleReference": {
-          "verticalSpacing": 0,
-          "maximumVerticalSquashSize": 673
+          "horizontalSpacing": 18,
+          "inheritedHorizontalSpacing": 6,
+          "verticalSpacing": null,
+          "maximumVerticalSquashSize": 540
         },
         "children": []
       }
@@ -146,7 +152,7 @@ with a title bar, reserved drag handle, and empty body.
     "no_absolute_positioning",
     "titlebar_has_drag_handle",
     "header_filler_stretches",
-    "body_is_vertical_flow",
+    "body_is_window_content_flow",
     "no_bundled_domain_example"
   ]
 }
@@ -154,7 +160,8 @@ with a title bar, reserved drag handle, and empty body.
 
 The first model does not need to represent all Factorio style fields. It should
 represent the captured top-level `frame`, `frame_header_flow`,
-`draggable_space_header`, and `inside_deep_frame` constraints well enough that
+`draggable_space_header`, and `inset_frame_container_horizontal_flow`
+constraints well enough that
 browser rendering, Lua skeleton generation, and agent-readable specs can stay in
 sync.
 

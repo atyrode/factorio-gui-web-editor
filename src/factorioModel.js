@@ -2,8 +2,8 @@ export const FACTORIO_GUI_MODEL_SCHEMA = "factorio-gui-layout.v0";
 export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
 
 const FRAME_GRAPHICAL_BORDER = 6;
-const FRAME_REFERENCE_OUTER_SIZE = Object.freeze({ width: 672, height: 973 });
-const FRAME_REFERENCE_MAXIMUM_VERTICAL_SQUASH_SIZE = 673;
+const FRAME_REFERENCE_OUTER_SIZE = Object.freeze({ width: 1476, height: 870 });
+const FRAME_REFERENCE_MAXIMUM_VERTICAL_SQUASH_SIZE = 540;
 const FRAME_CLIP_TOP_OVERFLOW = 4;
 
 function freezeSize(size) {
@@ -61,7 +61,7 @@ export const frameStyleReference = Object.freeze({
   capturedContentSize: frameContentReferenceSize,
   capturedClipSize: frameClipReferenceSize,
   capturedSizeBeforeStretching: FRAME_REFERENCE_OUTER_SIZE,
-  capturedMaximalHeight: FRAME_REFERENCE_OUTER_SIZE.height,
+  capturedMaximalHeight: null,
   topPadding: 6,
   rightPadding: 12,
   bottomPadding: 12,
@@ -82,8 +82,13 @@ export const frameStyleReference = Object.freeze({
   dragHandleHeight: 36,
   dragHandleLeftMargin: 6,
   dragHandleRightMargin: 6,
-  bodyStyle: "inside_deep_frame",
-  bodyVerticalSpacing: 0,
+  bodyClassName: "agui::HorizontalFlow",
+  bodyStyle: "inset_frame_container_horizontal_flow",
+  bodyDerivedFrom: "inset_frame_container_horizontal_flow",
+  bodyDirection: "horizontal",
+  bodyHorizontalSpacing: 18,
+  bodyInheritedHorizontalSpacing: 6,
+  bodyVerticalSpacing: null,
   maximumHorizontalSquashSize: 0,
   maximumVerticalSquashSize: FRAME_REFERENCE_MAXIMUM_VERTICAL_SQUASH_SIZE
 });
@@ -283,10 +288,12 @@ export function createWindowModel({
         {
           id: "gui_window_body",
           primitive: "flow",
-          className: "agui::VerticalFlow",
+          className: frameStyleReference.bodyClassName,
           style: frameStyleReference.bodyStyle,
-          direction: "vertical",
+          direction: frameStyleReference.bodyDirection,
           styleReference: {
+            horizontalSpacing: frameStyleReference.bodyHorizontalSpacing,
+            inheritedHorizontalSpacing: frameStyleReference.bodyInheritedHorizontalSpacing,
             verticalSpacing: frameStyleReference.bodyVerticalSpacing,
             maximumVerticalSquashSize: frameStyleReference.maximumVerticalSquashSize
           },
@@ -299,7 +306,7 @@ export function createWindowModel({
       "no_absolute_positioning",
       "titlebar_has_drag_handle",
       "header_filler_stretches",
-      "body_is_vertical_flow"
+      "body_is_window_content_flow"
     ]
   };
 }
@@ -380,7 +387,7 @@ export function getWindowInspectorRows(model) {
           targetId: titlebar.id
         },
         {
-          label: "class agui::VerticalFlow",
+          label: `class ${body.className}`,
           value: `${bodySize.width} x ${bodySize.height}`,
           indent: 1,
           targetId: body.id
@@ -494,9 +501,9 @@ export function getWindowInspectorRows(model) {
     },
     {
       id: body.id,
-      title: "class agui::VerticalFlow",
-      style: "Part of inside_deep_frame definition",
-      derivedFrom: "inside_deep_frame",
+      title: `class ${body.className}`,
+      style: "Part of frame definition",
+      derivedFrom: style.bodyDerivedFrom,
       relative: "[0, 0]",
       size: sizePair(bodySize),
       contentSize: sizePair(bodySize),
@@ -505,12 +512,14 @@ export function getWindowInspectorRows(model) {
       maximumHorizontalSquashSize: 0,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
       properties: [
-        { label: "vertical_spacing", value: body.styleReference.verticalSpacing },
-        { label: "vertical_spacing", value: 6, indent: 1 }
+        { label: "horizontal_spacing", value: body.styleReference.horizontalSpacing },
+        { label: "horizontal_spacing", value: body.styleReference.inheritedHorizontalSpacing, indent: 1 }
       ],
       childRows: [
         { label: "children", value: "" },
-        { label: "class agui::TabbedPane", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 }
+        { label: "class agui::Frame", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 },
+        { label: "class FrameWithSubheader", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 },
+        { label: "class agui::VerticalFlow", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 }
       ]
     }
   ];

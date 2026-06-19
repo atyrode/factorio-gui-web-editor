@@ -334,7 +334,7 @@ export function GuiWindow({
       data-fx-padding-right={styleReference.rightPadding}
       data-fx-graphical-border={styleReference.graphicalBorder}
       data-fx-use-header-filler={styleReference.useHeaderFiller}
-      data-fx-maximal-height={styleReference.capturedMaximalHeight}
+      data-fx-maximal-height={styleReference.capturedMaximalHeight ?? undefined}
       style={mergedStyle}
       tabIndex={rootInspector.tabIndex}
       onMouseEnter={rootInspector.onMouseEnter}
@@ -427,7 +427,7 @@ export function GuiWindow({
         data-anchor={bodyAnchor}
         data-fx-primitive="flow"
         data-fx-style={styleReference.bodyStyle}
-        data-fx-direction="vertical"
+        data-fx-direction={styleReference.bodyDirection}
         data-fx-width={bodySize.width}
         data-fx-height={bodySize.height}
         data-fx-content-width={bodySize.width}
@@ -436,7 +436,8 @@ export function GuiWindow({
         data-fx-clip-offset-y="0"
         data-fx-clip-width={bodySize.width}
         data-fx-clip-height={bodySize.height}
-        data-fx-vertical-spacing={styleReference.bodyVerticalSpacing}
+        data-fx-horizontal-spacing={styleReference.bodyHorizontalSpacing ?? undefined}
+        data-fx-vertical-spacing={styleReference.bodyVerticalSpacing ?? undefined}
         data-fx-maximum-vertical-squash-size={styleReference.maximumVerticalSquashSize}
         tabIndex={bodyInspector.tabIndex}
         onMouseEnter={bodyInspector.onMouseEnter}

@@ -40,9 +40,9 @@ export const factorioAtomRegistry = Object.freeze([
     derivedFrom: "frame",
     progress: {
       evidence: 100,
-      model: 92,
-      renderer: 90,
-      luaExport: 82,
+      model: 94,
+      renderer: 92,
+      luaExport: 84,
       behavior: 72
     },
     fields: [
@@ -78,18 +78,18 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       field("content_size", "captured", "Renderer-computed content box. For ordinary frame-derived roots, it equals outer size minus the 6 px graphical frame band on each side and inspected padding.", {
         type: size2i,
-        example: "{636, 943}",
-        source: "filter-select-root-window"
+        example: "{1440, 840}",
+        source: "blueprint-library-window"
       }),
       field("clip_size", "captured", "Renderer clipping rectangle can extend above the frame by 4 px.", {
         type: rectangle2i,
-        example: "{{0, -4}, {672, 977}}",
-        source: "filter-select-root-window"
+        example: "{{0, -4}, {1476, 874}}",
+        source: "blueprint-library-window"
       }),
       field("size_before_stretching", "captured", "Observed equal to outer size on ordinary full-height roots; side-frame variants can report their natural pre-clamp height instead.", {
         type: size2i,
-        example: "{672, 973}",
-        source: "filter-select-root-window"
+        example: "{1476, 870}",
+        source: "blueprint-library-window"
       }),
       field("maximum_horizontal_squash_size", "captured", "Observed zero on the top-level window.", {
         type: integer,
@@ -101,7 +101,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: "540 / 619 / 775 / 673 / 631 / 565",
         source: "top-level-window-captures"
       }),
-      field("maximal_height", "captured", "Observed as 973 across full-height captures; appears viewport/window-instance derived, not a static style constant.", {
+      field("maximal_height", "captured", "Observed as 973 across full-height captures but absent from the current Blueprint Library Window capture; appears viewport/window-instance derived, not a static style constant.", {
         type: integer,
         example: 973,
         source: "top-level-window-captures"
@@ -126,10 +126,10 @@ export const factorioAtomRegistry = Object.freeze([
         example: 6,
         source: "top-level-window-captures"
       }),
-      field("reference outer size", "captured", "The editor's current Window atom uses the full-height filter-select capture as its reference box: 672 x 973 outer, 636 x 943 content.", {
+      field("reference outer size", "captured", "The editor's current Window atom uses the attached Blueprint Library capture as its reference box: 1476 x 870 outer, 1440 x 840 content.", {
         type: size2i,
-        example: "{672, 973}",
-        source: "filter-select-root-window"
+        example: "{1476, 870}",
+        source: "blueprint-library-window"
       }),
       field("variant layout solver", "planned", "The current atom derives the reference box; future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation."),
       field("optional header actions", "planned", "SearchBar, browse arrows, and CloseButton are captured in some vanilla headers but are optional top-level controls, not universal Window children.", {
@@ -314,8 +314,8 @@ export const factorioAtomRegistry = Object.freeze([
       implemented: [
         "Editor creates a top-level frame with a titlebar, draggable filler, title label, and body flow.",
         "Inspector rows expose Window class/style/padding/sizing fields from structured data.",
-        "Reference Window geometry derives content, clip, titlebar, and body sizes from a captured full-height outer frame.",
-        "Lua export emits a top-level `frame` using the captured style and padding fields."
+        "Reference Window geometry derives content, clip, titlebar, and body sizes from the attached Blueprint Library outer frame.",
+        "Lua export emits a top-level `frame` using the captured style, padding fields, and body flow spacing."
       ],
       assumptions: [
         "`agui::Window` maps to a Factorio `frame` primitive for Lua export.",
@@ -326,7 +326,7 @@ export const factorioAtomRegistry = Object.freeze([
         "`maximum_vertical_squash_size` appears content- and variant-dependent, so the reference value is carried without generalizing it to every future Window."
       ],
       hardcoded: [
-        "The editor reference width is still chosen from one full-height capture until users can select width/layout variants.",
+        "The editor reference box is still chosen from one Blueprint Library capture until users can select width/layout variants.",
         "Browser CSS paints the frame bevel manually from captured visuals."
       ],
       missing: [

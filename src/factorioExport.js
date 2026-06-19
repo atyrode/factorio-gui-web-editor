@@ -27,6 +27,20 @@ export function renderWindowLua(model) {
   const dragHandle = luaName(dragNode.id);
   const body = luaName(bodyNode.id);
   const style = root.styleReference;
+  const bodyStyleLines = ["  " + body + ".style.horizontally_stretchable = true"];
+
+  if (bodyNode.styleReference.horizontalSpacing != null) {
+    bodyStyleLines.push(
+      `  ${body}.style.horizontal_spacing = ${bodyNode.styleReference.horizontalSpacing}`
+    );
+  }
+
+  if (bodyNode.styleReference.verticalSpacing != null) {
+    bodyStyleLines.push(
+      `  ${body}.style.vertical_spacing = ${bodyNode.styleReference.verticalSpacing}`
+    );
+  }
+
   const locationLua = root.location
     ? `  ${frame}.auto_center = false
   ${frame}.location = {x = ${root.location.x}, y = ${root.location.y}}`
@@ -96,8 +110,7 @@ ${locationLua}
     direction = ${luaString(bodyNode.direction)},
     style = ${luaString(bodyNode.style)}
   }
-  ${body}.style.horizontally_stretchable = true
-  ${body}.style.vertical_spacing = ${bodyNode.styleReference.verticalSpacing}
+${bodyStyleLines.join("\n")}
 
   return ${frame}
 end

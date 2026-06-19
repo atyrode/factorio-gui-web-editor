@@ -61,17 +61,19 @@ root agui::Window frame
 |- agui::HorizontalFlow frame_header_flow
 |  |- agui::Label frame_title
 |  `- agui::Filler draggable_space_header
-`- agui::VerticalFlow inside_deep_frame
+`- agui::HorizontalFlow inset_frame_container_horizontal_flow
 ```
 
-The current Window reference uses the full-height filter-selection capture as
-its concrete box: outer size `672 x 973`, content size `636 x 943`, and clip
-size `{{0, -4}, {672, 977}}`. The model derives titlebar and body geometry from
+The current Window reference uses the attached Blueprint Library capture as its
+concrete box: outer size `1476 x 870`, content size `1440 x 840`, and clip size
+`{{0, -4}, {1476, 874}}`. The model derives titlebar and body geometry from
 that reference box plus the captured frame edge and padding values. This is a
-reference atom, not a general layout solver for every top-level window width or
-side-frame variant.
+reference atom, not a general layout solver for every top-level window width,
+height, or side-frame variant.
 
-The Blueprint Library capture shows a richer `Window` variant:
+The same Blueprint Library capture also shows optional header controls and body
+children that are tracked but not yet implemented as editable/exportable child
+atoms:
 
 ```text
 root agui::Window inset_frame_container_frame
@@ -88,9 +90,9 @@ root agui::Window inset_frame_container_frame
 ```
 
 The generic editor Window intentionally keeps optional header actions and body
-flow variants out of the baseline until those children have explicit model and
-export rules. The tracker should keep these as planned variant work rather than
-hiding them or adding them to every Window.
+children out of the baseline until those children have explicit model and export
+rules. The tracker should keep these as planned variant work rather than hiding
+them or adding them to every Window.
 
 Each node should keep stable fields:
 
