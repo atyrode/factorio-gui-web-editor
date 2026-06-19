@@ -85,7 +85,6 @@ with a title bar, reserved drag handle, and empty body.
     "className": "agui::Window",
     "style": "inset_frame_container_frame",
     "derivedFrom": "frame",
-    "caption": "Untitled window",
     "direction": "vertical",
     "location": null,
     "styleReference": {
@@ -108,7 +107,20 @@ with a title bar, reserved drag handle, and empty body.
           "horizontallyStretchable": true,
           "verticallyStretchable": false
         },
-        "children": ["gui_window_title", "gui_window_drag_handle"]
+        "children": [
+          {
+            "id": "gui_window_title",
+            "primitive": "label",
+            "style": "frame_title",
+            "caption": "Untitled window"
+          },
+          {
+            "id": "gui_window_drag_handle",
+            "primitive": "empty-widget",
+            "style": "draggable_space_header",
+            "role": "header-filler"
+          }
+        ]
       },
       {
         "id": "gui_window_body",

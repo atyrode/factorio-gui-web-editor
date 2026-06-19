@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { FxButton, FxCheckbox, FxFrame, FxTextInput, GuiWindow } from "./factorioGui.jsx";
+import {
+  FxActionButton,
+  FxButton,
+  FxCheckbox,
+  FxFrame,
+  FxTextInput,
+  GuiWindow
+} from "./factorioGui.jsx";
 import {
   createWindowModel,
   getWindowInspectorRows,
@@ -20,7 +27,7 @@ const DEFAULT_EDITOR_STATE = {
   showInspector: false,
   showLuaOutput: true,
   inspectorLocked: false,
-  inspectedAnchor: "gui_window",
+  inspectedAnchor: null,
   sidebarWidth: 280
 };
 
@@ -84,9 +91,9 @@ function readCachedEditorState() {
           : DEFAULT_EDITOR_STATE.showLuaOutput,
       inspectorLocked: Boolean(parsedValue.inspectorLocked),
       inspectedAnchor:
-        typeof parsedValue.inspectedAnchor === "string"
+        Boolean(parsedValue.inspectorLocked) && typeof parsedValue.inspectedAnchor === "string"
           ? parsedValue.inspectedAnchor
-          : DEFAULT_EDITOR_STATE.inspectedAnchor,
+          : null,
       sidebarWidth: clampSidebarWidth(
         Number(parsedValue.sidebarWidth ?? DEFAULT_EDITOR_STATE.sidebarWidth)
       )
@@ -109,12 +116,76 @@ function EditorCanvas({
   inspectorActive,
   inspectorLocked,
   inspectedAnchor,
+  inspectorPreview,
   onInspect,
+  onInspectClear,
   onInspectLock,
   onWindowLocationChange
 }) {
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
+  const [measurementBox, setMeasurementBox] = useState(null);
+
+  useEffect(() => {
+    if (!inspectorActive || inspectorPreview?.kind !== "geometry" || !canvasRef.current) {
+      setMeasurementBox(null);
+      return undefined;
+    }
+
+    const canvas = canvasRef.current;
+
+    function pixelValue(value) {
+      const parsedValue = Number.parseFloat(value);
+      return Number.isFinite(parsedValue) ? parsedValue : 0;
+    }
+
+    function measureTarget() {
+      const target = canvas.querySelector(`[data-anchor="${inspectorPreview.anchor}"]`);
+      if (!target) {
+        setMeasurementBox(null);
+        return;
+      }
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(target);
+      let left = targetRect.left - canvasRect.left;
+      let top = targetRect.top - canvasRect.top;
+      let width = targetRect.width;
+      let height = targetRect.height;
+
+      if (inspectorPreview.metric === "content_size") {
+        const insetLeft =
+          pixelValue(computedStyle.borderLeftWidth) + pixelValue(computedStyle.paddingLeft);
+        const insetRight =
+          pixelValue(computedStyle.borderRightWidth) + pixelValue(computedStyle.paddingRight);
+        const insetTop =
+          pixelValue(computedStyle.borderTopWidth) + pixelValue(computedStyle.paddingTop);
+        const insetBottom =
+          pixelValue(computedStyle.borderBottomWidth) + pixelValue(computedStyle.paddingBottom);
+
+        left += insetLeft;
+        top += insetTop;
+        width = Math.max(0, width - insetLeft - insetRight);
+        height = Math.max(0, height - insetTop - insetBottom);
+      }
+
+      setMeasurementBox({
+        label: inspectorPreview.label,
+        left: Math.round(left),
+        top: Math.round(top),
+        width: Math.round(width),
+        height: Math.round(height)
+      });
+    }
+
+    measureTarget();
+    window.addEventListener("resize", measureTarget);
+
+    return () => {
+      window.removeEventListener("resize", measureTarget);
+    };
+  }, [currentWindow, inspectorActive, inspectorPreview]);
 
   function startWindowDrag(event) {
     if (inspectorActive || event.button !== 0 || !currentWindow || !canvasRef.current) {
@@ -170,6 +241,7 @@ function EditorCanvas({
 
   const location = currentWindow?.location;
   const windowStyle = location ? { left: `${location.x}px`, top: `${location.y}px` } : undefined;
+  const previewAnchor = inspectorPreview?.anchor ?? inspectedAnchor;
   const windowClassName = [
     "fx-editor-preview-window",
     location ? "is-positioned" : ""
@@ -185,8 +257,9 @@ function EditorCanvas({
           className={windowClassName}
           inspectorActive={inspectorActive}
           inspectorLocked={inspectorLocked}
-          inspectedAnchor={inspectedAnchor}
+          inspectedAnchor={previewAnchor}
           onInspect={onInspect}
+          onInspectClear={onInspectClear}
           onInspectLock={onInspectLock}
           style={windowStyle}
           onTitlebarPointerDown={startWindowDrag}
@@ -199,6 +272,19 @@ function EditorCanvas({
           No window
         </div>
       )}
+      {measurementBox ? (
+        <div
+          className="fx-inspector-measure"
+          style={{
+            left: `${measurementBox.left}px`,
+            top: `${measurementBox.top}px`,
+            width: `${measurementBox.width}px`,
+            height: `${measurementBox.height}px`
+          }}
+        >
+          <span>{measurementBox.label}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -224,46 +310,183 @@ function valueOrMissing(value) {
   return value === undefined || value === null ? NOT_IMPLEMENTED : value;
 }
 
-function inspectorValueTone(label, value) {
+function inspectorValueTone(label, value, explicitTone = null) {
   if (value === NOT_IMPLEMENTED) {
     return "missing";
   }
 
-  if (label === "Style" || label === "Derived from" || label === "Derived from") {
-    return "style";
+  if (explicitTone) {
+    return explicitTone;
   }
 
-  if (
-    typeof value === "boolean" ||
-    typeof value === "number" ||
-    value === "true" ||
-    value === "false" ||
-    value === "on" ||
-    value === "off" ||
-    (typeof value === "string" && value.startsWith("{") && value.endsWith("}"))
-  ) {
-    return "property";
+  if (label === "Style" || label === "Derived from") {
+    return "style";
   }
 
   return "default";
 }
 
-function InspectorValue({ label, value, indent = 0 }) {
+function InspectorValue({
+  label,
+  value,
+  indent = 0,
+  tone: explicitTone = null,
+  targetId = null,
+  preview = null,
+  editable = null,
+  onPreview,
+  onClearPreview,
+  onNavigate,
+  onEdit
+}) {
   const normalizedValue = valueOrMissing(value);
   const isGroupLabel = normalizedValue === "";
   const stringValue = String(normalizedValue);
-  const tone = inspectorValueTone(label, normalizedValue);
+  const tone = inspectorValueTone(label, normalizedValue, explicitTone);
+  const [editing, setEditing] = useState(false);
+  const [draftValue, setDraftValue] = useState(stringValue);
+  const editRef = useRef(null);
+  const cancelEditRef = useRef(false);
+  const rowPreview = preview ?? (
+    targetId
+      ? {
+          kind: "reference",
+          anchor: targetId,
+          label: `${label}: ${stringValue}`
+        }
+      : null
+  );
+  const rowClassName = [
+    "fx-inspector-row",
+    rowPreview ? "has-preview" : "",
+    targetId ? "has-target" : "",
+    editable ? "is-editable" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  useEffect(() => {
+    if (editing) {
+      editRef.current?.focus();
+      editRef.current?.select();
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editing) {
+      setDraftValue(stringValue);
+    }
+  }, [editing, stringValue]);
+
+  function previewRow() {
+    if (rowPreview) {
+      onPreview?.(rowPreview);
+    }
+  }
+
+  function clearPreview() {
+    if (rowPreview) {
+      onClearPreview?.();
+    }
+  }
+
+  function navigateRow() {
+    if (targetId) {
+      onNavigate?.(targetId);
+    }
+  }
+
+  function handleKeyDown(event) {
+    if (!targetId || (event.key !== "Enter" && event.key !== " ")) {
+      return;
+    }
+
+    event.preventDefault();
+    navigateRow();
+  }
+
+  function startEditing(event) {
+    if (!editable) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    cancelEditRef.current = false;
+    setDraftValue(stringValue);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    if (cancelEditRef.current) {
+      cancelEditRef.current = false;
+      return;
+    }
+
+    onEdit?.(editable, draftValue);
+    setEditing(false);
+  }
+
+  function cancelEdit() {
+    cancelEditRef.current = true;
+    setDraftValue(stringValue);
+    setEditing(false);
+  }
+
+  function handleEditKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitEdit();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+    }
+  }
 
   return (
-    <div className="fx-inspector-row" data-indent={indent}>
+    <div
+      className={rowClassName}
+      data-indent={indent}
+      onClick={navigateRow}
+      onKeyDown={handleKeyDown}
+      onMouseEnter={previewRow}
+      onMouseLeave={clearPreview}
+      role={targetId ? "button" : undefined}
+      tabIndex={targetId ? 0 : undefined}
+    >
       <span className="fx-inspector-row__key" title={label}>
         {label}
       </span>
       <span className="fx-inspector-row__colon">:</span>
       {isGroupLabel ? null : (
-        <span className={`fx-inspector-row__value fx-inspector-row__value--${tone}`} title={stringValue}>
-          {stringValue}
-        </span>
+        editable && editing ? (
+          <input
+            aria-label={`Edit ${label}`}
+            className={`fx-inspector-row__edit fx-inspector-row__value--${tone}`}
+            onBlur={commitEdit}
+            onChange={(event) => setDraftValue(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={handleEditKeyDown}
+            ref={editRef}
+            value={draftValue}
+          />
+        ) : editable ? (
+          <button
+            className={`fx-inspector-row__value fx-inspector-row__value-button fx-inspector-row__value--${tone}`}
+            onClick={startEditing}
+            title={`Edit ${label}: ${stringValue}`}
+            type="button"
+          >
+            {stringValue}
+          </button>
+        ) : (
+          <span
+            className={`fx-inspector-row__value fx-inspector-row__value--${tone}`}
+            title={stringValue}
+          >
+            {stringValue}
+          </span>
+        )
       )}
     </div>
   );
@@ -271,55 +494,156 @@ function InspectorValue({ label, value, indent = 0 }) {
 
 function normalizeInspectorRow(row) {
   if (Array.isArray(row)) {
-    return { label: row[0], value: row[1], indent: row[2] ?? 0 };
+    return { label: row[0], value: row[1], indent: row[2] ?? 0, tone: row[3] ?? null };
   }
 
   return {
     label: row?.label ?? "",
     value: row?.value ?? "",
-    indent: row?.indent ?? 0
+    indent: row?.indent ?? 0,
+    tone: row?.tone ?? null,
+    targetId: row?.targetId ?? null,
+    editable: row?.editable ?? null,
+    preview: row?.preview ?? null
   };
 }
 
-function InspectorRows({ rows }) {
+function InspectorRows({
+  rows,
+  defaultTone = null,
+  onPreview,
+  onClearPreview,
+  onNavigate,
+  onEdit
+}) {
   return rows.map((row, index) => {
-    const { label, value, indent } = normalizeInspectorRow(row);
+    const { label, value, indent, tone, targetId, editable, preview } = normalizeInspectorRow(row);
     return (
-      <InspectorValue label={label} value={value} indent={indent} key={`${label}-${index}`} />
+      <InspectorValue
+        editable={editable}
+        label={label}
+        indent={indent}
+        key={`${label}-${index}`}
+        onClearPreview={onClearPreview}
+        onEdit={onEdit}
+        onNavigate={onNavigate}
+        onPreview={onPreview}
+        preview={preview}
+        targetId={targetId}
+        tone={tone ?? defaultTone}
+        value={value}
+      />
     );
   });
 }
 
-function InspectorCard({ item, locked, onUnlock }) {
+function measurementPreview(item, label, value, metric) {
+  return {
+    kind: "geometry",
+    anchor: item.id,
+    metric,
+    label: `${label}: ${value}`
+  };
+}
+
+function InspectorCard({
+  canGoBack,
+  canGoForward,
+  item,
+  locked,
+  onBack,
+  onForward,
+  onToggleLock,
+  onPreview,
+  onClearPreview,
+  onNavigate,
+  onEdit
+}) {
   return (
     <section className="fx-inspector-card" data-anchor={`inspector_${item.id}`}>
       <div className="fx-inspector-card__header">
         <h3 title={item.title}>{item.title}</h3>
-        {locked ? (
-          <button type="button" onClick={onUnlock}>
-            Unlock
-          </button>
-        ) : null}
+        <div className="fx-inspector-actions" aria-label="Inspector actions">
+          <FxActionButton icon="back" label="Back" disabled={!canGoBack} onClick={onBack} />
+          <FxActionButton
+            icon="forward"
+            label="Forward"
+            disabled={!canGoForward}
+            onClick={onForward}
+          />
+          <FxActionButton
+            active={locked}
+            disabled={!locked}
+            icon={locked ? "lock-closed" : "lock-open"}
+            label={locked ? "Unlock inspector" : "No locked component"}
+            onClick={onToggleLock}
+          />
+        </div>
       </div>
-      <dl>
+      <div className="fx-inspector-lines">
         <InspectorValue label="relative" value={item.relative} />
-        <InspectorValue label="size" value={item.size} />
-        <InspectorValue label="content_size" value={item.contentSize} />
-        <InspectorValue label="clip_size" value={item.clipSize} />
-        <InspectorValue label="size_before_stretching" value={item.sizeBeforeStretching} />
+        <InspectorValue
+          label="size"
+          onClearPreview={onClearPreview}
+          onPreview={onPreview}
+          preview={measurementPreview(item, "size", item.size, "size")}
+          value={item.size}
+        />
+        <InspectorValue
+          label="content_size"
+          onClearPreview={onClearPreview}
+          onPreview={onPreview}
+          preview={measurementPreview(item, "content_size", item.contentSize, "content_size")}
+          value={item.contentSize}
+        />
+        <InspectorValue
+          label="clip_size"
+          onClearPreview={onClearPreview}
+          onPreview={onPreview}
+          preview={measurementPreview(item, "clip_size", item.clipSize, "clip_size")}
+          value={item.clipSize}
+        />
+        <InspectorValue
+          label="size_before_stretching"
+          onClearPreview={onClearPreview}
+          onPreview={onPreview}
+          preview={measurementPreview(
+            item,
+            "size_before_stretching",
+            item.sizeBeforeStretching,
+            "size_before_stretching"
+          )}
+          value={item.sizeBeforeStretching}
+        />
         <InspectorValue
           label="maximum_horizontal_squash_size"
           value={item.maximumHorizontalSquashSize}
         />
         <InspectorValue label="maximum_vertical_squash_size" value={item.maximumVerticalSquashSize} />
+        {item.maximalHeight !== undefined && item.maximalHeight !== null ? (
+          <InspectorValue label="maximal_height" value={item.maximalHeight} />
+        ) : null}
         <InspectorValue label="Style" value={item.style} />
         <InspectorValue label="Derived from" value={item.derivedFrom} />
-        <InspectorRows rows={item.properties ?? []} />
-      </dl>
+        <InspectorRows
+          rows={item.properties ?? []}
+          defaultTone="property"
+          onClearPreview={onClearPreview}
+          onEdit={onEdit}
+          onNavigate={onNavigate}
+          onPreview={onPreview}
+        />
+      </div>
       {item.childRows?.length ? (
-        <dl className="fx-inspector-children">
-          <InspectorRows rows={item.childRows} />
-        </dl>
+        <div className="fx-inspector-lines fx-inspector-children">
+          <InspectorRows
+            rows={item.childRows}
+            onClearPreview={onClearPreview}
+            onEdit={onEdit}
+            onNavigate={onNavigate}
+            onPreview={onPreview}
+          />
+        </div>
       ) : null}
     </section>
   );
@@ -349,7 +673,13 @@ function componentClassName(node) {
   return node.primitive ?? "agui::Element";
 }
 
-function ComponentTreeNode({ node, inspectedAnchor, onSelectComponent }) {
+function ComponentTreeNode({
+  node,
+  inspectedAnchor,
+  onClearPreview,
+  onPreviewComponent,
+  onSelectComponent
+}) {
   const children = node.children ?? [];
   const selected = inspectedAnchor === node.id;
 
@@ -359,6 +689,8 @@ function ComponentTreeNode({ node, inspectedAnchor, onSelectComponent }) {
         className={selected ? "is-selected" : ""}
         type="button"
         onClick={() => onSelectComponent(node.id)}
+        onMouseEnter={() => onPreviewComponent(node.id)}
+        onMouseLeave={onClearPreview}
       >
         <span>{componentClassName(node)}</span>
         <code>{node.id}</code>
@@ -370,6 +702,8 @@ function ComponentTreeNode({ node, inspectedAnchor, onSelectComponent }) {
               inspectedAnchor={inspectedAnchor}
               key={child.id}
               node={child}
+              onClearPreview={onClearPreview}
+              onPreviewComponent={onPreviewComponent}
               onSelectComponent={onSelectComponent}
             />
           ))}
@@ -379,7 +713,13 @@ function ComponentTreeNode({ node, inspectedAnchor, onSelectComponent }) {
   );
 }
 
-function ComponentTree({ model, inspectedAnchor, onSelectComponent }) {
+function ComponentTree({
+  model,
+  inspectedAnchor,
+  onClearPreview,
+  onPreviewComponent,
+  onSelectComponent
+}) {
   if (!model?.root) {
     return null;
   }
@@ -391,6 +731,8 @@ function ComponentTree({ model, inspectedAnchor, onSelectComponent }) {
         <ComponentTreeNode
           inspectedAnchor={inspectedAnchor}
           node={model.root}
+          onClearPreview={onClearPreview}
+          onPreviewComponent={onPreviewComponent}
           onSelectComponent={onSelectComponent}
         />
       </ul>
@@ -398,11 +740,26 @@ function ComponentTree({ model, inspectedAnchor, onSelectComponent }) {
   );
 }
 
-function StyleInspector({ model, inspectedAnchor, locked, onUnlock, onSelectComponent }) {
+function StyleInspector({
+  canGoBack,
+  canGoForward,
+  model,
+  inspectedAnchor,
+  locked,
+  onBack,
+  onClearPreview,
+  onEdit,
+  onForward,
+  onNavigate,
+  onPreview,
+  onPreviewComponent,
+  onSelectComponent,
+  onToggleLock
+}) {
   const rows = getWindowInspectorRows(model);
-  const item = rows.find((row) => row.id === inspectedAnchor) ?? rows[0];
+  const item = inspectedAnchor ? rows.find((row) => row.id === inspectedAnchor) : null;
 
-  if (!item) {
+  if (!model?.root) {
     return (
       <div className="fx-inspector-empty" data-anchor="style_inspector_empty">
         Create a window to inspect GUI parts.
@@ -410,12 +767,43 @@ function StyleInspector({ model, inspectedAnchor, locked, onUnlock, onSelectComp
     );
   }
 
+  if (!item) {
+    return (
+      <div className="fx-style-inspector" data-anchor="style_inspector_panel">
+        <div className="fx-inspector-empty" data-anchor="style_inspector_idle">
+          Hover a GUI part or select a component to inspect it.
+        </div>
+        <ComponentTree
+          inspectedAnchor={inspectedAnchor}
+          model={model}
+          onClearPreview={onClearPreview}
+          onPreviewComponent={onPreviewComponent}
+          onSelectComponent={onSelectComponent}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="fx-style-inspector" data-anchor="style_inspector_panel">
-      <InspectorCard item={item} locked={locked} onUnlock={onUnlock} />
+      <InspectorCard
+        canGoBack={canGoBack}
+        canGoForward={canGoForward}
+        item={item}
+        locked={locked}
+        onBack={onBack}
+        onClearPreview={onClearPreview}
+        onEdit={onEdit}
+        onForward={onForward}
+        onNavigate={onNavigate}
+        onPreview={onPreview}
+        onToggleLock={onToggleLock}
+      />
       <ComponentTree
         inspectedAnchor={inspectedAnchor}
         model={model}
+        onClearPreview={onClearPreview}
+        onPreviewComponent={onPreviewComponent}
         onSelectComponent={onSelectComponent}
       />
     </div>
@@ -424,6 +812,8 @@ function StyleInspector({ model, inspectedAnchor, locked, onUnlock, onSelectComp
 
 export function EditorPage() {
   const [editorState, setEditorState] = useState(readCachedEditorState);
+  const [inspectorHistory, setInspectorHistory] = useState({ back: [], forward: [] });
+  const [inspectorPreview, setInspectorPreview] = useState(null);
   const shellRef = useRef(null);
   const sidebarResizeRef = useRef(null);
   const {
@@ -442,6 +832,8 @@ export function EditorPage() {
   }, [editorState]);
 
   function createWindow() {
+    setInspectorHistory({ back: [], forward: [] });
+    setInspectorPreview(null);
     setEditorState((state) => ({
       ...state,
       currentWindow: {
@@ -449,16 +841,18 @@ export function EditorPage() {
         location: state.currentWindow?.location ?? null
       },
       inspectorLocked: false,
-      inspectedAnchor: "gui_window"
+      inspectedAnchor: null
     }));
   }
 
   function resetWindow() {
+    setInspectorHistory({ back: [], forward: [] });
+    setInspectorPreview(null);
     setEditorState((state) => ({
       ...state,
       currentWindow: null,
       inspectorLocked: false,
-      inspectedAnchor: "gui_window"
+      inspectedAnchor: null
     }));
   }
 
@@ -495,7 +889,20 @@ export function EditorPage() {
     }));
   }
 
+  function clearHoveredInspection() {
+    setInspectorPreview(null);
+    setEditorState((state) => ({
+      ...state,
+      inspectedAnchor: state.inspectorLocked ? state.inspectedAnchor : null
+    }));
+  }
+
   function lockInspectedAnchor(nextAnchor) {
+    if (!nextAnchor) {
+      return;
+    }
+
+    setInspectorPreview(null);
     setEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
@@ -503,18 +910,104 @@ export function EditorPage() {
     }));
   }
 
-  function unlockInspector() {
-    setEditorState((state) => ({
-      ...state,
-      inspectorLocked: false
-    }));
-  }
-
   function selectInspectorComponent(nextAnchor) {
+    if (!nextAnchor) {
+      return;
+    }
+
+    setInspectorPreview(null);
     setEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
       inspectorLocked: true
+    }));
+  }
+
+  function navigateInspector(nextAnchor) {
+    if (!nextAnchor) {
+      return;
+    }
+
+    setInspectorPreview(null);
+    if (inspectedAnchor && inspectedAnchor !== nextAnchor) {
+      setInspectorHistory((history) => ({
+        back: [...history.back, inspectedAnchor].slice(-40),
+        forward: []
+      }));
+    }
+
+    setEditorState((state) => ({
+      ...state,
+      inspectedAnchor: nextAnchor,
+      inspectorLocked: true
+    }));
+  }
+
+  function goInspectorBack() {
+    const nextAnchor = inspectorHistory.back.at(-1);
+    if (!nextAnchor) {
+      return;
+    }
+
+    setInspectorPreview(null);
+    setInspectorHistory((history) => ({
+      back: history.back.slice(0, -1),
+      forward: inspectedAnchor
+        ? [inspectedAnchor, ...history.forward].slice(0, 40)
+        : history.forward
+    }));
+    setEditorState((state) => ({
+      ...state,
+      inspectedAnchor: nextAnchor,
+      inspectorLocked: true
+    }));
+  }
+
+  function goInspectorForward() {
+    const nextAnchor = inspectorHistory.forward[0];
+    if (!nextAnchor) {
+      return;
+    }
+
+    setInspectorPreview(null);
+    setInspectorHistory((history) => ({
+      back: inspectedAnchor ? [...history.back, inspectedAnchor].slice(-40) : history.back,
+      forward: history.forward.slice(1)
+    }));
+    setEditorState((state) => ({
+      ...state,
+      inspectedAnchor: nextAnchor,
+      inspectorLocked: true
+    }));
+  }
+
+  function previewInspector(preview) {
+    setInspectorPreview(preview);
+  }
+
+  function previewInspectorComponent(nextAnchor) {
+    setInspectorPreview({
+      kind: "reference",
+      anchor: nextAnchor,
+      label: nextAnchor
+    });
+  }
+
+  function clearInspectorPreview() {
+    setInspectorPreview(null);
+  }
+
+  function updateInspectorEditableValue(editable, value) {
+    if (editable?.field !== "title") {
+      return;
+    }
+
+    setEditorState((state) => ({
+      ...state,
+      title: value,
+      currentWindow: state.currentWindow
+        ? { ...state.currentWindow, title: windowTitle(value) }
+        : state.currentWindow
     }));
   }
 
@@ -649,11 +1142,20 @@ export function EditorPage() {
           </FxCheckbox>
           {showInspector ? (
             <StyleInspector
+              canGoBack={inspectorHistory.back.length > 0}
+              canGoForward={inspectorHistory.forward.length > 0}
               model={currentModel}
               inspectedAnchor={inspectedAnchor}
               locked={inspectorLocked}
+              onBack={goInspectorBack}
+              onClearPreview={clearInspectorPreview}
+              onEdit={updateInspectorEditableValue}
+              onForward={goInspectorForward}
+              onNavigate={navigateInspector}
+              onPreview={previewInspector}
+              onPreviewComponent={previewInspectorComponent}
               onSelectComponent={selectInspectorComponent}
-              onUnlock={unlockInspector}
+              onToggleLock={() => lockInspectedAnchor(inspectedAnchor)}
             />
           ) : null}
         </FxFrame>
@@ -681,7 +1183,9 @@ export function EditorPage() {
             inspectorActive={showInspector}
             inspectorLocked={inspectorLocked}
             inspectedAnchor={inspectedAnchor}
+            inspectorPreview={inspectorPreview}
             onInspect={updateInspectedAnchor}
+            onInspectClear={clearHoveredInspection}
             onInspectLock={lockInspectedAnchor}
             onWindowLocationChange={updateWindowLocation}
           />

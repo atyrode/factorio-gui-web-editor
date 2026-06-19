@@ -116,6 +116,108 @@
     0 0 4px 0 var(--fx-shadow);
 }
 
+.fx-action-button {
+  --fx-action-icon: #d9d9d9;
+  position: relative;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 34px;
+  color: var(--fx-action-icon);
+  background: #343233;
+  border: 0;
+  box-shadow:
+    inset 0 1px 0 #5f5d5c,
+    inset 1px 0 0 #454344,
+    inset -1px 0 0 #171717,
+    inset 0 -1px 0 #111111,
+    0 0 0 1px #070707,
+    1px 1px 0 #090909;
+}
+
+.fx-action-button:hover:not(:disabled),
+.fx-action-button:focus-visible:not(:disabled) {
+  --fx-action-icon: #ffffff;
+  outline: 0;
+  background: #3b393a;
+  box-shadow:
+    inset 0 1px 0 #6b6867,
+    inset 1px 0 0 #4e4c4d,
+    inset -1px 0 0 #171717,
+    inset 0 -1px 0 #111111,
+    0 0 0 1px #070707,
+    1px 1px 0 #090909;
+}
+
+.fx-action-button:active:not(:disabled) {
+  background: #302f30;
+  box-shadow:
+    inset 0 1px 0 #111111,
+    inset 1px 0 0 #171717,
+    inset -1px 0 0 #454344,
+    inset 0 -1px 0 #5b5958,
+    0 0 0 1px #070707;
+}
+
+.fx-action-button.is-active:not(:disabled) {
+  --fx-action-icon: var(--fx-gold);
+  background: #343233;
+  box-shadow:
+    inset 0 1px 0 #5f5d5c,
+    inset 1px 0 0 #454344,
+    inset -1px 0 0 #171717,
+    inset 0 -1px 0 #111111,
+    0 0 0 1px #070707,
+    inset 0 0 0 1px rgba(227, 152, 39, 0.22);
+}
+
+.fx-action-button.is-active:hover:not(:disabled),
+.fx-action-button.is-active:focus-visible:not(:disabled) {
+  --fx-action-icon: #ffeccd;
+  background: #3b393a;
+  box-shadow:
+    inset 0 1px 0 #6b6867,
+    inset 1px 0 0 #4e4c4d,
+    inset -1px 0 0 #171717,
+    inset 0 -1px 0 #111111,
+    0 0 0 1px #070707,
+    inset 0 0 0 1px rgba(227, 152, 39, 0.34);
+}
+
+.fx-action-button:disabled {
+  --fx-action-icon: #5d5d5d;
+  background: #302f30;
+  box-shadow:
+    inset 0 1px 0 #111111,
+    inset 1px 0 0 #171717,
+    inset -1px 0 0 #434142,
+    inset 0 -1px 0 #565453,
+    0 0 0 1px #080808,
+    0 1px 0 #090909;
+}
+
+.fx-action-button > svg {
+  position: relative;
+  z-index: 2;
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: var(--fx-action-icon);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.65));
+}
+
+.fx-action-button--back > svg,
+.fx-action-button--forward > svg {
+  width: 23px;
+  height: 23px;
+  stroke-width: 4;
+}
+
 .fx-button--green {
   background-color: var(--fx-green);
   box-shadow:

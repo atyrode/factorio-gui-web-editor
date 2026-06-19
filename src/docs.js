@@ -1,4 +1,5 @@
 import styleSourcesMarkdown from "../docs/factorio-style-sources.md?raw";
+import modelSchemaMarkdown from "../docs/model-schema.md?raw";
 import roadmapMarkdown from "../docs/roadmap.md?raw";
 import specFactoryMarkdown from "../docs/spec-factory.md?raw";
 
@@ -14,6 +15,12 @@ export const docPages = [
     title: "Roadmap",
     summary: "Sequencing for the constrained builder, shared renderer, and exports.",
     markdown: roadmapMarkdown
+  },
+  {
+    path: "/model-schema",
+    title: "Model Schema",
+    summary: "Structured GUI model used by preview, inspector, and Lua export.",
+    markdown: modelSchemaMarkdown
   },
   {
     path: "/style-sources",

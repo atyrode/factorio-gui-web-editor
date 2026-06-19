@@ -6,6 +6,7 @@ services:
     environment:
       LABTORIO_HMR_HOST: labtorio.tyrode.dev
       LABTORIO_HMR_CLIENT_PORT: "443"
+      LABTORIO_HMR_PATH: /@vite-hmr
       VITE_CACHE_DIR: /app-cache/vite
     volumes:
       - .:/app

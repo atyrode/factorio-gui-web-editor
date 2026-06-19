@@ -1,3 +1,5 @@
+import { ChevronLeft, ChevronRight, Lock, Search, Unlock } from "lucide-react";
+
 export function FxButton({
   children,
   variant = "default",
@@ -18,6 +20,45 @@ export function FxButton({
   return (
     <button className={classes} type={type} {...props}>
       {children}
+    </button>
+  );
+}
+
+const actionButtonIcons = {
+  back: ChevronLeft,
+  forward: ChevronRight,
+  "lock-closed": Lock,
+  "lock-open": Unlock,
+  search: Search
+};
+
+export function FxActionButton({
+  icon,
+  label,
+  active = false,
+  className = "",
+  type = "button",
+  ...props
+}) {
+  const Icon = actionButtonIcons[icon] ?? null;
+
+  return (
+    <button
+      aria-label={label}
+      className={[
+        "fx-action-button",
+        `fx-action-button--${icon}`,
+        active ? "is-active" : "",
+        className
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-pressed={active}
+      title={label}
+      type={type}
+      {...props}
+    >
+      {Icon ? <Icon aria-hidden="true" /> : null}
     </button>
   );
 }
@@ -190,6 +231,7 @@ export function GuiWindow({
   inspectorLocked = false,
   inspectedAnchor = anchor,
   onInspect,
+  onInspectClear,
   onInspectLock,
   style,
   onTitlebarPointerDown,
@@ -266,6 +308,11 @@ export function GuiWindow({
       style={style}
       tabIndex={rootInspector.tabIndex}
       onMouseEnter={rootInspector.onMouseEnter}
+      onMouseLeave={() => {
+        if (inspectorActive && !inspectorLocked) {
+          onInspectClear?.();
+        }
+      }}
       onMouseMove={rootInspector.onMouseMove}
       onClick={rootInspector.onClick}
       onFocus={rootInspector.onFocus}

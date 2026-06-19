@@ -23,6 +23,7 @@ http://127.0.0.1:5173/
 
 - React/Vite browser app with an empty canvas.
 - A minimal window creator with editable title text.
+- A structured seed GUI model shared by preview, inspector, and Lua output.
 - A `/style-atlas` route that renders reusable GUI atoms for visual review.
 - Header navigation with styled in-app pages rendered from the project
   Markdown docs, plus an Editor tab to return to the canvas.
@@ -39,10 +40,13 @@ index.html                     Vite app entry point
 src/App.jsx                    Route orchestration
 src/components/                Strictly scoped React components
 src/docs.js                    Markdown-backed document route registry
+src/factorioModel.js           Structured Factorio GUI seed model and inspector rows
+src/factorioExport.js          Lua export projection from the GUI model
 src/main.jsx                   React mount and stylesheet import
 src/styles.css                 Stylesheet entry point
 src/styles/                    Split Factorio-inspired local style layers
 docs/spec-factory.md           Workflow for writing agent-readable GUI specs
+docs/model-schema.md           Shared GUI model and inspector projection notes
 docs/roadmap.md                Builder/shared-renderer roadmap
 docs/factorio-style-sources.md Style/source research notes
 scripts/check.sh               Local validation
@@ -59,9 +63,13 @@ docker compose -f compose.yaml -f compose.dev.yaml up -d
 ```
 
 The override keeps the same internal `labtorio:8080` target used by the edge
-proxy, but serves Vite with HMR configured for `wss://labtorio.tyrode.dev`.
+proxy, but serves Vite with HMR configured for
+`wss://labtorio.tyrode.dev/@vite-hmr`.
 It stores container `node_modules` and Vite cache data in Docker named volumes
 so hot reload does not leave host checkout files owned by the container user.
+Public deployments require Basic Auth credentials in a local `.env`; see
+[docs/hosting.md](docs/hosting.md) for the hash generation and edge proxy
+boundary.
 
 ## Design Direction
 

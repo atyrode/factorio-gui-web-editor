@@ -185,7 +185,7 @@ generic vanilla top-level window class, not `MapEditorGui`.
 
 | Element | Inspector class/style | Captured constraints |
 | --- | --- | --- |
-| Top-level window | `agui::Window`, style `inset_frame_container_frame`, derived from `frame` | size `708 x 395` review fixture, content `672 x 365`, top padding `6`, right/bottom/left padding `12`, `use_header_filler=true`, maximum horizontal squash `0`, maximum vertical squash `18` |
+| Top-level window | GUI-specific class or `agui::Frame`, frame-derived styles | size/content/clip are instance-derived, top padding `6`, bottom/left/right padding generally `12`, `use_header_filler=true`, maximum horizontal squash `0` |
 | Header row | `agui::HorizontalFlow`, derived from `frame_header_flow` | size `672 x 48`, content `672 x 42`, clip y offset `-4`, bottom padding `6`, horizontal spacing `12`, horizontally stretchable on, vertically stretchable off |
 | Title label | `agui::Label`, derived from `frame_title` / `label` | relative `[0, -4]`, height `46`, content height `42`, top margin `-4`, bottom padding `4`, vertically stretchable on, horizontally squashable on, `single_line=true`, font `heading-1`, font color `{1, 0.901961, 0.752941}` |
 | Header filler | `agui::Filler`, derived from `draggable_space_header` / `draggable_space` / `empty_widget` | size `473 x 36`, natural height `36`, left/right margin `6`, horizontally and vertically stretchable on |
@@ -211,6 +211,24 @@ padding-box fill must stay the same `fx-panel` color that the frame-band ramp
 lands on, with no extra interior glaze, or the edge reads as a separate border
 instead of one continuous frame material.
 
+Additional top-level captures show that a Window-like root is not always
+reported as `agui::Window`. Factoriopedia reports class `Factoriopedia` with
+style `inset_frame_container_frame`; Achievements reports `AchievementGui` with
+style `frame`; filter selection reports a specialized `FilterSelectGui...`
+class with style `frame`; editor side panes report `agui::Frame` with
+`character_gui_left_side` and `frame_without_left_side`. All observed captures
+still derive from or behave like `frame`, use top padding `6`, bottom padding
+`12`, left padding `12`, and `use_header_filler=true`. Right padding is usually
+`12`, but `character_gui_left_side` has a style-specific `right_padding=6`
+override before the inherited `frame` value.
+
+The same full-height captures report `maximal_height: 973`, while their outer
+height is also `973` and clip height is `977`. Treat `maximal_height` as a
+captured runtime/layout metric until non-full-height windows and multiple
+resolutions/UI scales show whether it comes from viewport height, screen
+location, or a style assignment. It should not be exported as a fixed Window
+style constant yet.
+
 The frame sides are rendered as four trapezoid bands, not as rectangular strips.
 Each band owns the full outer edge and a shorter inner edge facing the panel, so
 adjacent bands meet on a diagonal miter at every corner. This is currently done
@@ -224,12 +242,13 @@ not introduce its own margin or extra border. Its outer layout box is `672 x
 48`; the `42` content height comes from the `6` bottom padding, and its `clip`
 extends 4 px upward for the title label rendering.
 
-The Map Editor header capture also includes a `SearchBar 36 x 36` child after
-the draggable filler. That appears to be an optional header control for that
-specific GUI, not a universal top-level window requirement. The current generic
-browser window renders the title label and draggable filler only; optional
-header controls need a separate model field and export mapping before they
-should be added to every window.
+Several full-height captures include a `SearchPopup 168 x 42` child between the
+header flow and content flow. Map Editor header captures also include a
+`SearchBar 36 x 36` child after the draggable filler. These appear to be
+optional search/header controls for specific GUIs, not universal top-level
+window requirements. The current generic browser window renders the title label
+and draggable filler only; optional controls need separate model fields and
+export mappings before they should be added to every window.
 
 The header filler visual reads as a repeated 6 px bevel cadence rather than a
 flat stripe. A close-up sample showed a dark recessed half followed by a lighter
@@ -252,6 +271,22 @@ locked, hover/focus no longer changes the selection until the inspector is
 unlocked or another part is clicked. The highlight should read like Factorio's
 inspector wash: a translucent white overlay over the selected part, not an
 external bounding outline that changes or obscures the perceived geometry.
+
+Inspector rows are structured model projections, not parsed strings. Display
+uses the in-game `key: value` text rhythm: geometry values stay normal text,
+style names are orange, style/property facts are green, and known gaps render as
+`not implemented`. Rows can also carry model metadata. Child rows with a
+`targetId` temporarily highlight their target on hover and lock/navigate to it
+on click. Only this in-inspector row traversal builds back/forward history.
+Direct canvas clicks and component-tree clicks lock/select the target component
+without modifying the history stacks. Geometry rows such as `size` and
+`content_size` can show an inspector measurement overlay with a small label
+attached to the preview rectangle.
+Editable values must opt in through row metadata and may only mutate state the
+editor owns; currently that means the title label caption, while captured
+Factorio style facts remain read-only. The root Window atom does not own a
+caption field.
+
 The Inspector section also includes a compact component tree using the same
 stable model anchors as hover inspection. Clicking a tree row locks the selected
 component, highlights the matching preview node, and shows that node's values.
@@ -259,6 +294,13 @@ The tree uses CLI `tree`-style connector rails and elbows so parent-child
 structure is visible at a glance without adding decorative nodes to the model.
 It is pinned to the bottom of the Inspector section and styled as a recessed
 component browser so changing inspector value height does not move it around.
+Inspector back/forward controls and lock-state controls use small square action
+buttons based on Factorio's dark toolbar buttons: charcoal fill, black outer
+ledge, light top bevel, dark bottom bevel, and pale centered glyphs that dim
+with the disabled state. The padlock is release-only: while the inspector is
+following hover it shows a disabled open lock, and after a GUI part or component
+row is clicked it switches to an active closed lock that can be clicked to
+unlock back to follow mode.
 
 The editor caches its current seed state in browser `localStorage`: title,
 current top-level window, inspector toggle/selection, Lua output visibility, and
