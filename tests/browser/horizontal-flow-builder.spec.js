@@ -99,15 +99,23 @@ async function measureHover(page) {
     }
 
     const preview = document.querySelector(
-      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-preview-slot'
+      '[data-anchor="gui_window_body"] > [data-anchor="builder_ghost_marker"].fx-gui-flow-drop-preview-slot'
     );
-    const previewBefore = window.getComputedStyle(preview, "::before");
+    const previewStyle = window.getComputedStyle(preview);
+    const existing = document.querySelector('[data-anchor="gui_horizontal_flow_1"]');
+    const existingStyle = window.getComputedStyle(existing);
     return {
-      preview: rect('[data-anchor="gui_window_body"] > .fx-gui-flow-drop-preview-slot'),
-      previewGhost: rect('[data-anchor="gui_window_body"] > .fx-gui-flow-drop-preview-slot > .fx-builder-ghost'),
+      preview: rect(
+        '[data-anchor="gui_window_body"] > [data-anchor="builder_ghost_marker"].fx-gui-flow-drop-preview-slot'
+      ),
       existing: rect('[data-anchor="gui_horizontal_flow_1"]'),
-      previewBeforeLeft: previewBefore.left,
-      previewBeforeRight: previewBefore.right,
+      gap: existing.getBoundingClientRect().left - preview.getBoundingClientRect().right,
+      previewPaddingLeft: previewStyle.paddingLeft,
+      previewPaddingRight: previewStyle.paddingRight,
+      previewMinHeight: previewStyle.minHeight,
+      existingPaddingLeft: existingStyle.paddingLeft,
+      existingPaddingRight: existingStyle.paddingRight,
+      existingMinHeight: existingStyle.minHeight,
       dropTargetBackgrounds: Array.from(
         document.querySelectorAll('[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target'),
         (target) => window.getComputedStyle(target).backgroundColor
@@ -140,16 +148,12 @@ test.describe("Horizontal Flow builder canvas preview", () => {
     const hover = await measureHover(page);
     expectRectClose(
       hover.preview,
-      hover.previewGhost,
-      "the visible ghost should occupy the same bounds as the layout preview slot"
-    );
-    expectRectClose(
-      hover.preview,
       hover.existing,
       "hover preview and shifted existing flow should split the body equally"
     );
-    expect(hover.previewBeforeLeft).toBe("0px");
-    expect(hover.previewBeforeRight).toBe("0px");
+    expect(hover.previewPaddingLeft).toBe(hover.existingPaddingLeft);
+    expect(hover.previewPaddingRight).toBe(hover.existingPaddingRight);
+    expect(hover.previewMinHeight).toBe(hover.existingMinHeight);
     expect(new Set(hover.dropTargetBackgrounds)).toEqual(new Set(["rgba(0, 0, 0, 0)"]));
 
     await page.mouse.up();
@@ -160,11 +164,13 @@ test.describe("Horizontal Flow builder canvas preview", () => {
       "gui_horizontal_flow_2",
       "gui_horizontal_flow_1"
     ]);
+    const finalGap = finalFlows[1].left - (finalFlows[0].left + finalFlows[0].width);
     expectRectClose(hover.preview, finalFlows[0], "hover preview should match dropped flow");
     expectRectClose(
       hover.existing,
       finalFlows[1],
       "hover-shifted existing flow should match final existing flow"
     );
+    expect(Math.round(hover.gap)).toBe(Math.round(finalGap));
   });
 });

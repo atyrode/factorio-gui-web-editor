@@ -115,7 +115,9 @@ slice without treating CSS as source of truth.
 - Canvas hover previews must use the same flex sizing contract as the
   Horizontal Flow node that will exist after drop. Hit/collision geometry must
   not paint layout feedback, and highlight paint must not extend the future
-  node's bounds.
+  node's bounds. Previews are atom render states: the canvas Horizontal Flow
+  preview renders through the same atom shell as a real Horizontal Flow, using a
+  temporary preview node hydrated from the same parent child-style contract.
 - Removing a row removes its subtree in this slice.
 
 ## Fixtures
@@ -160,10 +162,15 @@ Before expanding to Label, Frame, or Action Button insertion, verify:
 Every objective builder bug should become a check before the fix is accepted.
 The first browser regression covers the `one-flow` fixture: dragging a palette
 Horizontal Flow to index `0` of the Window body must make the hover preview,
-visible ghost, shifted existing flow, and final dropped flow use matching
-rectangles within a 1px tolerance. The test also verifies that drop hit targets
-stay visually transparent and that preview paint does not extend outside the
-future node bounds.
+visible highlighted shell, shifted existing flow, inter-flow gap, and final
+dropped flow use matching rectangles within a 1px tolerance. This regression
+exists because an earlier preview measured a wrapper slot while painting a
+separate generic ghost child; the wrapper could match while the visible
+highlight still had different padding, border, or bounds than the final
+Horizontal Flow. The fixed contract renders the preview through the same
+Horizontal Flow atom shell as the dropped node. The test also verifies that drop
+hit targets stay visually transparent and that preview paint does not extend
+outside the future node bounds.
 
 `scripts/check.sh` runs build, layout-tree, hover/drop geometry, structural,
 and Playwright browser checks. CI installs dependencies, installs Chromium, and

@@ -135,10 +135,16 @@ const body = model.root.children[1];
 assert.equal(body.children[0].id, "gui_horizontal_flow_1");
 assert.equal(body.children[0].children[0].id, "gui_horizontal_flow_2");
 assert.equal(body.styleReference.childMinimalWidth, 220);
+assert.equal(body.styleReference.childMinimalHeight, 80);
+assert.equal(body.styleReference.childHorizontalSpacing, 10);
+assert.equal(body.styleReference.childLeftPadding, 12);
 assert.equal(body.children[0].styleReference.horizontalSpacing, 10);
 assert.equal(body.children[0].styleReference.minimalWidth, 220);
 assert.equal(body.children[0].styleReference.minimalHeight, 80);
 assert.equal(body.children[0].styleReference.leftPadding, 12);
+assert.equal(body.children[0].styleReference.childMinimalHeight, 80);
+assert.equal(body.children[0].styleReference.childHorizontalSpacing, 10);
+assert.equal(body.children[0].styleReference.childLeftPadding, 12);
 assert.equal(body.children[0].children[0].styleReference.minimalWidth, 120);
 
 const normalizedSettings = normalizeLayoutSettings({

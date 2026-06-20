@@ -4,6 +4,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../src/styles/factorio-atoms.css", import.meta.url), "utf8");
+const guiSource = readFileSync(
+  new URL("../src/components/factorioGui.jsx", import.meta.url),
+  "utf8"
+);
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -72,8 +76,8 @@ assert.equal(
 );
 assert.equal(
   declaration(previewRule, "min-width"),
-  "var(--fx-horizontal-flow-child-min-width, 168px)",
-  "hover preview must use the parent-provided child minimum width"
+  "var(--fx-horizontal-flow-min-width, 168px)",
+  "hover preview must use the same atom min-width variable as a real Horizontal Flow"
 );
 assert.equal(
   declaration(targetedDropRule, "background"),
@@ -82,6 +86,7 @@ assert.equal(
 );
 
 for (const selector of [
+  ".fx-gui-flow-drop-preview-slot::before",
   ".fx-gui-flow-drop-preview-slot.is-start-edge::before",
   ".fx-gui-flow-drop-preview-slot.is-end-edge::before",
   ".fx-gui-flow-drop-preview-slot.is-middle::before"
@@ -90,6 +95,42 @@ for (const selector of [
     ruleFor(selector),
     null,
     `${selector} must not extend preview paint into Factorio spacing gaps`
+  );
+}
+
+assert.match(
+  guiSource,
+  /function GuiHorizontalFlowShell/,
+  "Horizontal Flow rendering must expose a shared atom shell"
+);
+assert.match(
+  guiSource,
+  /function CanvasDropPreviewSlot[\s\S]*<GuiHorizontalFlowShell/,
+  "canvas preview must render through the same Horizontal Flow shell as the dropped node"
+);
+assert.match(
+  guiSource,
+  /export function GuiHorizontalFlow[\s\S]*<GuiHorizontalFlowShell/,
+  "real Horizontal Flow nodes must render through the shared atom shell"
+);
+assert.doesNotMatch(
+  guiSource,
+  /"fx-gui-flow-drop-preview-slot"[\s\S]*<BuilderGhostBlock \/>/,
+  "canvas preview must not wrap a separate generic ghost block with different box styling"
+);
+for (const [field, source] of [
+  ["horizontalSpacing", "childHorizontalSpacing"],
+  ["topPadding", "childTopPadding"],
+  ["rightPadding", "childRightPadding"],
+  ["bottomPadding", "childBottomPadding"],
+  ["leftPadding", "childLeftPadding"],
+  ["minimalWidth", "childMinimalWidth"],
+  ["minimalHeight", "childMinimalHeight"]
+]) {
+  assert.match(
+    guiSource,
+    new RegExp(`${field}:\\s*reference\\.${source}`),
+    `preview node must hydrate ${field} from parent ${source}`
   );
 }
 

@@ -251,16 +251,6 @@ function inspectorProps({ active, locked, anchor, inspectedAnchor, onInspect, on
   };
 }
 
-function BuilderGhostBlock() {
-  return (
-    <div
-      className="fx-builder-ghost"
-      data-anchor="builder_ghost_marker"
-      aria-hidden="true"
-    />
-  );
-}
-
 function pixelStyleValue(value) {
   return typeof value === "number" && Number.isFinite(value) ? `${value}px` : undefined;
 }
@@ -276,8 +266,83 @@ function horizontalFlowStyleVariables(styleReference = {}) {
     "--fx-horizontal-flow-padding-left": pixelStyleValue(reference.leftPadding),
     "--fx-horizontal-flow-min-width": pixelStyleValue(reference.minimalWidth),
     "--fx-horizontal-flow-min-height": pixelStyleValue(reference.minimalHeight),
-    "--fx-horizontal-flow-child-min-width": pixelStyleValue(reference.childMinimalWidth)
+    "--fx-horizontal-flow-child-min-width": pixelStyleValue(reference.childMinimalWidth),
+    "--fx-horizontal-flow-child-min-height": pixelStyleValue(reference.childMinimalHeight),
+    "--fx-horizontal-flow-child-horizontal-spacing": pixelStyleValue(reference.childHorizontalSpacing),
+    "--fx-horizontal-flow-child-padding-top": pixelStyleValue(reference.childTopPadding),
+    "--fx-horizontal-flow-child-padding-right": pixelStyleValue(reference.childRightPadding),
+    "--fx-horizontal-flow-child-padding-bottom": pixelStyleValue(reference.childBottomPadding),
+    "--fx-horizontal-flow-child-padding-left": pixelStyleValue(reference.childLeftPadding)
   };
+}
+
+function createHorizontalFlowPreviewNode(parentStyleReference = {}) {
+  const reference = parentStyleReference ?? {};
+
+  return {
+    id: "builder_ghost_marker",
+    primitive: "flow",
+    className: "agui::HorizontalFlow",
+    style: "horizontal_flow",
+    derivedFrom: "horizontal_flow",
+    direction: "horizontal",
+    role: "builder-horizontal-flow-preview",
+    styleReference: {
+      variantId: "generic-horizontal-flow",
+      horizontalSpacing: reference.childHorizontalSpacing,
+      topPadding: reference.childTopPadding,
+      rightPadding: reference.childRightPadding,
+      bottomPadding: reference.childBottomPadding,
+      leftPadding: reference.childLeftPadding,
+      minimalWidth: reference.childMinimalWidth,
+      minimalHeight: reference.childMinimalHeight,
+      horizontallyStretchable: true,
+      verticallyStretchable: true
+    },
+    children: []
+  };
+}
+
+function GuiHorizontalFlowShell({
+  node,
+  className = "",
+  children,
+  shellRef,
+  style,
+  ...props
+}) {
+  const flowStyle = {
+    ...horizontalFlowStyleVariables(node.styleReference),
+    ...style
+  };
+
+  return (
+    <div
+      ref={shellRef}
+      className={["fx-gui-horizontal-flow", className].filter(Boolean).join(" ")}
+      data-anchor={node.id}
+      data-fx-primitive="flow"
+      data-fx-class={node.className}
+      data-fx-style={node.style}
+      data-fx-derived-from={node.derivedFrom}
+      data-fx-direction={node.direction}
+      data-fx-horizontal-spacing={node.styleReference?.horizontalSpacing ?? undefined}
+      data-fx-minimal-width={node.styleReference?.minimalWidth ?? undefined}
+      data-fx-minimal-height={node.styleReference?.minimalHeight ?? undefined}
+      data-fx-top-padding={node.styleReference?.topPadding ?? undefined}
+      data-fx-right-padding={node.styleReference?.rightPadding ?? undefined}
+      data-fx-bottom-padding={node.styleReference?.bottomPadding ?? undefined}
+      data-fx-left-padding={node.styleReference?.leftPadding ?? undefined}
+      data-fx-horizontally-stretchable={node.styleReference?.horizontallyStretchable ?? undefined}
+      data-fx-vertically-stretchable={node.styleReference?.verticallyStretchable ?? undefined}
+      data-fx-style-variant={node.styleReference?.variantId ?? undefined}
+      data-fx-role={node.role ?? undefined}
+      style={flowStyle}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }
 
 function CanvasDropTarget({
@@ -323,12 +388,14 @@ function CanvasDropTarget({
 function CanvasDropPreviewSlot({
   index = 0,
   slotCount = 0,
-  emptyParent = false
+  emptyParent = false,
+  parentStyleReference = {}
 }) {
   const [expanded, setExpanded] = useState(false);
   const isStartEdge = !emptyParent && index === 0;
   const isEndEdge = !emptyParent && index === slotCount;
   const isMiddle = !emptyParent && !isStartEdge && !isEndEdge;
+  const previewNode = createHorizontalFlowPreviewNode(parentStyleReference);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setExpanded(true));
@@ -336,7 +403,8 @@ function CanvasDropPreviewSlot({
   }, []);
 
   return (
-    <div
+    <GuiHorizontalFlowShell
+      node={previewNode}
       className={[
         "fx-gui-flow-drop-preview-slot",
         expanded ? "is-expanded" : "",
@@ -347,9 +415,8 @@ function CanvasDropPreviewSlot({
       ]
         .filter(Boolean)
         .join(" ")}
-    >
-      <BuilderGhostBlock />
-    </div>
+      aria-hidden="true"
+    />
   );
 }
 
@@ -363,7 +430,8 @@ function FlowChildren({
   onInspectLock,
   builderDragActive,
   builderDropTarget,
-  builderDraggingId
+  builderDraggingId,
+  parentStyleReference
 }) {
   const ghostIndex =
     builderDropTarget?.surface === "canvas" && builderDropTarget.parentId === parentId
@@ -392,6 +460,7 @@ function FlowChildren({
         emptyParent={nodes.length === 0}
         index={0}
         key={`${parentId}-preview-0`}
+        parentStyleReference={parentStyleReference}
         slotCount={nodes.length}
       />
     );
@@ -418,6 +487,7 @@ function FlowChildren({
         <CanvasDropPreviewSlot
           index={index + 1}
           key={`${parentId}-preview-${index + 1}`}
+          parentStyleReference={parentStyleReference}
           slotCount={nodes.length}
         />
       );
@@ -450,7 +520,6 @@ export function GuiHorizontalFlow({
   const isDropParent = builderDropTarget?.surface === "canvas" &&
     builderDropTarget.parentId === node.id;
   const isDraggingSource = builderDraggingId === node.id;
-  const flowStyle = horizontalFlowStyleVariables(node.styleReference);
   const { ref: dropRef, isDropTarget } = useDroppable({
     id: `builder-canvas-parent-${node.id}`,
     type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
@@ -465,34 +534,16 @@ export function GuiHorizontalFlow({
   });
 
   return (
-    <div
-      ref={dropRef}
+    <GuiHorizontalFlowShell
+      node={node}
+      shellRef={dropRef}
       className={[
-        "fx-gui-horizontal-flow",
         isDropParent || isDropTarget ? "is-builder-drop-parent" : "",
         isDraggingSource ? "is-builder-dragging-source" : "",
         flowInspector.className
       ]
         .filter(Boolean)
         .join(" ")}
-      data-anchor={node.id}
-      data-fx-primitive="flow"
-      data-fx-class={node.className}
-      data-fx-style={node.style}
-      data-fx-derived-from={node.derivedFrom}
-      data-fx-direction={node.direction}
-      data-fx-horizontal-spacing={node.styleReference?.horizontalSpacing ?? undefined}
-      data-fx-minimal-width={node.styleReference?.minimalWidth ?? undefined}
-      data-fx-minimal-height={node.styleReference?.minimalHeight ?? undefined}
-      data-fx-top-padding={node.styleReference?.topPadding ?? undefined}
-      data-fx-right-padding={node.styleReference?.rightPadding ?? undefined}
-      data-fx-bottom-padding={node.styleReference?.bottomPadding ?? undefined}
-      data-fx-left-padding={node.styleReference?.leftPadding ?? undefined}
-      data-fx-horizontally-stretchable={node.styleReference?.horizontallyStretchable ?? undefined}
-      data-fx-vertically-stretchable={node.styleReference?.verticallyStretchable ?? undefined}
-      data-fx-style-variant={node.styleReference?.variantId ?? undefined}
-      data-fx-role={node.role ?? undefined}
-      style={flowStyle}
       tabIndex={flowInspector.tabIndex}
       onClick={flowInspector.onClick}
       onFocus={flowInspector.onFocus}
@@ -510,8 +561,9 @@ export function GuiHorizontalFlow({
         onInspect={onInspect}
         onInspectLock={onInspectLock}
         parentId={node.id}
+        parentStyleReference={node.styleReference}
       />
-    </div>
+    </GuiHorizontalFlowShell>
   );
 }
 
@@ -770,6 +822,7 @@ export function GuiWindow({
           onInspect={onInspect}
           onInspectLock={onInspectLock}
           parentId={bodyAnchor}
+          parentStyleReference={bodyStyleReference}
         />
         {children}
       </div>
