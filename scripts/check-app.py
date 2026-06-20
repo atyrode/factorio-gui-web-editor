@@ -69,6 +69,7 @@ REQUIRED_ANCHORS = [
     "layout_setting_horizontal_flow_min_width",
     "frame_palette_item",
     "builder_ghost_marker",
+    "gui_shadow_toggle",
 ]
 
 FORBIDDEN_PAYLOADS = [

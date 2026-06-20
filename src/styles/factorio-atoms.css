@@ -616,6 +616,10 @@
   background: linear-gradient(var(--fx-panel), var(--fx-panel)) padding-box;
 }
 
+.fx-gui-window[data-fx-shadows="hidden"] {
+  box-shadow: none;
+}
+
 .fx-gui-window__edge {
   --fx-window-edge-size: var(--fx-window-outer-border);
   position: absolute;

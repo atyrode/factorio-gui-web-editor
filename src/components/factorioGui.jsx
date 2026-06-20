@@ -98,10 +98,11 @@ export function FxCheckbox({
   disabled = false,
   readOnly = true,
   onChange,
-  className = ""
+  className = "",
+  ...props
 }) {
   return (
-    <label className={["fx-checkbox", className].filter(Boolean).join(" ")}>
+    <label className={["fx-checkbox", className].filter(Boolean).join(" ")} {...props}>
       <input
         type="checkbox"
         checked={checked}
@@ -784,7 +785,8 @@ export function GuiWindow({
   builderDragActive = false,
   builderDropTarget = null,
   builderDraggingId = null,
-  styleReference = frameStyleReference
+  styleReference = frameStyleReference,
+  shadowsVisible = true
 }) {
   const contentSize = getFrameContentSize(styleReference);
   const clipSize = getFrameClipSize(styleReference);
@@ -889,6 +891,7 @@ export function GuiWindow({
       data-fx-graphical-border={styleReference.graphicalBorder}
       data-fx-use-header-filler={styleReference.useHeaderFiller}
       data-fx-maximal-height={styleReference.capturedMaximalHeight ?? undefined}
+      data-fx-shadows={shadowsVisible ? "visible" : "hidden"}
       style={mergedStyle}
       tabIndex={rootInspector.tabIndex}
       onMouseEnter={rootInspector.onMouseEnter}

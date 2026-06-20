@@ -210,6 +210,11 @@ must not draw continuous top or bottom rim shadows across split gaps, because
 those strokes visually cap the separator instead of letting it connect into the
 surrounding frame material.
 
+The editor's GUI shadow toggle mirrors the purpose of Factorio's `Ctrl+F7`
+shadow inspection: it disables cast shadows for review without removing bevel
+or inset edge styling. A disabled shadow state should make external depth easier
+to inspect while preserving the Window and Frame graphical-set edge rules above.
+
 The official Factorio API docs list `flow` as the runtime primitive for
 horizontal or vertical child layout. The editor therefore treats
 `agui::HorizontalFlow` as one reusable atom whose direction is fixed to

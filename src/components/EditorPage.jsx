@@ -62,6 +62,7 @@ const DEFAULT_EDITOR_STATE = {
   currentWindow: null,
   showInspector: false,
   showLuaOutput: true,
+  showGuiShadows: true,
   inspectorLocked: false,
   inspectedAnchor: null,
   showLayoutSettings: false,
@@ -139,6 +140,10 @@ function readCachedEditorState() {
         typeof parsedValue.showLuaOutput === "boolean"
           ? parsedValue.showLuaOutput
           : DEFAULT_EDITOR_STATE.showLuaOutput,
+      showGuiShadows:
+        typeof parsedValue.showGuiShadows === "boolean"
+          ? parsedValue.showGuiShadows
+          : DEFAULT_EDITOR_STATE.showGuiShadows,
       inspectorLocked: Boolean(parsedValue.inspectorLocked),
       inspectedAnchor:
         Boolean(parsedValue.inspectorLocked) && typeof parsedValue.inspectedAnchor === "string"
@@ -176,7 +181,8 @@ function EditorCanvas({
   onWindowLocationChange,
   builderDragActive,
   builderDropTarget,
-  builderDraggingId
+  builderDraggingId,
+  shadowsVisible = true
 }) {
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
@@ -341,6 +347,7 @@ function EditorCanvas({
           builderDragActive={builderDragActive}
           builderDropTarget={builderDropTarget}
           builderDraggingId={builderDraggingId}
+          shadowsVisible={shadowsVisible}
         />
       ) : (
         <div className="fx-editor-empty" data-anchor="editor_empty_state">
@@ -924,6 +931,7 @@ export function EditorPage() {
     currentWindow,
     showInspector,
     showLuaOutput,
+    showGuiShadows,
     inspectorLocked,
     inspectedAnchor,
     showLayoutSettings,
@@ -1031,6 +1039,13 @@ export function EditorPage() {
     setEditorState((state) => ({
       ...state,
       showLuaOutput: event.target.checked
+    }));
+  }
+
+  function updateGuiShadowsEnabled(event) {
+    setEditorState((state) => ({
+      ...state,
+      showGuiShadows: event.target.checked
     }));
   }
 
@@ -1577,6 +1592,14 @@ export function EditorPage() {
             >
               Lua output
             </FxCheckbox>
+            <FxCheckbox
+              checked={showGuiShadows}
+              data-anchor="gui_shadow_toggle"
+              readOnly={false}
+              onChange={updateGuiShadowsEnabled}
+            >
+              GUI shadows
+            </FxCheckbox>
             {showInspector ? (
               <StyleInspector
                 canGoBack={inspectorHistory.back.length > 0}
@@ -1634,6 +1657,7 @@ export function EditorPage() {
               builderDragActive={Boolean(builderDrag)}
               builderDropTarget={builderDropTarget}
               builderDraggingId={builderDrag?.kind === "node" ? builderDrag.sourceId : null}
+              shadowsVisible={showGuiShadows}
             />
           </div>
         </section>

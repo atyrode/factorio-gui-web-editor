@@ -260,6 +260,48 @@ function expectSharedFlowSize(actual, expected, label) {
 }
 
 test.describe("Frame builder canvas preview", () => {
+  test("GUI shadow toggle disables only the Window cast shadow", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    const shadowOn = await page.evaluate(() => {
+      const root = document.querySelector('[data-anchor="gui_window"]');
+      const body = document.querySelector('[data-anchor="gui_window_body"]');
+      const frame = document.querySelector('[data-anchor="gui_frame_1"]');
+      return {
+        root: getComputedStyle(root).boxShadow,
+        body: getComputedStyle(body).boxShadow,
+        frame: getComputedStyle(frame).boxShadow
+      };
+    });
+
+    await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).toBeChecked();
+    expect(shadowOn.root).not.toBe("none");
+    expect(shadowOn.body).toBe("none");
+    expect(shadowOn.frame).toContain("inset");
+
+    await page.locator('[data-anchor="gui_shadow_toggle"] input').click({ force: true });
+    await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).not.toBeChecked();
+    await expect(page.locator('[data-anchor="gui_window"]')).toHaveAttribute(
+      "data-fx-shadows",
+      "hidden"
+    );
+
+    const shadowOff = await page.evaluate(() => {
+      const root = document.querySelector('[data-anchor="gui_window"]');
+      const body = document.querySelector('[data-anchor="gui_window_body"]');
+      const frame = document.querySelector('[data-anchor="gui_frame_1"]');
+      return {
+        root: getComputedStyle(root).boxShadow,
+        body: getComputedStyle(body).boxShadow,
+        frame: getComputedStyle(frame).boxShadow
+      };
+    });
+
+    expect(shadowOff.root).toBe("none");
+    expect(shadowOff.body).toBe("none");
+    expect(shadowOff.frame).toBe(shadowOn.frame);
+  });
+
   test("matches final geometry when inserting left of one existing Frame", async ({ page }) => {
     await seedOneFrameWindow(page);
     await dragPaletteToBodyStart(page);

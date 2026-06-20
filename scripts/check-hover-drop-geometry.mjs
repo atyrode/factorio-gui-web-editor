@@ -53,6 +53,7 @@ function flexWidths({ parentWidth, gap, minimumWidth, previewBasis }) {
 const realFlowRule = ruleFor(".fx-gui-horizontal-flow");
 const realFrameRule = ruleFor(".fx-gui-frame");
 const bodyRule = ruleFor(".fx-gui-window__body");
+const shadowDisabledWindowRule = ruleFor('.fx-gui-window[data-fx-shadows="hidden"]');
 const previewRule = ruleFor(".fx-gui-flow-drop-preview-slot.is-expanded");
 const previewFrameRule = ruleFor(".fx-gui-frame.fx-gui-flow-drop-preview-slot.is-expanded");
 const targetedDropRule = ruleFor(".fx-gui-flow-drop-target.is-targeted");
@@ -146,6 +147,11 @@ assert.match(
   declaration(bodyRule, "box-shadow"),
   /^none$/,
   "Window body must act as substrate only; child Frames own top and bottom split edges"
+);
+assert.equal(
+  declaration(shadowDisabledWindowRule, "box-shadow"),
+  "none",
+  "GUI shadow toggle must disable only the Window cast shadow through data-fx-shadows"
 );
 
 for (const selector of [
