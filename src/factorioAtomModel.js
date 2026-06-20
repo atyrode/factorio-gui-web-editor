@@ -1,7 +1,11 @@
 export const atomFieldStates = Object.freeze({
   captured: {
     label: "Captured",
-    description: "Observed from Factorio or implemented from a known Factorio primitive/style."
+    description: "Observed from Factorio captures or another trusted runtime source."
+  },
+  official: {
+    label: "Official",
+    description: "Confirmed by official Factorio API documentation."
   },
   hardcoded: {
     label: "Hardcoded",
@@ -14,6 +18,10 @@ export const atomFieldStates = Object.freeze({
   editorOwned: {
     label: "Editor-owned",
     description: "Owned by the web editor model rather than copied from Factorio runtime output."
+  },
+  implemented: {
+    label: "Implemented",
+    description: "Represented in the editor model, renderer, inspector, and export for the current scope."
   },
   missing: {
     label: "Missing",
@@ -78,6 +86,25 @@ export const atomProgressDimensions = Object.freeze([
   }
 ]);
 
+export const atomProgressCheckStates = Object.freeze({
+  done: {
+    label: "Done",
+    score: 1
+  },
+  partial: {
+    label: "Partial",
+    score: 0.5
+  },
+  todo: {
+    label: "Todo",
+    score: 0
+  },
+  blocked: {
+    label: "Blocked",
+    score: 0
+  }
+});
+
 function assertKnownState(state) {
   if (!atomFieldStates[state]) {
     throw new Error(`Unknown atom field state: ${state}`);
@@ -87,6 +114,18 @@ function assertKnownState(state) {
 function assertKnownType(type) {
   if (!Object.values(atomValueTypes).includes(type)) {
     throw new Error(`Unknown atom field type: ${type}`);
+  }
+}
+
+function assertKnownProgressDimension(dimension) {
+  if (!atomProgressDimensions.some((entry) => entry.id === dimension)) {
+    throw new Error(`Unknown atom progress dimension: ${dimension}`);
+  }
+}
+
+function assertKnownProgressCheckState(state) {
+  if (!atomProgressCheckStates[state]) {
+    throw new Error(`Unknown atom progress check state: ${state}`);
   }
 }
 
@@ -112,15 +151,36 @@ function capturedFieldPercent(fields) {
   return Math.round((capturedFields.length / relevantFields.length) * 100);
 }
 
-function normalizeAtomProgress(fields, progress = {}) {
+function progressCheckPercent(checks) {
+  if (!checks.length) {
+    return null;
+  }
+
+  const score = checks.reduce(
+    (sum, check) => sum + atomProgressCheckStates[check.state].score,
+    0
+  );
+  return Math.round((score / checks.length) * 100);
+}
+
+function normalizeAtomProgress(fields, progress = {}, progressChecks = []) {
   const fallbackEvidence = capturedFieldPercent(fields);
   return Object.freeze(
-    atomProgressDimensions.map((dimension) => ({
-      ...dimension,
-      value: clampPercent(
-        progress[dimension.id] ?? (dimension.id === "evidence" ? fallbackEvidence : 0)
-      )
-    }))
+    atomProgressDimensions.map((dimension) => {
+      const dimensionChecks = progressChecks.filter(
+        (check) => check.dimension === dimension.id
+      );
+      const checkPercent = progressCheckPercent(dimensionChecks);
+
+      return {
+        ...dimension,
+        value: clampPercent(
+          checkPercent ??
+            progress[dimension.id] ??
+            (dimension.id === "evidence" ? fallbackEvidence : 0)
+        )
+      };
+    })
   );
 }
 
@@ -173,6 +233,25 @@ export class AtomCaptureDefinition {
   }
 }
 
+export class AtomProgressCheckDefinition {
+  constructor({
+    dimension,
+    label,
+    state = "todo",
+    note = ""
+  }) {
+    assertKnownProgressDimension(dimension);
+    assertKnownProgressCheckState(state);
+
+    this.dimension = dimension;
+    this.label = label;
+    this.state = state;
+    this.note = note;
+
+    Object.freeze(this);
+  }
+}
+
 export class FactorioAtomDefinition {
   constructor({
     id,
@@ -186,9 +265,11 @@ export class FactorioAtomDefinition {
     fields = [],
     captures = [],
     progress = {},
+    progressChecks = [],
     tracking = {}
   }) {
     const normalizedFields = freezeArray(fields);
+    const normalizedProgressChecks = freezeArray(progressChecks);
 
     this.id = id;
     this.name = name;
@@ -200,7 +281,12 @@ export class FactorioAtomDefinition {
     this.derivedFrom = derivedFrom;
     this.fields = normalizedFields;
     this.captures = freezeArray(captures);
-    this.progress = normalizeAtomProgress(normalizedFields, progress);
+    this.progressChecks = normalizedProgressChecks;
+    this.progress = normalizeAtomProgress(
+      normalizedFields,
+      progress,
+      normalizedProgressChecks
+    );
     this.tracking = Object.freeze({
       document: null,
       implemented: [],
@@ -226,6 +312,10 @@ export function atomField(name, state, note, options = {}) {
 
 export function atomCapture(options) {
   return new AtomCaptureDefinition(options);
+}
+
+export function atomProgressCheck(options) {
+  return new AtomProgressCheckDefinition(options);
 }
 
 export function atomDefinition(options) {

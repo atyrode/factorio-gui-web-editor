@@ -64,8 +64,8 @@ instead of hiding it in code.
 Build each atom through the same sequence:
 
 1. Register the atom in `src/factorioAtomRegistry.js` with fields, captures,
-   progress percentages, implemented items, assumptions, hardcoded values, and
-   missing work.
+   progress checks, implemented items, assumptions, hardcoded values, and missing
+   work.
 2. Extend the shared model in `src/factorioModel.js` or a focused model module.
    Keep stable ids and Factorio primitives explicit.
 3. Render the atom from model data in `src/components/factorioGui.jsx` and
@@ -98,6 +98,22 @@ Classify every atom field so future agents know how much to trust it:
 
 The atom registry should carry the field state; docs should explain only the
 rules or assumptions that need prose.
+
+## Progress Scoring
+
+Progress percentages should be derived from named checks, not hand-entered
+confidence. Each check belongs to one dimension and has one state:
+
+| State | Score |
+| --- | --- |
+| `done` | 1 |
+| `partial` | 0.5 |
+| `todo` | 0 |
+| `blocked` | 0 |
+
+The dimension percentage is the average of its check scores. A blocked check is
+not a failure; it means the next useful step requires in-game evidence, a source
+inspection, or a separate atom implementation.
 
 ## Lua Export Rules
 

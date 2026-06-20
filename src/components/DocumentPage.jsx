@@ -1,6 +1,11 @@
 import { Fragment, useState } from "react";
 import { docPages } from "../docs.js";
-import { atomCompletion, atomFieldStates, factorioAtomRegistry } from "../factorioAtomRegistry.js";
+import {
+  atomCompletion,
+  atomFieldStates,
+  atomProgressCheckStates,
+  factorioAtomRegistry
+} from "../factorioAtomRegistry.js";
 
 function MarkdownLink({ href, children }) {
   const isExternal = /^https?:\/\//.test(href);
@@ -279,6 +284,50 @@ function AtomProgressBar({ atom, compact = false }) {
   );
 }
 
+function AtomProgressChecks({ atom }) {
+  if (!atom.progressChecks?.length) {
+    return null;
+  }
+
+  return (
+    <details className="fx-atom-progress-checks">
+      <summary>Progress criteria</summary>
+      <div className="fx-atom-progress-checks__groups">
+        {atom.progress.map((dimension) => {
+          const checks = atom.progressChecks.filter(
+            (check) => check.dimension === dimension.id
+          );
+
+          if (!checks.length) {
+            return null;
+          }
+
+          return (
+            <div className="fx-atom-progress-checks__group" key={dimension.id}>
+              <h4>{dimension.label}</h4>
+              <ul>
+                {checks.map((check) => {
+                  const state = atomProgressCheckStates[check.state];
+                  return (
+                    <li
+                      className={`fx-atom-progress-check fx-atom-progress-check--${check.state}`}
+                      key={`${dimension.id}-${check.label}`}
+                    >
+                      <span>{state.label}</span>
+                      <strong>{check.label}</strong>
+                      {check.note ? <p>{check.note}</p> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
 function AtomCapture({ capture }) {
   return (
     <details className="fx-atom-capture">
@@ -413,6 +462,7 @@ function AtomTracker() {
           {selectedAtom.tracking?.document ? (
             <p className="fx-atom-detail__document">{selectedAtom.tracking.document}</p>
           ) : null}
+          <AtomProgressChecks atom={selectedAtom} />
           <div className="fx-atom-tracking">
             <AtomTrackingSection title="Implemented" items={selectedAtom.tracking?.implemented} />
             <AtomTrackingSection title="Assumptions" items={selectedAtom.tracking?.assumptions} />

@@ -2,12 +2,15 @@ export const FACTORIO_GUI_MODEL_SCHEMA = "factorio-gui-layout.v0";
 export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
 
 const FRAME_GRAPHICAL_BORDER = 6;
-const FRAME_REFERENCE_OUTER_SIZE = Object.freeze({ width: 1476, height: 870 });
-const FRAME_REFERENCE_MAXIMUM_VERTICAL_SQUASH_SIZE = 540;
 const FRAME_CLIP_TOP_OVERFLOW = 4;
+export const DEFAULT_WINDOW_REFERENCE_ID = "blueprint-library-window";
 
 function freezeSize(size) {
   return Object.freeze({ width: size.width, height: size.height });
+}
+
+function freezeOptionalSize(size) {
+  return size ? freezeSize(size) : null;
 }
 
 function freezeRectangle(rectangle) {
@@ -17,8 +20,16 @@ function freezeRectangle(rectangle) {
   });
 }
 
+function freezeOptionalRectangle(rectangle) {
+  return rectangle ? freezeRectangle(rectangle) : null;
+}
+
+function freezeVector(vector) {
+  return Object.freeze({ x: vector.x, y: vector.y });
+}
+
 function frameContentSize({
-  outerSize = FRAME_REFERENCE_OUTER_SIZE,
+  outerSize,
   graphicalBorder = FRAME_GRAPHICAL_BORDER,
   topPadding,
   rightPadding,
@@ -32,7 +43,7 @@ function frameContentSize({
 }
 
 function frameClipSize({
-  outerSize = FRAME_REFERENCE_OUTER_SIZE,
+  outerSize,
   clipTopOverflow = FRAME_CLIP_TOP_OVERFLOW
 }) {
   return freezeRectangle({
@@ -44,60 +55,197 @@ function frameClipSize({
   });
 }
 
-const frameContentReferenceSize = frameContentSize({
-  topPadding: 6,
-  rightPadding: 12,
-  bottomPadding: 12,
-  leftPadding: 12
-});
+function windowReferenceCapture({
+  id,
+  label,
+  className,
+  style,
+  derivedFrom = "frame",
+  capturedSize,
+  capturedContentSize,
+  capturedClipSize,
+  capturedSizeBeforeStretching = capturedSize,
+  capturedMaximalHeight = null,
+  maximumHorizontalSquashSize = 0,
+  maximumVerticalSquashSize,
+  padding,
+  useHeaderFiller = true,
+  body
+}) {
+  return Object.freeze({
+    id,
+    label,
+    className,
+    style,
+    derivedFrom,
+    capturedSize: freezeSize(capturedSize),
+    capturedContentSize: freezeSize(capturedContentSize),
+    capturedClipSize: freezeRectangle(capturedClipSize),
+    capturedSizeBeforeStretching: freezeSize(capturedSizeBeforeStretching),
+    capturedMaximalHeight,
+    maximumHorizontalSquashSize,
+    maximumVerticalSquashSize,
+    padding: Object.freeze({ ...padding }),
+    useHeaderFiller,
+    body: Object.freeze({
+      ...body,
+      relative: freezeVector(body.relative ?? { x: 0, y: 48 }),
+      capturedSize: freezeSize(body.capturedSize),
+      capturedContentSize: freezeOptionalSize(body.capturedContentSize ?? body.capturedSize),
+      capturedClipSize: freezeOptionalRectangle(
+        body.capturedClipSize ?? {
+          offset: { x: 0, y: 0 },
+          size: body.capturedSize
+        }
+      ),
+      capturedSizeBeforeStretching: freezeOptionalSize(
+        body.capturedSizeBeforeStretching ?? body.capturedSize
+      ),
+      childRows: Object.freeze([...(body.childRows ?? [])])
+    })
+  });
+}
 
-const frameClipReferenceSize = frameClipSize({});
+export const windowReferenceCaptures = Object.freeze([
+  windowReferenceCapture({
+    id: "blueprint-library-window",
+    label: "Blueprint Library Window",
+    className: "agui::Window",
+    style: "inset_frame_container_frame",
+    capturedSize: { width: 1476, height: 870 },
+    capturedContentSize: { width: 1440, height: 840 },
+    capturedClipSize: {
+      offset: { x: 0, y: -4 },
+      size: { width: 1476, height: 874 }
+    },
+    maximumVerticalSquashSize: 540,
+    padding: { top: 6, right: 12, bottom: 12, left: 12 },
+    body: {
+      className: "agui::HorizontalFlow",
+      style: "inset_frame_container_horizontal_flow",
+      styleDescription: "Part of inset_frame_container_frame definition",
+      derivedFrom: "inset_frame_container_horizontal_flow",
+      direction: "horizontal",
+      relative: { x: 0, y: 48 },
+      capturedSize: { width: 1440, height: 792 },
+      maximumHorizontalSquashSize: 0,
+      maximumVerticalSquashSize: 540,
+      horizontalSpacing: 18,
+      inheritedHorizontalSpacing: 6,
+      verticalSpacing: null,
+      inheritedVerticalSpacing: null,
+      childRows: [
+        { label: "class agui::Frame", value: FACTORIO_NOT_IMPLEMENTED },
+        { label: "class FrameWithSubheader", value: FACTORIO_NOT_IMPLEMENTED },
+        { label: "class agui::VerticalFlow", value: FACTORIO_NOT_IMPLEMENTED }
+      ]
+    }
+  }),
+  windowReferenceCapture({
+    id: "filter-select-root-window",
+    label: "Filter selection root Window",
+    className: "FilterSelectGui<class IDWithQualityFilter<class ID<...>",
+    style: "frame",
+    capturedSize: { width: 672, height: 973 },
+    capturedContentSize: { width: 636, height: 943 },
+    capturedClipSize: {
+      offset: { x: 0, y: -4 },
+      size: { width: 672, height: 977 }
+    },
+    capturedMaximalHeight: 973,
+    maximumVerticalSquashSize: 673,
+    padding: { top: 6, right: 12, bottom: 12, left: 12 },
+    body: {
+      className: "agui::VerticalFlow",
+      style: "inside_deep_frame",
+      styleDescription: "Part of inside_deep_frame definition",
+      derivedFrom: "inside_deep_frame",
+      direction: "vertical",
+      relative: { x: 0, y: 48 },
+      capturedSize: { width: 636, height: 895 },
+      maximumHorizontalSquashSize: 0,
+      maximumVerticalSquashSize: 673,
+      horizontalSpacing: null,
+      inheritedHorizontalSpacing: null,
+      verticalSpacing: 0,
+      inheritedVerticalSpacing: 6,
+      childRows: [
+        { label: "class agui::TabbedPane", value: FACTORIO_NOT_IMPLEMENTED }
+      ]
+    }
+  })
+]);
 
-export const frameStyleReference = Object.freeze({
-  className: "agui::Window",
-  style: "inset_frame_container_frame",
-  derivedFrom: "frame",
-  capturedSize: FRAME_REFERENCE_OUTER_SIZE,
-  capturedContentSize: frameContentReferenceSize,
-  capturedClipSize: frameClipReferenceSize,
-  capturedSizeBeforeStretching: FRAME_REFERENCE_OUTER_SIZE,
-  capturedMaximalHeight: null,
-  topPadding: 6,
-  rightPadding: 12,
-  bottomPadding: 12,
-  leftPadding: 12,
-  graphicalBorder: FRAME_GRAPHICAL_BORDER,
-  clipTopOverflow: FRAME_CLIP_TOP_OVERFLOW,
-  useHeaderFiller: true,
-  titlebarHeight: 48,
-  titlebarContentHeight: 42,
-  titlebarBottomPadding: 6,
-  titlebarHorizontalSpacing: 12,
-  titleLabelStyle: "frame_title",
-  titleLabelHeight: 46,
-  titleLabelContentHeight: 42,
-  titleLabelTopMargin: -4,
-  titleLabelBottomPadding: 4,
-  dragHandleStyle: "draggable_space_header",
-  dragHandleHeight: 36,
-  dragHandleLeftMargin: 6,
-  dragHandleRightMargin: 6,
-  bodyClassName: "agui::HorizontalFlow",
-  bodyStyle: "inset_frame_container_horizontal_flow",
-  bodyDerivedFrom: "inset_frame_container_horizontal_flow",
-  bodyDirection: "horizontal",
-  bodyHorizontalSpacing: 18,
-  bodyInheritedHorizontalSpacing: 6,
-  bodyVerticalSpacing: null,
-  maximumHorizontalSquashSize: 0,
-  maximumVerticalSquashSize: FRAME_REFERENCE_MAXIMUM_VERTICAL_SQUASH_SIZE
-});
+export function getWindowReferenceCapture(referenceId = DEFAULT_WINDOW_REFERENCE_ID) {
+  return (
+    windowReferenceCaptures.find((reference) => reference.id === referenceId) ??
+    windowReferenceCaptures.find((reference) => reference.id === DEFAULT_WINDOW_REFERENCE_ID)
+  );
+}
+
+function createFrameStyleReference(reference = getWindowReferenceCapture()) {
+  return Object.freeze({
+    referenceId: reference.id,
+    referenceLabel: reference.label,
+    className: reference.className,
+    style: reference.style,
+    derivedFrom: reference.derivedFrom,
+    capturedSize: reference.capturedSize,
+    capturedContentSize: reference.capturedContentSize,
+    capturedClipSize: reference.capturedClipSize,
+    capturedSizeBeforeStretching: reference.capturedSizeBeforeStretching,
+    capturedMaximalHeight: reference.capturedMaximalHeight,
+    topPadding: reference.padding.top,
+    rightPadding: reference.padding.right,
+    bottomPadding: reference.padding.bottom,
+    leftPadding: reference.padding.left,
+    graphicalBorder: FRAME_GRAPHICAL_BORDER,
+    clipTopOverflow: FRAME_CLIP_TOP_OVERFLOW,
+    useHeaderFiller: reference.useHeaderFiller,
+    titlebarHeight: 48,
+    titlebarContentHeight: 42,
+    titlebarBottomPadding: 6,
+    titlebarHorizontalSpacing: 12,
+    titleLabelStyle: "frame_title",
+    titleLabelHeight: 46,
+    titleLabelContentHeight: 42,
+    titleLabelTopMargin: -4,
+    titleLabelBottomPadding: 4,
+    dragHandleStyle: "draggable_space_header",
+    dragHandleHeight: 36,
+    dragHandleLeftMargin: 6,
+    dragHandleRightMargin: 6,
+    bodyClassName: reference.body.className,
+    bodyStyle: reference.body.style,
+    bodyStyleDescription: reference.body.styleDescription,
+    bodyDerivedFrom: reference.body.derivedFrom,
+    bodyDirection: reference.body.direction,
+    bodyRelative: reference.body.relative,
+    bodyCapturedSize: reference.body.capturedSize,
+    bodyCapturedContentSize: reference.body.capturedContentSize,
+    bodyCapturedClipSize: reference.body.capturedClipSize,
+    bodyCapturedSizeBeforeStretching: reference.body.capturedSizeBeforeStretching,
+    bodyHorizontalSpacing: reference.body.horizontalSpacing,
+    bodyInheritedHorizontalSpacing: reference.body.inheritedHorizontalSpacing,
+    bodyVerticalSpacing: reference.body.verticalSpacing,
+    bodyInheritedVerticalSpacing: reference.body.inheritedVerticalSpacing,
+    bodyChildRows: reference.body.childRows,
+    maximumHorizontalSquashSize: reference.maximumHorizontalSquashSize,
+    maximumVerticalSquashSize: reference.maximumVerticalSquashSize
+  });
+}
+
+export const frameStyleReference = createFrameStyleReference();
 
 function estimateTitleLabelWidth(caption) {
   return Math.max(1, Math.round(String(caption).length * 11.2));
 }
 
 export function getFrameContentSize(style = frameStyleReference) {
+  if (style.capturedContentSize) {
+    return style.capturedContentSize;
+  }
+
   return frameContentSize({
     outerSize: style.capturedSize,
     graphicalBorder: style.graphicalBorder,
@@ -109,6 +257,10 @@ export function getFrameContentSize(style = frameStyleReference) {
 }
 
 export function getFrameClipSize(style = frameStyleReference) {
+  if (style.capturedClipSize) {
+    return style.capturedClipSize;
+  }
+
   return frameClipSize({
     outerSize: style.capturedSize,
     clipTopOverflow: style.clipTopOverflow
@@ -143,11 +295,33 @@ export function getFrameTitlebarClipSize(style = frameStyleReference) {
 }
 
 export function getFrameBodySize(style = frameStyleReference) {
+  if (style.bodyCapturedSize) {
+    return style.bodyCapturedSize;
+  }
+
   const contentSize = getFrameContentSize(style);
   return freezeSize({
     width: contentSize.width,
     height: Math.max(0, contentSize.height - style.titlebarHeight)
   });
+}
+
+function getFrameBodyContentSize(style) {
+  return style.bodyCapturedContentSize ?? getFrameBodySize(style);
+}
+
+function getFrameBodyClipSize(style) {
+  return (
+    style.bodyCapturedClipSize ??
+    freezeRectangle({
+      offset: { x: 0, y: 0 },
+      size: getFrameBodySize(style)
+    })
+  );
+}
+
+function getFrameBodySizeBeforeStretching(style) {
+  return style.bodyCapturedSizeBeforeStretching ?? getFrameBodySize(style);
 }
 
 function getFrameDragHandleWidth(style, titleLabelWidth) {
@@ -180,6 +354,42 @@ function getFrameDragHandleRelative(style, titleLabelWidth) {
   };
 }
 
+function getBodySpacingProperties(bodyStyleReference) {
+  const properties = [];
+
+  if (bodyStyleReference.horizontalSpacing != null) {
+    properties.push({
+      label: "horizontal_spacing",
+      value: bodyStyleReference.horizontalSpacing
+    });
+  }
+
+  if (bodyStyleReference.inheritedHorizontalSpacing != null) {
+    properties.push({
+      label: "horizontal_spacing",
+      value: bodyStyleReference.inheritedHorizontalSpacing,
+      indent: 1
+    });
+  }
+
+  if (bodyStyleReference.verticalSpacing != null) {
+    properties.push({
+      label: "vertical_spacing",
+      value: bodyStyleReference.verticalSpacing
+    });
+  }
+
+  if (bodyStyleReference.inheritedVerticalSpacing != null) {
+    properties.push({
+      label: "vertical_spacing",
+      value: bodyStyleReference.inheritedVerticalSpacing,
+      indent: 1
+    });
+  }
+
+  return properties;
+}
+
 function sizePair({ width, height }) {
   return `{${width}, ${height}}`;
 }
@@ -207,27 +417,29 @@ function normalizeModelLocation(location) {
 
 export function createWindowModel({
   title = "Untitled window",
-  location: sourceLocation = null
+  location: sourceLocation = null,
+  referenceId = DEFAULT_WINDOW_REFERENCE_ID
 } = {}) {
   const caption = title.trim() || "Untitled window";
   const location = normalizeModelLocation(sourceLocation);
+  const styleReference = createFrameStyleReference(getWindowReferenceCapture(referenceId));
 
   return {
     schema: FACTORIO_GUI_MODEL_SCHEMA,
     root: {
       id: "gui_window",
       primitive: "frame",
-      className: frameStyleReference.className,
-      style: frameStyleReference.style,
-      derivedFrom: frameStyleReference.derivedFrom,
+      className: styleReference.className,
+      style: styleReference.style,
+      derivedFrom: styleReference.derivedFrom,
       direction: "vertical",
       location,
       referenceSize: {
-        ...frameStyleReference.capturedSize,
-        contentWidth: frameStyleReference.capturedContentSize.width,
-        contentHeight: frameStyleReference.capturedContentSize.height
+        ...styleReference.capturedSize,
+        contentWidth: styleReference.capturedContentSize.width,
+        contentHeight: styleReference.capturedContentSize.height
       },
-      styleReference: frameStyleReference,
+      styleReference,
       children: [
         {
           id: "gui_window_titlebar",
@@ -235,10 +447,10 @@ export function createWindowModel({
           className: "agui::HorizontalFlow",
           style: "frame_header_flow",
           direction: "horizontal",
-          referenceSize: { height: frameStyleReference.titlebarHeight },
+          referenceSize: { height: styleReference.titlebarHeight },
           styleReference: {
-            bottomPadding: frameStyleReference.titlebarBottomPadding,
-            horizontalSpacing: frameStyleReference.titlebarHorizontalSpacing,
+            bottomPadding: styleReference.titlebarBottomPadding,
+            horizontalSpacing: styleReference.titlebarHorizontalSpacing,
             horizontallyStretchable: true,
             verticallyStretchable: false,
             ignoredBySearch: true
@@ -249,15 +461,15 @@ export function createWindowModel({
               primitive: "label",
               className: "agui::Label",
               caption,
-              style: frameStyleReference.titleLabelStyle,
+              style: styleReference.titleLabelStyle,
               referenceSize: {
                 width: estimateTitleLabelWidth(caption),
-                height: frameStyleReference.titleLabelHeight,
-                contentHeight: frameStyleReference.titleLabelContentHeight
+                height: styleReference.titleLabelHeight,
+                contentHeight: styleReference.titleLabelContentHeight
               },
               styleReference: {
-                topMargin: frameStyleReference.titleLabelTopMargin,
-                bottomPadding: frameStyleReference.titleLabelBottomPadding,
+                topMargin: styleReference.titleLabelTopMargin,
+                bottomPadding: styleReference.titleLabelBottomPadding,
                 verticallyStretchable: true,
                 horizontallySquashable: true,
                 font: "heading-1",
@@ -269,14 +481,14 @@ export function createWindowModel({
               id: "gui_window_drag_handle",
               primitive: "empty-widget",
               className: "agui::Filler",
-              style: frameStyleReference.dragHandleStyle,
+              style: styleReference.dragHandleStyle,
               referenceSize: {
-                height: frameStyleReference.dragHandleHeight,
-                naturalHeight: frameStyleReference.dragHandleHeight
+                height: styleReference.dragHandleHeight,
+                naturalHeight: styleReference.dragHandleHeight
               },
               styleReference: {
-                leftMargin: frameStyleReference.dragHandleLeftMargin,
-                rightMargin: frameStyleReference.dragHandleRightMargin,
+                leftMargin: styleReference.dragHandleLeftMargin,
+                rightMargin: styleReference.dragHandleRightMargin,
                 horizontallyStretchable: true,
                 verticallyStretchable: true,
                 ignoredBySearch: true
@@ -288,14 +500,15 @@ export function createWindowModel({
         {
           id: "gui_window_body",
           primitive: "flow",
-          className: frameStyleReference.bodyClassName,
-          style: frameStyleReference.bodyStyle,
-          direction: frameStyleReference.bodyDirection,
+          className: styleReference.bodyClassName,
+          style: styleReference.bodyStyle,
+          direction: styleReference.bodyDirection,
           styleReference: {
-            horizontalSpacing: frameStyleReference.bodyHorizontalSpacing,
-            inheritedHorizontalSpacing: frameStyleReference.bodyInheritedHorizontalSpacing,
-            verticalSpacing: frameStyleReference.bodyVerticalSpacing,
-            maximumVerticalSquashSize: frameStyleReference.maximumVerticalSquashSize
+            horizontalSpacing: styleReference.bodyHorizontalSpacing,
+            inheritedHorizontalSpacing: styleReference.bodyInheritedHorizontalSpacing,
+            verticalSpacing: styleReference.bodyVerticalSpacing,
+            inheritedVerticalSpacing: styleReference.bodyInheritedVerticalSpacing,
+            maximumVerticalSquashSize: styleReference.maximumVerticalSquashSize
           },
           children: []
         }
@@ -350,6 +563,9 @@ export function getWindowInspectorRows(model) {
   const titlebarContentSize = getFrameTitlebarContentSize(style);
   const titlebarClipSize = getFrameTitlebarClipSize(style);
   const bodySize = getFrameBodySize(style);
+  const bodyContentSize = getFrameBodyContentSize(style);
+  const bodyClipSize = getFrameBodyClipSize(style);
+  const bodySizeBeforeStretching = getFrameBodySizeBeforeStretching(style);
   const dragHandleWidth = getFrameDragHandleWidth(style, titleLabelWidth);
   const titlebarSizeBeforeStretching = getFrameTitlebarSizeBeforeStretching(
     style,
@@ -502,24 +718,19 @@ export function getWindowInspectorRows(model) {
     {
       id: body.id,
       title: `class ${body.className}`,
-      style: "Part of frame definition",
+      style: style.bodyStyleDescription,
       derivedFrom: style.bodyDerivedFrom,
-      relative: "[0, 0]",
+      relative: `[${style.bodyRelative.x}, ${style.bodyRelative.y}]`,
       size: sizePair(bodySize),
-      contentSize: sizePair(bodySize),
-      clipSize: `{{0, 0}, {${bodySize.width}, ${bodySize.height}}}`,
-      sizeBeforeStretching: sizePair(bodySize),
+      contentSize: sizePair(bodyContentSize),
+      clipSize: `{{${bodyClipSize.offset.x}, ${bodyClipSize.offset.y}}, {${bodyClipSize.size.width}, ${bodyClipSize.size.height}}}`,
+      sizeBeforeStretching: sizePair(bodySizeBeforeStretching),
       maximumHorizontalSquashSize: 0,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
-      properties: [
-        { label: "horizontal_spacing", value: body.styleReference.horizontalSpacing },
-        { label: "horizontal_spacing", value: body.styleReference.inheritedHorizontalSpacing, indent: 1 }
-      ],
+      properties: getBodySpacingProperties(body.styleReference),
       childRows: [
         { label: "children", value: "" },
-        { label: "class agui::Frame", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 },
-        { label: "class FrameWithSubheader", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 },
-        { label: "class agui::VerticalFlow", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 }
+        ...style.bodyChildRows.map((row) => ({ ...row, indent: 1 }))
       ]
     }
   ];

@@ -18,7 +18,7 @@ Each atom field should include:
 ```text
 name: stable field name
 type: expected value type, such as integer, size2i, vector2i, rectangle2i, boolean, style-name
-state: captured, inferred, editorOwned, hardcoded, missing, notImplemented, planned, or notApplicable
+state: captured, official, inferred, editorOwned, implemented, hardcoded, missing, notImplemented, planned, or notApplicable
 example: representative capture value, if known
 source: capture id, fixture id, or documentation source
 note: what we know and what we do not know yet
@@ -45,6 +45,12 @@ The progress bar is segmented by those dimensions. The headline percentage is
 only the average; it should never be read as "captured fields" or "1:1
 Factorio parity" by itself.
 
+Atom progress should come from named progress checks whenever an atom has enough
+known scope to write them. Each check is `done`, `partial`, `todo`, or
+`blocked`; the dimension percentage is derived from those check states. Older
+or rougher atoms may still use manual percentages until their own completion
+checks are written.
+
 Atom identity should name the reusable GUI component or reported class family,
 not a style-specific role. Use names such as `Window`, `Horizontal Flow`,
 `Vertical Flow`, `Label`, and `Filler`. Captured styles such as
@@ -64,12 +70,15 @@ root agui::Window frame
 `- agui::HorizontalFlow inset_frame_container_horizontal_flow
 ```
 
-The current Window reference uses the attached Blueprint Library capture as its
-concrete box: outer size `1476 x 870`, content size `1440 x 840`, and clip size
-`{{0, -4}, {1476, 874}}`. The model derives titlebar and body geometry from
-that reference box plus the captured frame edge and padding values. This is a
-reference atom, not a general layout solver for every top-level window width,
-height, or side-frame variant.
+Window references are named capture records, not one anonymous hardcoded box.
+The current default is the attached Blueprint Library capture: outer size
+`1476 x 870`, content size `1440 x 840`, and clip size
+`{{0, -4}, {1476, 874}}`. The model also carries a full-height vertical-body
+reference from the filter-selection root so horizontal and vertical content
+flows are not conflated. The model derives titlebar and body geometry from the
+selected reference plus the captured frame edge and padding values. This is not
+yet a general layout solver for every top-level window width, height, or
+side-frame variant.
 
 The same Blueprint Library capture also shows optional header controls and body
 children that are tracked but not yet implemented as editable/exportable child
@@ -114,7 +123,8 @@ role: local semantic role only when the primitive needs extra meaning
 The model also exposes `constraints`, which are named rules that must remain
 true for the structure. Current constraints keep the frame top-level, avoid
 freeform absolute positioning inside Factorio layout, require a draggable
-titlebar, stretch the header filler, and keep the body as a vertical flow.
+titlebar, stretch the header filler, and keep the body as a Window content flow
+whose direction/style comes from the selected reference.
 
 ## Inspector Projection
 

@@ -4,12 +4,20 @@ import {
   atomDefinition,
   atomField,
   atomFieldStates,
+  atomProgressCheck,
+  atomProgressCheckStates,
   atomValueTypes
 } from "./factorioAtomModel.js";
 
-export { atomCompletion, atomFieldStates, atomValueTypes };
+export {
+  atomCompletion,
+  atomFieldStates,
+  atomProgressCheckStates,
+  atomValueTypes
+};
 
 const field = atomField;
+const progressCheck = atomProgressCheck;
 const {
   boolean,
   className,
@@ -38,23 +46,16 @@ export const factorioAtomRegistry = Object.freeze([
     summary: "Top-level GUI shell with titlebar, drag handle, and body flow.",
     className: "agui::Window",
     derivedFrom: "frame",
-    progress: {
-      evidence: 100,
-      model: 94,
-      renderer: 92,
-      luaExport: 84,
-      behavior: 72
-    },
     fields: [
       field("className", "captured", "Top-level GUI roots can report generic or GUI-specific classes.", {
         type: className,
         example: "agui::Window / Factoriopedia / AchievementGui / agui::Frame",
         source: "top-level-window-captures"
       }),
-      field("primitive", "inferred", "Mapped to Factorio `frame` because the style derives from `frame` and Lua top-level windows are frames.", {
+      field("primitive", "official", "Mapped to Factorio `frame`: official Factorio GUI element types include `frame` and `flow`, but not a separate public `window` type.", {
         type: guiPrimitive,
         example: "frame",
-        source: "blueprint-library-window"
+        source: "factorio-runtime-docs"
       }),
       field("style", "captured", "Current seed uses `inset_frame_container_frame`; real top-level roots also use `frame`, `character_gui_left_side`, and `frame_without_left_side`.", {
         type: styleName,
@@ -96,7 +97,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: 0,
         source: "blueprint-library-window"
       }),
-      field("maximum_vertical_squash_size", "captured", "Captured values vary by content/window type. The editor carries the full-height reference value but does not yet claim a general derivation formula.", {
+      field("maximum_vertical_squash_size", "captured", "Captured values vary by content/window type. The editor carries the selected reference value but does not yet claim a general derivation formula.", {
         type: integer,
         example: "540 / 619 / 775 / 673 / 631 / 565",
         source: "top-level-window-captures"
@@ -126,16 +127,194 @@ export const factorioAtomRegistry = Object.freeze([
         example: 6,
         source: "top-level-window-captures"
       }),
-      field("reference outer size", "captured", "The editor's current Window atom uses the attached Blueprint Library capture as its reference box: 1476 x 870 outer, 1440 x 840 content.", {
+      field("reference captures", "implemented", "Window reference captures are named model data. The current default is the attached Blueprint Library capture, and a full-height vertical-body capture is represented separately.", {
         type: size2i,
-        example: "{1476, 870}",
-        source: "blueprint-library-window"
+        example: "blueprint-library-window / filter-select-root-window",
+        source: "window-reference-captures"
       }),
       field("variant layout solver", "planned", "The current atom derives the reference box; future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation."),
       field("optional header actions", "planned", "SearchBar, browse arrows, and CloseButton are captured in some vanilla headers but are optional top-level controls, not universal Window children.", {
         type: nodeList,
         example: "SearchBar, HorizontalFlow[BrowseArrow, BrowseArrow], CloseButton",
         source: "blueprint-library-header"
+      })
+    ],
+    progressChecks: [
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Official Factorio primitive model checked",
+        note: "`frame` and `flow` are official GUI element types; public API has no separate `window` type."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Blueprint Library `agui::Window` capture transcribed"
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Full-height top-level root captures transcribed"
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Side-frame root captures transcribed"
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Header and body child flow captures transcribed"
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "blocked",
+        label: "Moved-window, UI-scale, and Ctrl+F5 validation captures",
+        note: "Needed to settle `relative`, `maximal_height`, frame-band geometry, and squash-size derivation."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Root Window maps to a top-level frame node"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Header flow, title label, and drag filler are structured nodes"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Blueprint Library reference is named capture data"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Full-height vertical-body reference is named capture data"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Content, clip, titlebar, and body geometry read from structured reference data"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Body flow direction and spacing are data-driven"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "partial",
+        label: "Side-frame variants represented",
+        note: "`character_gui_left_side` and `frame_without_left_side` are captured, but not yet selectable/model-complete."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "partial",
+        label: "Optional children represented",
+        note: "SearchPopup, header actions, Frame, FrameWithSubheader, and TabbedPane are visible as gaps but not implemented child atoms."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "blocked",
+        label: "General squash/maximal-height layout solver",
+        note: "Requires more in-game captures or script-visible style dumps."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Top-level frame band and padding render from model tokens"
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Header flow, title, and drag filler render"
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Horizontal and vertical body flow direction render from model data"
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Inspector rows and geometry overlays render from structured data"
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "partial",
+        label: "Style variants render",
+        note: "Primary frame is covered; side-frame graphical-set variants are not rendered exactly."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "partial",
+        label: "Optional body/header children render",
+        note: "They are listed as not implemented rather than rendered as real atoms."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Root frame export uses supported Factorio primitive/style fields"
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Header flow, title label, and drag filler export"
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Body flow exports direction and matching spacing field"
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Unresolved computed metrics are not exported",
+        note: "`maximal_height`, renderer clip metrics, and null spacing fields stay out of Lua."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "partial",
+        label: "Reference variants export",
+        note: "Implemented model can represent horizontal and vertical body flows, but the UI cannot choose/export variants yet."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "todo",
+        label: "Optional child atoms export"
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Browser titlebar dragging is implemented"
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Lua drag targets are emitted for title/filler"
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Auto-center versus explicit screen location is modeled"
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "partial",
+        label: "Inspector navigation behavior is modeled",
+        note: "Useful for editor review, but not a Factorio runtime behavior."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "blocked",
+        label: "In-game moved-window behavior validated",
+        note: "Needed to prove the relationship between Ctrl+F6 `relative`, Lua `location`, and `on_gui_location_changed`."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "todo",
+        label: "Optional header/body child behavior hooks"
       })
     ],
     captures: [
@@ -314,11 +493,10 @@ export const factorioAtomRegistry = Object.freeze([
       implemented: [
         "Editor creates a top-level frame with a titlebar, draggable filler, title label, and body flow.",
         "Inspector rows expose Window class/style/padding/sizing fields from structured data.",
-        "Reference Window geometry derives content, clip, titlebar, and body sizes from the attached Blueprint Library outer frame.",
+        "Reference Window geometry derives content, clip, titlebar, and body sizes from named Window reference captures.",
         "Lua export emits a top-level `frame` using the captured style, padding fields, and body flow spacing."
       ],
       assumptions: [
-        "`agui::Window` maps to a Factorio `frame` primitive for Lua export.",
         "GUI-specific root classes still share the same frame-derived top-level layout contract.",
         "`relative: [0, 0]` is not trusted as screen position until moved-window captures confirm it.",
         "`maximal_height` is captured as a runtime/layout metric and is not exported until we know when Factorio expects it to be assigned.",
@@ -326,7 +504,7 @@ export const factorioAtomRegistry = Object.freeze([
         "`maximum_vertical_squash_size` appears content- and variant-dependent, so the reference value is carried without generalizing it to every future Window."
       ],
       hardcoded: [
-        "The editor reference box is still chosen from one Blueprint Library capture until users can select width/layout variants.",
+        "The editor still defaults to the Blueprint Library reference until users can select width/layout variants.",
         "Browser CSS paints the frame bevel manually from captured visuals."
       ],
       missing: [

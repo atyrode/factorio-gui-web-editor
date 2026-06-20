@@ -199,12 +199,14 @@ the inspected style padding. For the current reference fixture,
 The border must stay neutral charcoal/black; it is not the brown
 public-website panel edge.
 
-The editor's current Window reference box is the attached Blueprint Library
+The editor's default Window reference box is the attached Blueprint Library
 capture: outer size `1476 x 870`, content size `1440 x 840`, clip size
-`{{0, -4}, {1476, 874}}`, and `maximum_vertical_squash_size: 540`. That capture
-does not show `maximal_height`; full-height captures still report
-`maximal_height: 973` and remain evidence for future height/viewport rules
-rather than replacing the current reference box automatically.
+`{{0, -4}, {1476, 874}}`, and `maximum_vertical_squash_size: 540`. Window
+references are now named capture records; the model also carries a full-height
+filter-selection reference with `672 x 973` outer size, `636 x 943` content
+size, `{{0, -4}, {672, 977}}` clip size, `maximal_height: 973`, and a vertical
+body flow. These captures are evidence for future width, height, and body
+variant controls rather than automatic proof of a general layout formula.
 
 This 6 px edge should be treated as a graphical frame band, not a hard CSS
 stroke. A close top-left crop sampled as a soft ramp from the world background
