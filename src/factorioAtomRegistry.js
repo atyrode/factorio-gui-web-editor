@@ -67,15 +67,15 @@ export const factorioAtomRegistry = Object.freeze([
         example: "frame",
         source: "blueprint-library-window"
       }),
-      field("relative", "captured", "Child relative values are parent-layout coordinates. Blueprint Library root stays `[0, 0]` when moved, while Factoriopedia can report screen-offset-like values, so root relative is variant/container-specific and not used as exported location.", {
+      field("relative", "captured", "Child relative values are parent-layout coordinates. Blueprint Library root stays `[0, 0]` when moved, while Factoriopedia root reports changing screen-offset-like values when moved. Root relative is variant/container-specific evidence and is not used as exported location.", {
         type: vector2i,
-        example: "root [0, 0], title [0, -4], filler [209, 0]",
+        example: "Blueprint root [0, 0], Factoriopedia samples [388, 106] / [382, 220] / [1142, 315]",
         source: "blueprint-library-window"
       }),
-      field("size", "captured", "Renderer-computed outer size from the Blueprint Library capture.", {
+      field("size", "implemented", "Editor-created Windows use an authored default size that fits the preview; captured in-game sizes remain reference fixtures.", {
         type: size2i,
-        example: "{1476, 870}",
-        source: "blueprint-library-window"
+        example: "editor default {680, 480}; Blueprint capture {1476, 870}",
+        source: "window-reference-captures"
       }),
       field("content_size", "captured", "Renderer-computed content box. For ordinary frame-derived roots, it equals outer size minus the 6 px graphical frame band on each side and inspected padding.", {
         type: size2i,
@@ -127,13 +127,18 @@ export const factorioAtomRegistry = Object.freeze([
         example: 6,
         source: "top-level-window-captures"
       }),
-      field("reference captures", "implemented", "Window reference captures are named model data. The current default is the attached Blueprint Library capture, and a full-height vertical-body capture is represented separately.", {
+      field("capture context", "captured", "Current Window screenshots were taken with UI scale set to Manual (pixels) 150%. More scales are still needed before deriving scale-sensitive formulas.", {
+        type: string,
+        example: "Manual (pixels) 150%",
+        source: "user-window-captures"
+      }),
+      field("reference captures", "implemented", "Window references are named model data. The current editor default is authored for the web preview; Blueprint Library, Factoriopedia, and filter-selection captures are evidence fixtures.", {
         type: size2i,
-        example: "blueprint-library-window / filter-select-root-window",
+        example: "editor-default-window / blueprint-library-window / factoriopedia-root-window / filter-select-root-window",
         source: "window-reference-captures"
       }),
       field("variant layout solver", "planned", "The current atom derives the reference box; future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation."),
-      field("optional child slots", "planned", "SearchBar, browse arrows, CloseButton, SearchPopup, Frame, FrameWithSubheader, VerticalFlow, and TabbedPane are captured as optional children or body contents. Window should expose stable slots so those atoms can be added later without reworking the shell.", {
+      field("optional child slots", "implemented", "SearchBar, browse arrows, CloseButton, SearchPopup, Frame, FrameWithSubheader, VerticalFlow, and TabbedPane are captured as optional slots or body children on Window references. The child atoms still own their own renderer, export, and behavior.", {
         type: nodeList,
         example: "header actions, between-header-and-body overlay, body content children",
         source: "blueprint-library-header"
@@ -170,13 +175,13 @@ export const factorioAtomRegistry = Object.freeze([
         dimension: "evidence",
         state: "done",
         label: "Header child relative offsets explained",
-        note: "Title `[0, -4]` follows `top_margin=-4`; filler `[209, 0]` follows title width `191` + spacing `12` + left margin `6`."
+        note: "Title `[0, -4]` follows `top_margin=-4`; filler `[209, 0]` follows title width `191` + spacing `12` + left margin `6`; SearchBar `[1272, 0]` and CloseButton `[1404, 0]` follow filler width, margins, spacing, and the browse-arrow group."
       }),
       progressCheck({
         dimension: "evidence",
-        state: "partial",
+        state: "done",
         label: "Root relative behavior characterized",
-        note: "Blueprint Library root stays `[0, 0]` when moved, but Factoriopedia can report changing relative values. Root relative is treated as variant/container-specific evidence, not exported location."
+        note: "Blueprint Library root stays `[0, 0]` when moved; Factoriopedia samples changed to `[388, 106]`, `[382, 220]`, and `[1142, 315]`. Root relative is treated as variant/container-specific evidence, not exported location."
       }),
       progressCheck({
         dimension: "evidence",
@@ -186,9 +191,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "evidence",
-        state: "blocked",
+        state: "partial",
         label: "UI-scale and viewport validation captures",
-        note: "Needed to understand when `maximal_height` and squash sizes change."
+        note: "Current captures are known to be Manual (pixels) 150%. Another UI scale or viewport is still needed to understand when `maximal_height` and squash sizes change."
       }),
       progressCheck({
         dimension: "model",
@@ -204,6 +209,12 @@ export const factorioAtomRegistry = Object.freeze([
         dimension: "model",
         state: "done",
         label: "Blueprint Library reference is named capture data"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Editor default size is authored separately from capture fixtures",
+        note: "The default Window uses a preview-friendly 680 x 480 reference box instead of copying one in-game GUI instance."
       }),
       progressCheck({
         dimension: "model",
@@ -234,9 +245,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "model",
-        state: "partial",
+        state: "done",
         label: "Typed optional slot model",
-        note: "Header actions, between-header/body overlays, and body content slots are documented, but not yet first-class model collections."
+        note: "Header actions, between-header/body overlays, and body content slots are represented as captured Window reference slots. Child atoms remain separate."
       }),
       progressCheck({
         dimension: "model",
@@ -351,6 +362,7 @@ export const factorioAtomRegistry = Object.freeze([
         className: "agui::Window",
         style: "inset_frame_container_frame",
         rows: [
+          captureRow("ui_scale", string, "Manual (pixels) 150%"),
           captureRow("relative", vector2i, "[0, 0]"),
           captureRow("size", size2i, "{1476, 870}"),
           captureRow("content_size", size2i, "{1440, 840}"),
@@ -378,7 +390,14 @@ export const factorioAtomRegistry = Object.freeze([
         className: "Factoriopedia",
         style: "inset_frame_container_frame",
         rows: [
-          captureRow("relative", vector2i, "[289, 18]"),
+          captureRow("ui_scale", string, "Manual (pixels) 150%"),
+          captureRow("relative", vector2i, "[289, 18]", "Earlier capture."),
+          captureRow(
+            "relative_samples",
+            vector2i,
+            "[388, 106] / [382, 220] / [1142, 315]",
+            "Moved-window samples; size metrics stayed stable."
+          ),
           captureRow("size", size2i, "{1341, 973}"),
           captureRow("content_size", size2i, "{1305, 943}"),
           captureRow("clip_size", rectangle2i, "{{0, -4}, {1341, 977}}"),
@@ -518,8 +537,11 @@ export const factorioAtomRegistry = Object.freeze([
       document: "Window atom is the first gold atom. It should remain the baseline for top-level editor windows and Lua export.",
       implemented: [
         "Editor creates a top-level frame with a titlebar, draggable filler, title label, and body flow.",
+        "Editor-created Windows use an authored default reference size instead of a copied in-game capture size.",
         "Inspector rows expose Window class/style/padding/sizing fields from structured data.",
         "Reference Window geometry derives content, clip, titlebar, and body sizes from named Window reference captures.",
+        "Reference captures carry UI-scale context and moved-root relative samples where known.",
+        "Blueprint Library header slots for SearchBar, browse arrows, and CloseButton are captured as optional Window slots.",
         "Lua export emits a top-level `frame` using the captured style, padding fields, and body flow spacing.",
         "Header child relative offsets are modeled as parent-layout coordinates.",
         "The 6 px graphical frame band is preserved as renderer/layout chrome and is not exported as a Lua style field."
@@ -531,12 +553,13 @@ export const factorioAtomRegistry = Object.freeze([
         "`maximum_vertical_squash_size` appears content- and variant-dependent, so the reference value is carried without generalizing it to every future Window."
       ],
       hardcoded: [
-        "The editor still defaults to the Blueprint Library reference until users can select width/layout variants.",
+        "The editor-authored default Window size is fixed at 680 x 480 until size controls exist.",
         "Browser CSS paints the frame bevel manually from captured visuals."
       ],
       missing: [
         "Reference selector UI/export path instead of always using the Blueprint Library default.",
-        "Typed slot model for optional header actions, between-header/body overlays, and body content children.",
+        "UI for instantiating or replacing optional slot children once their own atoms are implemented.",
+        "Validation at another UI scale or viewport to determine which captured values are scale-sensitive.",
         "Rule for deriving maximal_height from viewport, UI scale, screen location, or GUI type.",
         "Rule for deriving maximum_vertical_squash_size from content, natural height, and style variant.",
         "Complete visual/export handling for side-frame variants."

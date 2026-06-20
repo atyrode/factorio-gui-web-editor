@@ -92,10 +92,10 @@ with a title bar, reserved drag handle, and empty body.
     "direction": "vertical",
     "location": null,
     "referenceSize": {
-      "width": 1476,
-      "height": 870,
-      "contentWidth": 1440,
-      "contentHeight": 840
+      "width": 680,
+      "height": 480,
+      "contentWidth": 644,
+      "contentHeight": 450
     },
     "styleReference": {
       "topPadding": 6,

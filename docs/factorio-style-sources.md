@@ -187,10 +187,16 @@ generic vanilla top-level window class, not `MapEditorGui`.
 | Element | Inspector class/style | Captured constraints |
 | --- | --- | --- |
 | Top-level window | GUI-specific class or `agui::Frame`, frame-derived styles | size/content/clip are instance-derived, top padding `6`, bottom/left/right padding generally `12`, `use_header_filler=true`, maximum horizontal squash `0` |
-| Header row | `agui::HorizontalFlow`, derived from `frame_header_flow` | current reference size `1440 x 48`, content `1440 x 42`, clip y offset `-4`, bottom padding `6`, horizontal spacing `12`, horizontally stretchable on, vertically stretchable off |
-| Title label | `agui::Label`, derived from `frame_title` / `label` | relative `[0, -4]`, height `46`, content height `42`, top margin `-4`, bottom padding `4`, vertically stretchable on, horizontally squashable on, `single_line=true`, font `heading-1`, font color `{1, 0.901961, 0.752941}` |
-| Header filler | `agui::Filler`, derived from `draggable_space_header` / `draggable_space` / `empty_widget` | width stretches after title/action children, height `36`, natural height `36`, left/right margin `6`, horizontally and vertically stretchable on |
+| Header row | `agui::HorizontalFlow`, derived from `frame_header_flow` | current reference size `1440 x 48`, content `1440 x 42`, clip y offset `-4`, size before stretching `395 x 48`, maximum horizontal squash `1236`, bottom padding `6`, horizontal spacing `12`, horizontally stretchable on, vertically stretchable off |
+| Title label | `agui::Label`, derived from `frame_title` / `label` | relative `[0, -4]`, size `191 x 46`, content `191 x 42`, top margin `-4`, bottom padding `4`, vertically stretchable on, horizontally squashable on, `single_line=true`, font `heading-1`, font color `{1, 0.901961, 0.752941}` |
+| Header filler | `agui::Filler`, derived from `draggable_space_header` / `draggable_space` / `empty_widget` | relative `[209, 0]`, size `1045 x 36`, size before stretching `0 x 36`, height `36`, natural height `36`, left/right margin `6`, horizontally and vertically stretchable on |
+| Header action slots | `SearchBar`, browse-arrow `agui::HorizontalFlow`, `CloseButton` | SearchBar relative `[1272, 0]`, size `36 x 36`, content `24 x 24`, style `frame_action_button`; CloseButton relative `[1404, 0]`, size `36 x 36`, content `24 x 24`, style `close_button`; the browse-arrow group occupies the `72 x 36` gap between them |
 | Body flow | `agui::HorizontalFlow`, part of `inset_frame_container_frame` and derived from `inset_frame_container_horizontal_flow` | current reference size `1440 x 792`, content `1440 x 792`, horizontal spacing `18` with inherited horizontal flow spacing `6`, maximum vertical squash `540` |
+
+The current Window captures in this section were taken with Factorio UI scale
+set to Manual (pixels) `150%`. That is capture metadata, not a completed scale
+rule. Before deriving formulas for `maximal_height`, squash sizes, or viewport
+clamps, compare at least one additional UI scale or viewport.
 
 The top-level `size` and `content_size` values only reconcile when the browser
 frame models Factorio's graphical frame edge as a 6 px band before applying the
@@ -202,10 +208,14 @@ Lua style assignment. The same 6 px per-side relationship appears on other
 decorated GUI elements such as inventory slots (`60 x 60` outer and `48 x 48`
 content). The local renderer preserves it as the Window bevel/border band.
 
-The editor's default Window reference box is the attached Blueprint Library
-capture: outer size `1476 x 870`, content size `1440 x 840`, clip size
-`{{0, -4}, {1476, 874}}`, and `maximum_vertical_squash_size: 540`. Window
-references are now named capture records; the model also carries a full-height
+The editor's default Window reference box is authored for the web preview at
+`680 x 480`; it is not copied from an in-game screenshot. The attached
+Blueprint Library capture remains an evidence fixture: outer size `1476 x 870`,
+content size `1440 x 840`, clip size `{{0, -4}, {1476, 874}}`, and
+`maximum_vertical_squash_size: 540`. Window references are now named records;
+the model also carries a Factoriopedia root reference with `1341 x 973` outer
+size, `1305 x 943` content size, `{{0, -4}, {1341, 977}}` clip size,
+`maximal_height: 973`, and a horizontal body flow, plus a full-height
 filter-selection reference with `672 x 973` outer size, `636 x 943` content
 size, `{{0, -4}, {672, 977}}` clip size, `maximal_height: 973`, and a vertical
 body flow. These captures are evidence for future width, height, and body
@@ -240,14 +250,20 @@ override before the inherited `frame` value.
 parent-layout coordinate. The Blueprint Library title label reports
 `relative: [0, -4]`, which matches its `top_margin: -4`. The draggable filler
 reports `relative: [209, 0]`, which is explained by the title width `191`,
-header spacing `12`, and filler left margin `6`. Root values are less uniform:
-the Blueprint Library root stays at `[0, 0]` when moved, while Factoriopedia can
-report changing relative values. The editor therefore treats root `relative` as
-capture/variant evidence, not the exported screen `location`; dragged window
-location remains editor-owned state mapped to `LuaGuiElement.location`.
+header spacing `12`, and filler left margin `6`. The SearchBar then reports
+`relative: [1272, 0]`, which follows filler `x 209 + width 1045 + right margin
+6 + header spacing 12`; the CloseButton reports `[1404, 0]`, after SearchBar,
+the `72 x 36` browse-arrow group, and two 12 px header spacings. Root values
+are less uniform: the Blueprint Library root stays at `[0, 0]` when moved,
+while moved Factoriopedia samples report `[388, 106]`, `[382, 220]`, and
+`[1142, 315]` with stable size metrics. The editor therefore treats root
+`relative` as capture/variant evidence, not the exported screen `location`;
+dragged window location remains editor-owned state mapped to
+`LuaGuiElement.location`.
 
 The full-height captures report `maximal_height: 973`, while their outer
-height is also `973` and clip height is `977`. Treat `maximal_height` as a
+height is also `973` and clip height is `977`. In the current evidence set,
+those captures are at Manual (pixels) `150%`. Treat `maximal_height` as a
 captured runtime/layout metric until non-full-height windows and multiple
 resolutions/UI scales show whether it comes from viewport height, screen
 location, or a style assignment. It should not be exported as a fixed Window

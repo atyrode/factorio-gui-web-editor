@@ -70,15 +70,18 @@ root agui::Window frame
 `- agui::HorizontalFlow inset_frame_container_horizontal_flow
 ```
 
-Window references are named capture records, not one anonymous hardcoded box.
-The current default is the attached Blueprint Library capture: outer size
-`1476 x 870`, content size `1440 x 840`, and clip size
-`{{0, -4}, {1476, 874}}`. The model also carries a full-height vertical-body
-reference from the filter-selection root so horizontal and vertical content
-flows are not conflated. The model derives titlebar and body geometry from the
-selected reference plus the captured frame edge and padding values. This is not
-yet a general layout solver for every top-level window width, height, or
-side-frame variant.
+Window references are named records, not one anonymous hardcoded box. The
+editor-created default is authored for the web preview at `680 x 480`, so a new
+Window fits the canvas instead of copying one arbitrary in-game GUI instance.
+The model also carries in-game capture fixtures: the Blueprint Library capture
+has outer size `1476 x 870`, content size `1440 x 840`, and clip size
+`{{0, -4}, {1476, 874}}`; Factoriopedia and filter-selection references cover
+full-height roots and horizontal/vertical body flow variants. The current
+captures record their UI scale as Manual (pixels) `150%`; that context is
+evidence, not a scale formula. The model derives titlebar and body geometry
+from the selected reference plus the captured frame edge and padding values.
+This is not yet a general layout solver for every top-level window width,
+height, UI scale, or side-frame variant.
 
 The frame edge in that derivation is a 6 px graphical band. It represents the
 decorative Factorio chrome that surrounds framed or slotted content; it is
@@ -104,9 +107,24 @@ root agui::Window inset_frame_container_frame
 ```
 
 The generic editor Window intentionally keeps optional header actions and body
-children out of the baseline until those children have explicit model and export
-rules. Window still owns the stable slots for those children so later child
-atoms can be inserted without changing the Window shell contract.
+children out of the rendered/exported baseline until those children have
+explicit model and export rules. Window still owns the stable captured slots
+for those children so later child atoms can be inserted without changing the
+Window shell contract.
+
+For the Blueprint Library reference, the header slot math is captured:
+
+```text
+title label: [0, -4], 191 x 46
+filler: [209, 0], 1045 x 36
+SearchBar: [1272, 0], 36 x 36
+browse-arrow group: inferred [1320, 0], 72 x 36
+CloseButton: [1404, 0], 36 x 36
+```
+
+The filler position follows `191 title width + 12 header spacing + 6 left
+margin`. The SearchBar and CloseButton positions then follow the filler width,
+filler right margin, header spacing, and the browse-arrow group width.
 
 Each node should keep stable fields:
 

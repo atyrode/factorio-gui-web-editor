@@ -3,7 +3,7 @@ export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
 
 const FRAME_GRAPHICAL_BORDER = 6;
 const FRAME_CLIP_TOP_OVERFLOW = 4;
-export const DEFAULT_WINDOW_REFERENCE_ID = "blueprint-library-window";
+export const DEFAULT_WINDOW_REFERENCE_ID = "editor-default-window";
 
 function freezeSize(size) {
   return Object.freeze({ width: size.width, height: size.height });
@@ -26,6 +26,62 @@ function freezeOptionalRectangle(rectangle) {
 
 function freezeVector(vector) {
   return Object.freeze({ x: vector.x, y: vector.y });
+}
+
+function freezeVectorList(vectors = []) {
+  return Object.freeze(vectors.map((vector) => freezeVector(vector)));
+}
+
+function freezeCaptureRows(rows = []) {
+  return Object.freeze(rows.map((row) => Object.freeze({ ...row })));
+}
+
+function freezeHeaderChildCapture(child = null) {
+  if (!child) {
+    return null;
+  }
+
+  return Object.freeze({
+    ...child,
+    relative: child.relative ? freezeVector(child.relative) : null,
+    capturedSize: freezeOptionalSize(child.capturedSize),
+    capturedContentSize: freezeOptionalSize(child.capturedContentSize),
+    capturedClipSize: freezeOptionalRectangle(child.capturedClipSize),
+    capturedSizeBeforeStretching: freezeOptionalSize(child.capturedSizeBeforeStretching)
+  });
+}
+
+function freezeHeaderCapture(header = null) {
+  if (!header) {
+    return Object.freeze({
+      childRows: Object.freeze([]),
+      optionalSlotRows: Object.freeze([])
+    });
+  }
+
+  return Object.freeze({
+    className: header.className ?? "agui::HorizontalFlow",
+    style: header.style ?? "frame_header_flow",
+    styleDescription: header.styleDescription ?? "Part of frame definition",
+    derivedFrom: header.derivedFrom ?? "frame_header_flow",
+    relative: freezeVector(header.relative ?? { x: 0, y: 0 }),
+    capturedSize: freezeOptionalSize(header.capturedSize),
+    capturedContentSize: freezeOptionalSize(header.capturedContentSize),
+    capturedClipSize: freezeOptionalRectangle(header.capturedClipSize),
+    capturedSizeBeforeStretching: freezeOptionalSize(header.capturedSizeBeforeStretching),
+    maximumHorizontalSquashSize: header.maximumHorizontalSquashSize ?? null,
+    maximumVerticalSquashSize: header.maximumVerticalSquashSize ?? 0,
+    horizontalSpacing: header.horizontalSpacing ?? 12,
+    inheritedHorizontalSpacing: header.inheritedHorizontalSpacing ?? 6,
+    bottomPadding: header.bottomPadding ?? 6,
+    horizontallyStretchable: header.horizontallyStretchable ?? true,
+    verticallyStretchable: header.verticallyStretchable ?? false,
+    ignoredBySearch: header.ignoredBySearch ?? true,
+    titleLabel: freezeHeaderChildCapture(header.titleLabel),
+    dragHandle: freezeHeaderChildCapture(header.dragHandle),
+    childRows: freezeCaptureRows(header.childRows),
+    optionalSlotRows: freezeCaptureRows(header.optionalSlotRows)
+  });
 }
 
 function frameContentSize({
@@ -58,6 +114,9 @@ function frameClipSize({
 function windowReferenceCapture({
   id,
   label,
+  referenceTitle = label,
+  captureContext = null,
+  rootRelativeSamples = [],
   className,
   style,
   derivedFrom = "frame",
@@ -70,11 +129,15 @@ function windowReferenceCapture({
   maximumVerticalSquashSize,
   padding,
   useHeaderFiller = true,
+  header = null,
   body
 }) {
   return Object.freeze({
     id,
     label,
+    referenceTitle,
+    captureContext: captureContext ? Object.freeze({ ...captureContext }) : null,
+    rootRelativeSamples: freezeVectorList(rootRelativeSamples),
     className,
     style,
     derivedFrom,
@@ -87,6 +150,7 @@ function windowReferenceCapture({
     maximumVerticalSquashSize,
     padding: Object.freeze({ ...padding }),
     useHeaderFiller,
+    header: freezeHeaderCapture(header),
     body: Object.freeze({
       ...body,
       relative: freezeVector(body.relative ?? { x: 0, y: 48 }),
@@ -108,8 +172,47 @@ function windowReferenceCapture({
 
 export const windowReferenceCaptures = Object.freeze([
   windowReferenceCapture({
+    id: "editor-default-window",
+    label: "Editor default Window",
+    referenceTitle: "Untitled window",
+    captureContext: {
+      source: "editor-authored default"
+    },
+    className: "agui::Window",
+    style: "inset_frame_container_frame",
+    capturedSize: { width: 680, height: 480 },
+    capturedContentSize: { width: 644, height: 450 },
+    capturedClipSize: {
+      offset: { x: 0, y: -4 },
+      size: { width: 680, height: 484 }
+    },
+    maximumVerticalSquashSize: 0,
+    padding: { top: 6, right: 12, bottom: 12, left: 12 },
+    body: {
+      className: "agui::HorizontalFlow",
+      style: "inset_frame_container_horizontal_flow",
+      styleDescription: "Part of inset_frame_container_frame definition",
+      derivedFrom: "inset_frame_container_horizontal_flow",
+      direction: "horizontal",
+      relative: { x: 0, y: 48 },
+      capturedSize: { width: 644, height: 402 },
+      maximumHorizontalSquashSize: 0,
+      maximumVerticalSquashSize: 0,
+      horizontalSpacing: 18,
+      inheritedHorizontalSpacing: 6,
+      verticalSpacing: null,
+      inheritedVerticalSpacing: null,
+      childRows: []
+    }
+  }),
+  windowReferenceCapture({
     id: "blueprint-library-window",
     label: "Blueprint Library Window",
+    referenceTitle: "Blueprint library",
+    captureContext: {
+      uiScale: "Manual (pixels) 150%"
+    },
+    rootRelativeSamples: [{ x: 0, y: 0 }],
     className: "agui::Window",
     style: "inset_frame_container_frame",
     capturedSize: { width: 1476, height: 870 },
@@ -120,6 +223,91 @@ export const windowReferenceCaptures = Object.freeze([
     },
     maximumVerticalSquashSize: 540,
     padding: { top: 6, right: 12, bottom: 12, left: 12 },
+    header: {
+      className: "agui::HorizontalFlow",
+      style: "frame_header_flow",
+      styleDescription: "Part of frame definition",
+      derivedFrom: "frame_header_flow",
+      relative: { x: 0, y: 0 },
+      capturedSize: { width: 1440, height: 48 },
+      capturedContentSize: { width: 1440, height: 42 },
+      capturedClipSize: {
+        offset: { x: 0, y: -4 },
+        size: { width: 1440, height: 52 }
+      },
+      capturedSizeBeforeStretching: { width: 395, height: 48 },
+      maximumHorizontalSquashSize: 1236,
+      maximumVerticalSquashSize: 0,
+      horizontalSpacing: 12,
+      inheritedHorizontalSpacing: 6,
+      bottomPadding: 6,
+      horizontallyStretchable: true,
+      verticallyStretchable: false,
+      ignoredBySearch: true,
+      titleLabel: {
+        className: "agui::Label",
+        style: "frame_title",
+        relative: { x: 0, y: -4 },
+        capturedSize: { width: 191, height: 46 },
+        capturedContentSize: { width: 191, height: 42 },
+        capturedClipSize: {
+          offset: { x: 0, y: 0 },
+          size: { width: 191, height: 46 }
+        },
+        capturedSizeBeforeStretching: { width: 191, height: 46 },
+        maximumHorizontalSquashSize: 191,
+        maximumVerticalSquashSize: 0
+      },
+      dragHandle: {
+        className: "agui::Filler",
+        style: "draggable_space_header",
+        relative: { x: 209, y: 0 },
+        capturedSize: { width: 1045, height: 36 },
+        capturedContentSize: { width: 1045, height: 36 },
+        capturedClipSize: {
+          offset: { x: 0, y: 0 },
+          size: { width: 1045, height: 36 }
+        },
+        capturedSizeBeforeStretching: { width: 0, height: 36 },
+        maximumHorizontalSquashSize: 1045,
+        maximumVerticalSquashSize: 0
+      },
+      childRows: [
+        { role: "title", label: "class agui::Label", value: "191 x 46" },
+        { role: "filler", label: "class agui::Filler", value: "1045 x 36" },
+        { role: "slot", label: "class SearchBar", value: "36 x 36" },
+        {
+          role: "slot",
+          label: "class agui::HorizontalFlow",
+          value: "72 x 36",
+          note: "Browse-arrow group"
+        },
+        { role: "slot", label: "class CloseButton", value: "36 x 36" }
+      ],
+      optionalSlotRows: [
+        {
+          className: "SearchBar",
+          style: "frame_action_button",
+          relative: "[1272, 0]",
+          size: "36 x 36",
+          contentSize: "24 x 24"
+        },
+        {
+          className: "agui::HorizontalFlow",
+          style: "frame_header_flow",
+          relative: "[1320, 0]",
+          size: "72 x 36",
+          note: "Browse-arrow group inferred from spacing between SearchBar and CloseButton"
+        },
+        {
+          className: "CloseButton",
+          style: "close_button",
+          relative: "[1404, 0]",
+          size: "36 x 36",
+          contentSize: "24 x 24"
+        }
+      ]
+    },
     body: {
       className: "agui::HorizontalFlow",
       style: "inset_frame_container_horizontal_flow",
@@ -138,6 +326,51 @@ export const windowReferenceCaptures = Object.freeze([
         { label: "class agui::Frame", value: FACTORIO_NOT_IMPLEMENTED },
         { label: "class FrameWithSubheader", value: FACTORIO_NOT_IMPLEMENTED },
         { label: "class agui::VerticalFlow", value: FACTORIO_NOT_IMPLEMENTED }
+      ]
+    }
+  }),
+  windowReferenceCapture({
+    id: "factoriopedia-root-window",
+    label: "Factoriopedia root Window",
+    referenceTitle: "Factoriopedia",
+    captureContext: {
+      uiScale: "Manual (pixels) 150%"
+    },
+    rootRelativeSamples: [
+      { x: 289, y: 18 },
+      { x: 388, y: 106 },
+      { x: 382, y: 220 },
+      { x: 1142, y: 315 }
+    ],
+    className: "Factoriopedia",
+    style: "inset_frame_container_frame",
+    capturedSize: { width: 1341, height: 973 },
+    capturedContentSize: { width: 1305, height: 943 },
+    capturedClipSize: {
+      offset: { x: 0, y: -4 },
+      size: { width: 1341, height: 977 }
+    },
+    capturedMaximalHeight: 973,
+    maximumVerticalSquashSize: 619,
+    padding: { top: 6, right: 12, bottom: 12, left: 12 },
+    body: {
+      className: "agui::HorizontalFlow",
+      style: "inset_frame_container_horizontal_flow",
+      styleDescription: "Part of inset_frame_container_frame definition",
+      derivedFrom: "inset_frame_container_horizontal_flow",
+      direction: "horizontal",
+      relative: { x: 0, y: 48 },
+      capturedSize: { width: 1305, height: 895 },
+      maximumHorizontalSquashSize: 0,
+      maximumVerticalSquashSize: 619,
+      horizontalSpacing: 18,
+      inheritedHorizontalSpacing: 6,
+      verticalSpacing: null,
+      inheritedVerticalSpacing: null,
+      childRows: [
+        { label: "class agui::HorizontalFlow", value: "1305 x 48" },
+        { label: "class SearchPopup", value: "168 x 42" },
+        { label: "class agui::HorizontalFlow", value: "1305 x 895" }
       ]
     }
   }),
@@ -187,6 +420,9 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
   return Object.freeze({
     referenceId: reference.id,
     referenceLabel: reference.label,
+    referenceTitle: reference.referenceTitle,
+    captureContext: reference.captureContext,
+    rootRelativeSamples: reference.rootRelativeSamples,
     className: reference.className,
     style: reference.style,
     derivedFrom: reference.derivedFrom,
@@ -202,17 +438,54 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     graphicalBorder: FRAME_GRAPHICAL_BORDER,
     clipTopOverflow: FRAME_CLIP_TOP_OVERFLOW,
     useHeaderFiller: reference.useHeaderFiller,
-    titlebarHeight: 48,
-    titlebarContentHeight: 42,
-    titlebarBottomPadding: 6,
-    titlebarHorizontalSpacing: 12,
+    titlebarClassName: reference.header.className ?? "agui::HorizontalFlow",
+    titlebarStyle: reference.header.style ?? "frame_header_flow",
+    titlebarStyleDescription: reference.header.styleDescription ?? "Part of frame definition",
+    titlebarDerivedFrom: reference.header.derivedFrom ?? "frame_header_flow",
+    titlebarRelative: reference.header.relative ?? Object.freeze({ x: 0, y: 0 }),
+    titlebarCapturedSize: reference.header.capturedSize,
+    titlebarCapturedContentSize: reference.header.capturedContentSize,
+    titlebarCapturedClipSize: reference.header.capturedClipSize,
+    titlebarCapturedSizeBeforeStretching: reference.header.capturedSizeBeforeStretching,
+    titlebarMaximumHorizontalSquashSize: reference.header.maximumHorizontalSquashSize,
+    titlebarMaximumVerticalSquashSize: reference.header.maximumVerticalSquashSize ?? 0,
+    titlebarHeight: reference.header.capturedSize?.height ?? 48,
+    titlebarContentHeight: reference.header.capturedContentSize?.height ?? 42,
+    titlebarBottomPadding: reference.header.bottomPadding ?? 6,
+    titlebarHorizontalSpacing: reference.header.horizontalSpacing ?? 12,
+    titlebarInheritedHorizontalSpacing: reference.header.inheritedHorizontalSpacing ?? 6,
+    titlebarHorizontallyStretchable: reference.header.horizontallyStretchable ?? true,
+    titlebarVerticallyStretchable: reference.header.verticallyStretchable ?? false,
+    titlebarIgnoredBySearch: reference.header.ignoredBySearch ?? true,
+    titlebarChildRows: reference.header.childRows ?? Object.freeze([]),
+    titlebarOptionalSlotRows: reference.header.optionalSlotRows ?? Object.freeze([]),
     titleLabelStyle: "frame_title",
-    titleLabelHeight: 46,
-    titleLabelContentHeight: 42,
+    titleLabelCapturedSize: reference.header.titleLabel?.capturedSize,
+    titleLabelCapturedContentSize: reference.header.titleLabel?.capturedContentSize,
+    titleLabelCapturedClipSize: reference.header.titleLabel?.capturedClipSize,
+    titleLabelCapturedSizeBeforeStretching:
+      reference.header.titleLabel?.capturedSizeBeforeStretching,
+    titleLabelMaximumHorizontalSquashSize:
+      reference.header.titleLabel?.maximumHorizontalSquashSize,
+    titleLabelMaximumVerticalSquashSize:
+      reference.header.titleLabel?.maximumVerticalSquashSize,
+    titleLabelRelative: reference.header.titleLabel?.relative ?? Object.freeze({ x: 0, y: -4 }),
+    titleLabelHeight: reference.header.titleLabel?.capturedSize?.height ?? 46,
+    titleLabelContentHeight: reference.header.titleLabel?.capturedContentSize?.height ?? 42,
     titleLabelTopMargin: -4,
     titleLabelBottomPadding: 4,
     dragHandleStyle: "draggable_space_header",
-    dragHandleHeight: 36,
+    dragHandleCapturedSize: reference.header.dragHandle?.capturedSize,
+    dragHandleCapturedContentSize: reference.header.dragHandle?.capturedContentSize,
+    dragHandleCapturedClipSize: reference.header.dragHandle?.capturedClipSize,
+    dragHandleCapturedSizeBeforeStretching:
+      reference.header.dragHandle?.capturedSizeBeforeStretching,
+    dragHandleMaximumHorizontalSquashSize:
+      reference.header.dragHandle?.maximumHorizontalSquashSize,
+    dragHandleMaximumVerticalSquashSize:
+      reference.header.dragHandle?.maximumVerticalSquashSize,
+    dragHandleRelative: reference.header.dragHandle?.relative,
+    dragHandleHeight: reference.header.dragHandle?.capturedSize?.height ?? 36,
     dragHandleLeftMargin: 6,
     dragHandleRightMargin: 6,
     bodyClassName: reference.body.className,
@@ -239,6 +512,22 @@ export const frameStyleReference = createFrameStyleReference();
 
 function estimateTitleLabelWidth(caption) {
   return Math.max(1, Math.round(String(caption).length * 11.2));
+}
+
+function titleMatchesReference(style, caption) {
+  return (
+    style.referenceTitle &&
+    String(style.referenceTitle).trim().toLowerCase() ===
+      String(caption).trim().toLowerCase()
+  );
+}
+
+function getFrameTitleLabelWidth(style, caption) {
+  if (titleMatchesReference(style, caption) && style.titleLabelCapturedSize) {
+    return style.titleLabelCapturedSize.width;
+  }
+
+  return estimateTitleLabelWidth(caption);
 }
 
 export function getFrameContentSize(style = frameStyleReference) {
@@ -268,6 +557,10 @@ export function getFrameClipSize(style = frameStyleReference) {
 }
 
 export function getFrameTitlebarSize(style = frameStyleReference) {
+  if (style.titlebarCapturedSize) {
+    return style.titlebarCapturedSize;
+  }
+
   const contentSize = getFrameContentSize(style);
   return freezeSize({
     width: contentSize.width,
@@ -276,6 +569,10 @@ export function getFrameTitlebarSize(style = frameStyleReference) {
 }
 
 export function getFrameTitlebarContentSize(style = frameStyleReference) {
+  if (style.titlebarCapturedContentSize) {
+    return style.titlebarCapturedContentSize;
+  }
+
   const titlebarSize = getFrameTitlebarSize(style);
   return freezeSize({
     width: titlebarSize.width,
@@ -284,6 +581,10 @@ export function getFrameTitlebarContentSize(style = frameStyleReference) {
 }
 
 export function getFrameTitlebarClipSize(style = frameStyleReference) {
+  if (style.titlebarCapturedClipSize) {
+    return style.titlebarCapturedClipSize;
+  }
+
   const titlebarSize = getFrameTitlebarSize(style);
   return freezeRectangle({
     offset: { x: 0, y: -style.clipTopOverflow },
@@ -324,7 +625,11 @@ function getFrameBodySizeBeforeStretching(style) {
   return style.bodyCapturedSizeBeforeStretching ?? getFrameBodySize(style);
 }
 
-function getFrameDragHandleWidth(style, titleLabelWidth) {
+function getFrameDragHandleWidth(style, titleLabelWidth, caption) {
+  if (titleMatchesReference(style, caption) && style.dragHandleCapturedSize) {
+    return style.dragHandleCapturedSize.width;
+  }
+
   const titlebarSize = getFrameTitlebarSize(style);
   return Math.max(
     0,
@@ -336,7 +641,14 @@ function getFrameDragHandleWidth(style, titleLabelWidth) {
   );
 }
 
-function getFrameTitlebarSizeBeforeStretching(style, titleLabelWidth) {
+function getFrameTitlebarSizeBeforeStretching(style, titleLabelWidth, caption) {
+  if (
+    titleMatchesReference(style, caption) &&
+    style.titlebarCapturedSizeBeforeStretching
+  ) {
+    return style.titlebarCapturedSizeBeforeStretching;
+  }
+
   return freezeSize({
     width:
       titleLabelWidth +
@@ -347,7 +659,11 @@ function getFrameTitlebarSizeBeforeStretching(style, titleLabelWidth) {
   });
 }
 
-function getFrameDragHandleRelative(style, titleLabelWidth) {
+function getFrameDragHandleRelative(style, titleLabelWidth, caption) {
+  if (titleMatchesReference(style, caption) && style.dragHandleRelative) {
+    return style.dragHandleRelative;
+  }
+
   return {
     x: titleLabelWidth + style.titlebarHorizontalSpacing + style.dragHandleLeftMargin,
     y: 0
@@ -390,6 +706,48 @@ function getBodySpacingProperties(bodyStyleReference) {
   return properties;
 }
 
+function getTitlebarChildRows({
+  style,
+  titleLabel,
+  titleLabelWidth,
+  dragHandle,
+  dragHandleWidth
+}) {
+  if (style.titlebarChildRows.length) {
+    return style.titlebarChildRows.map((row) => {
+      const childRow = { ...row, indent: 1 };
+      if (row.role === "title") {
+        childRow.value = `${titleLabelWidth} x ${titleLabel.referenceSize.height}`;
+        childRow.targetId = titleLabel.id;
+      }
+      if (row.role === "filler") {
+        childRow.value = `${dragHandleWidth} x ${dragHandle.referenceSize.height}`;
+        childRow.targetId = dragHandle.id;
+      }
+      if (row.role === "slot") {
+        childRow.value = `${row.value} slot`;
+      }
+      delete childRow.role;
+      return childRow;
+    });
+  }
+
+  return [
+    {
+      label: "class agui::Label",
+      value: `${titleLabelWidth} x ${titleLabel.referenceSize.height}`,
+      indent: 1,
+      targetId: titleLabel.id
+    },
+    {
+      label: "class agui::Filler",
+      value: `${dragHandleWidth} x ${dragHandle.referenceSize.height}`,
+      indent: 1,
+      targetId: dragHandle.id
+    }
+  ];
+}
+
 function sizePair({ width, height }) {
   return `{${width}, ${height}}`;
 }
@@ -423,6 +781,12 @@ export function createWindowModel({
   const caption = title.trim() || "Untitled window";
   const location = normalizeModelLocation(sourceLocation);
   const styleReference = createFrameStyleReference(getWindowReferenceCapture(referenceId));
+  const titleLabelWidth = getFrameTitleLabelWidth(styleReference, caption);
+  const dragHandleWidth = getFrameDragHandleWidth(
+    styleReference,
+    titleLabelWidth,
+    caption
+  );
 
   return {
     schema: FACTORIO_GUI_MODEL_SCHEMA,
@@ -444,16 +808,17 @@ export function createWindowModel({
         {
           id: "gui_window_titlebar",
           primitive: "flow",
-          className: "agui::HorizontalFlow",
-          style: "frame_header_flow",
+          className: styleReference.titlebarClassName,
+          style: styleReference.titlebarStyle,
           direction: "horizontal",
           referenceSize: { height: styleReference.titlebarHeight },
           styleReference: {
             bottomPadding: styleReference.titlebarBottomPadding,
             horizontalSpacing: styleReference.titlebarHorizontalSpacing,
-            horizontallyStretchable: true,
-            verticallyStretchable: false,
-            ignoredBySearch: true
+            inheritedHorizontalSpacing: styleReference.titlebarInheritedHorizontalSpacing,
+            horizontallyStretchable: styleReference.titlebarHorizontallyStretchable,
+            verticallyStretchable: styleReference.titlebarVerticallyStretchable,
+            ignoredBySearch: styleReference.titlebarIgnoredBySearch
           },
           children: [
             {
@@ -463,7 +828,7 @@ export function createWindowModel({
               caption,
               style: styleReference.titleLabelStyle,
               referenceSize: {
-                width: estimateTitleLabelWidth(caption),
+                width: titleLabelWidth,
                 height: styleReference.titleLabelHeight,
                 contentHeight: styleReference.titleLabelContentHeight
               },
@@ -483,6 +848,7 @@ export function createWindowModel({
               className: "agui::Filler",
               style: styleReference.dragHandleStyle,
               referenceSize: {
+                width: dragHandleWidth,
                 height: styleReference.dragHandleHeight,
                 naturalHeight: styleReference.dragHandleHeight
               },
@@ -566,12 +932,28 @@ export function getWindowInspectorRows(model) {
   const bodyContentSize = getFrameBodyContentSize(style);
   const bodyClipSize = getFrameBodyClipSize(style);
   const bodySizeBeforeStretching = getFrameBodySizeBeforeStretching(style);
-  const dragHandleWidth = getFrameDragHandleWidth(style, titleLabelWidth);
+  const dragHandleWidth = getFrameDragHandleWidth(
+    style,
+    titleLabelWidth,
+    titleLabel.caption
+  );
   const titlebarSizeBeforeStretching = getFrameTitlebarSizeBeforeStretching(
     style,
-    titleLabelWidth
+    titleLabelWidth,
+    titleLabel.caption
   );
-  const dragHandleRelative = getFrameDragHandleRelative(style, titleLabelWidth);
+  const dragHandleRelative = getFrameDragHandleRelative(
+    style,
+    titleLabelWidth,
+    titleLabel.caption
+  );
+  const titlebarChildRows = getTitlebarChildRows({
+    style,
+    titleLabel,
+    titleLabelWidth,
+    dragHandle,
+    dragHandleWidth
+  });
 
   return [
     {
@@ -612,25 +994,33 @@ export function getWindowInspectorRows(model) {
     },
     {
       id: titlebar.id,
-      title: "class agui::HorizontalFlow",
-      style: "Part of frame definition",
-      derivedFrom: "frame_header_flow",
-      relative: "[0, 0]",
+      title: `class ${titlebar.className}`,
+      style: style.titlebarStyleDescription,
+      derivedFrom: style.titlebarDerivedFrom,
+      relative: `[${style.titlebarRelative.x}, ${style.titlebarRelative.y}]`,
       size: sizePair(titlebarSize),
       contentSize: sizePair(titlebarContentSize),
       clipSize: `{{${titlebarClipSize.offset.x}, ${titlebarClipSize.offset.y}}, {${titlebarClipSize.size.width}, ${titlebarClipSize.size.height}}}`,
       sizeBeforeStretching: sizePair(titlebarSizeBeforeStretching),
-      maximumHorizontalSquashSize: Math.max(0, titlebarSize.width - 72),
-      maximumVerticalSquashSize: 0,
+      maximumHorizontalSquashSize:
+        titleMatchesReference(style, titleLabel.caption) &&
+        style.titlebarMaximumHorizontalSquashSize != null
+          ? style.titlebarMaximumHorizontalSquashSize
+          : dragHandleWidth,
+      maximumVerticalSquashSize: style.titlebarMaximumVerticalSquashSize,
       properties: [
-        { label: "ignored_by_search", value: true, indent: 1 },
+        { label: "ignored_by_search", value: titlebar.styleReference.ignoredBySearch, indent: 1 },
         { label: "bottom_padding", value: titlebar.styleReference.bottomPadding, indent: 1 },
         {
           label: "horizontally_stretchable",
           value: onOff(titlebar.styleReference.horizontallyStretchable)
         },
         { label: "horizontal_spacing", value: titlebar.styleReference.horizontalSpacing },
-        { label: "horizontal_spacing", value: 6, indent: 1 },
+        {
+          label: "horizontal_spacing",
+          value: titlebar.styleReference.inheritedHorizontalSpacing,
+          indent: 1
+        },
         {
           label: "vertically_stretchable",
           value: onOff(titlebar.styleReference.verticallyStretchable)
@@ -638,19 +1028,7 @@ export function getWindowInspectorRows(model) {
       ],
       childRows: [
         { label: "children", value: "" },
-        {
-          label: "class agui::Label",
-          value: `${titleLabelWidth} x 46`,
-          indent: 1,
-          targetId: titleLabel.id
-        },
-        {
-          label: "class agui::Filler",
-          value: `${dragHandleWidth} x 36`,
-          indent: 1,
-          targetId: dragHandle.id
-        },
-        { label: "class SearchBar", value: FACTORIO_NOT_IMPLEMENTED, indent: 1 }
+        ...titlebarChildRows
       ]
     },
     {
@@ -658,13 +1036,14 @@ export function getWindowInspectorRows(model) {
       title: "class agui::Label",
       style: "Part of frame definition",
       derivedFrom: titleLabel.style,
-      relative: "[0, -4]",
+      relative: `[${style.titleLabelRelative.x}, ${style.titleLabelRelative.y}]`,
       size: `{${titleLabelWidth}, ${titleLabel.referenceSize.height}}`,
       contentSize: `{${titleLabelWidth}, ${titleLabel.referenceSize.contentHeight}}`,
       clipSize: `{{0, 0}, {${titleLabelWidth}, ${titleLabel.referenceSize.height}}}`,
       sizeBeforeStretching: `{${titleLabelWidth}, ${titleLabel.referenceSize.height}}`,
-      maximumHorizontalSquashSize: titleLabelWidth,
-      maximumVerticalSquashSize: 0,
+      maximumHorizontalSquashSize:
+        style.titleLabelMaximumHorizontalSquashSize ?? titleLabelWidth,
+      maximumVerticalSquashSize: style.titleLabelMaximumVerticalSquashSize ?? 0,
       properties: [
         { label: "caption", value: titleLabel.caption, editable: { field: "title" }, tone: "default" },
         {
@@ -697,8 +1076,9 @@ export function getWindowInspectorRows(model) {
       contentSize: `{${dragHandleWidth}, 36}`,
       clipSize: `{{0, 0}, {${dragHandleWidth}, 36}}`,
       sizeBeforeStretching: "{0, 36}",
-      maximumHorizontalSquashSize: dragHandleWidth,
-      maximumVerticalSquashSize: 0,
+      maximumHorizontalSquashSize:
+        style.dragHandleMaximumHorizontalSquashSize ?? dragHandleWidth,
+      maximumVerticalSquashSize: style.dragHandleMaximumVerticalSquashSize ?? 0,
       properties: [
         { label: "right_margin", value: dragHandle.styleReference.rightMargin },
         { label: "height", value: dragHandle.referenceSize.height },

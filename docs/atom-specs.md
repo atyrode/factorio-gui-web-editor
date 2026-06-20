@@ -53,6 +53,7 @@ Start each atom with evidence, not code. Prefer sources in this order:
 For every capture, record:
 
 - Factorio version or source context when known.
+- UI scale, resolution, viewport, and display mode when they are known.
 - Screen/window name.
 - Reported class, primitive if known, style, and derived style.
 - `relative`, `size`, `content_size`, `clip_size`, `size_before_stretching`,
