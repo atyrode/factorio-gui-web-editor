@@ -1,4 +1,20 @@
-import { ChevronLeft, ChevronRight, Lock, Search, Unlock } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  CornerDownRight,
+  ListPlus,
+  Plus,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Search,
+  Unlock
+} from "lucide-react";
+import { useDroppable } from "@dnd-kit/react";
+import {
+  HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+  dropTargetData
+} from "../factorioBuilderDnd.js";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -34,10 +50,14 @@ export function FxButton({
 }
 
 const actionButtonIcons = {
+  "add-after": ListPlus,
+  "add-child": CornerDownRight,
   back: ChevronLeft,
   forward: ChevronRight,
   "lock-closed": Lock,
   "lock-open": Unlock,
+  plus: Plus,
+  trash: Trash2,
   search: Search
 };
 
@@ -231,9 +251,327 @@ function inspectorProps({ active, locked, anchor, inspectedAnchor, onInspect, on
   };
 }
 
+function pixelStyleValue(value) {
+  return typeof value === "number" && Number.isFinite(value) ? `${value}px` : undefined;
+}
+
+function horizontalFlowStyleVariables(styleReference = {}) {
+  const reference = styleReference ?? {};
+
+  return {
+    "--fx-horizontal-flow-horizontal-spacing": pixelStyleValue(reference.horizontalSpacing),
+    "--fx-horizontal-flow-padding-top": pixelStyleValue(reference.topPadding),
+    "--fx-horizontal-flow-padding-right": pixelStyleValue(reference.rightPadding),
+    "--fx-horizontal-flow-padding-bottom": pixelStyleValue(reference.bottomPadding),
+    "--fx-horizontal-flow-padding-left": pixelStyleValue(reference.leftPadding),
+    "--fx-horizontal-flow-min-width": pixelStyleValue(reference.minimalWidth),
+    "--fx-horizontal-flow-min-height": pixelStyleValue(reference.minimalHeight),
+    "--fx-horizontal-flow-child-min-width": pixelStyleValue(reference.childMinimalWidth),
+    "--fx-horizontal-flow-child-min-height": pixelStyleValue(reference.childMinimalHeight),
+    "--fx-horizontal-flow-child-horizontal-spacing": pixelStyleValue(reference.childHorizontalSpacing),
+    "--fx-horizontal-flow-child-padding-top": pixelStyleValue(reference.childTopPadding),
+    "--fx-horizontal-flow-child-padding-right": pixelStyleValue(reference.childRightPadding),
+    "--fx-horizontal-flow-child-padding-bottom": pixelStyleValue(reference.childBottomPadding),
+    "--fx-horizontal-flow-child-padding-left": pixelStyleValue(reference.childLeftPadding)
+  };
+}
+
+function createHorizontalFlowPreviewNode(parentStyleReference = {}) {
+  const reference = parentStyleReference ?? {};
+
+  return {
+    id: "builder_ghost_marker",
+    primitive: "flow",
+    className: "agui::HorizontalFlow",
+    style: "horizontal_flow",
+    derivedFrom: "horizontal_flow",
+    direction: "horizontal",
+    role: "builder-horizontal-flow-preview",
+    styleReference: {
+      variantId: "generic-horizontal-flow",
+      horizontalSpacing: reference.childHorizontalSpacing,
+      topPadding: reference.childTopPadding,
+      rightPadding: reference.childRightPadding,
+      bottomPadding: reference.childBottomPadding,
+      leftPadding: reference.childLeftPadding,
+      minimalWidth: reference.childMinimalWidth,
+      minimalHeight: reference.childMinimalHeight,
+      horizontallyStretchable: true,
+      verticallyStretchable: true
+    },
+    children: []
+  };
+}
+
+function GuiHorizontalFlowShell({
+  node,
+  className = "",
+  children,
+  shellRef,
+  style,
+  ...props
+}) {
+  const flowStyle = {
+    ...horizontalFlowStyleVariables(node.styleReference),
+    ...style
+  };
+
+  return (
+    <div
+      ref={shellRef}
+      className={["fx-gui-horizontal-flow", className].filter(Boolean).join(" ")}
+      data-anchor={node.id}
+      data-fx-primitive="flow"
+      data-fx-class={node.className}
+      data-fx-style={node.style}
+      data-fx-derived-from={node.derivedFrom}
+      data-fx-direction={node.direction}
+      data-fx-horizontal-spacing={node.styleReference?.horizontalSpacing ?? undefined}
+      data-fx-minimal-width={node.styleReference?.minimalWidth ?? undefined}
+      data-fx-minimal-height={node.styleReference?.minimalHeight ?? undefined}
+      data-fx-top-padding={node.styleReference?.topPadding ?? undefined}
+      data-fx-right-padding={node.styleReference?.rightPadding ?? undefined}
+      data-fx-bottom-padding={node.styleReference?.bottomPadding ?? undefined}
+      data-fx-left-padding={node.styleReference?.leftPadding ?? undefined}
+      data-fx-horizontally-stretchable={node.styleReference?.horizontallyStretchable ?? undefined}
+      data-fx-vertically-stretchable={node.styleReference?.verticallyStretchable ?? undefined}
+      data-fx-style-variant={node.styleReference?.variantId ?? undefined}
+      data-fx-role={node.role ?? undefined}
+      style={flowStyle}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CanvasDropTarget({
+  dragActive,
+  emptyParent = false,
+  parentId,
+  index,
+  slotCount
+}) {
+  const { ref, isDropTarget } = useDroppable({
+    id: `builder-canvas-slot-${parentId}-${index}`,
+    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    disabled: !dragActive,
+    collisionPriority: 3,
+    data: dropTargetData({ parentId, index, surface: "canvas" })
+  });
+  const isStartEdge = !emptyParent && index === 0;
+  const isEndEdge = !emptyParent && index === slotCount;
+  const isMiddle = !emptyParent && !isStartEdge && !isEndEdge;
+  const targetStyle = isMiddle
+    ? { left: `${(index / Math.max(slotCount, 1)) * 100}%` }
+    : undefined;
+
+  return (
+    <div
+      ref={ref}
+      className={[
+        "fx-gui-flow-drop-target",
+        isDropTarget ? "is-targeted" : "",
+        emptyParent ? "is-empty-parent" : "",
+        isStartEdge ? "is-start-edge" : "",
+        isEndEdge ? "is-end-edge" : "",
+        isMiddle ? "is-middle" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={targetStyle}
+    />
+  );
+}
+
+function CanvasDropPreviewSlot({
+  index = 0,
+  slotCount = 0,
+  emptyParent = false,
+  parentStyleReference = {}
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isStartEdge = !emptyParent && index === 0;
+  const isEndEdge = !emptyParent && index === slotCount;
+  const isMiddle = !emptyParent && !isStartEdge && !isEndEdge;
+  const previewNode = createHorizontalFlowPreviewNode(parentStyleReference);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setExpanded(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  return (
+    <GuiHorizontalFlowShell
+      node={previewNode}
+      className={[
+        "fx-gui-flow-drop-preview-slot",
+        expanded ? "is-expanded" : "",
+        emptyParent ? "is-empty-parent" : "",
+        isStartEdge ? "is-start-edge" : "",
+        isEndEdge ? "is-end-edge" : "",
+        isMiddle ? "is-middle" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-hidden="true"
+    />
+  );
+}
+
+function FlowChildren({
+  nodes,
+  parentId,
+  inspectorActive,
+  inspectorLocked,
+  inspectedAnchor,
+  onInspect,
+  onInspectLock,
+  builderDragActive,
+  builderDropTarget,
+  builderDraggingId,
+  parentStyleReference
+}) {
+  const ghostIndex =
+    builderDropTarget?.surface === "canvas" && builderDropTarget.parentId === parentId
+      ? builderDropTarget.index
+      : null;
+  const renderedChildren = [];
+
+  if (builderDragActive) {
+    for (let index = 0; index <= nodes.length; index += 1) {
+      renderedChildren.push(
+        <CanvasDropTarget
+          dragActive={builderDragActive}
+          emptyParent={nodes.length === 0}
+          index={index}
+          key={`${parentId}-target-${index}`}
+          parentId={parentId}
+          slotCount={nodes.length}
+        />
+      );
+    }
+  }
+
+  if (ghostIndex === 0) {
+    renderedChildren.push(
+      <CanvasDropPreviewSlot
+        emptyParent={nodes.length === 0}
+        index={0}
+        key={`${parentId}-preview-0`}
+        parentStyleReference={parentStyleReference}
+        slotCount={nodes.length}
+      />
+    );
+  }
+
+  nodes.forEach((node, index) => {
+    renderedChildren.push(
+      <GuiHorizontalFlow
+        builderDragActive={builderDragActive}
+        builderDropTarget={builderDropTarget}
+        builderDraggingId={builderDraggingId}
+        inspectedAnchor={inspectedAnchor}
+        inspectorActive={inspectorActive}
+        inspectorLocked={inspectorLocked}
+        key={node.id}
+        node={node}
+        onInspect={onInspect}
+        onInspectLock={onInspectLock}
+      />
+    );
+
+    if (ghostIndex === index + 1) {
+      renderedChildren.push(
+        <CanvasDropPreviewSlot
+          index={index + 1}
+          key={`${parentId}-preview-${index + 1}`}
+          parentStyleReference={parentStyleReference}
+          slotCount={nodes.length}
+        />
+      );
+    }
+  });
+
+  return renderedChildren;
+}
+
+export function GuiHorizontalFlow({
+  node,
+  inspectorActive = false,
+  inspectorLocked = false,
+  inspectedAnchor = node.id,
+  onInspect,
+  onInspectLock,
+  builderDragActive = false,
+  builderDropTarget = null,
+  builderDraggingId = null,
+}) {
+  const flowInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: node.id,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+  const children = node.children ?? [];
+  const isDropParent = builderDropTarget?.surface === "canvas" &&
+    builderDropTarget.parentId === node.id;
+  const isDraggingSource = builderDraggingId === node.id;
+  const { ref: dropRef, isDropTarget } = useDroppable({
+    id: `builder-canvas-parent-${node.id}`,
+    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    disabled: !builderDragActive,
+    collisionPriority: 1,
+    data: dropTargetData({
+      parentId: node.id,
+      index: children.length,
+      surface: "canvas"
+    })
+  });
+
+  return (
+    <GuiHorizontalFlowShell
+      node={node}
+      shellRef={dropRef}
+      className={[
+        isDropParent || isDropTarget ? "is-builder-drop-parent" : "",
+        isDraggingSource ? "is-builder-dragging-source" : "",
+        flowInspector.className
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      tabIndex={flowInspector.tabIndex}
+      onClick={flowInspector.onClick}
+      onFocus={flowInspector.onFocus}
+      onMouseEnter={flowInspector.onMouseEnter}
+      onMouseMove={flowInspector.onMouseMove}
+    >
+      <FlowChildren
+        builderDragActive={builderDragActive}
+        builderDropTarget={builderDropTarget}
+        builderDraggingId={builderDraggingId}
+        inspectedAnchor={inspectedAnchor}
+        inspectorActive={inspectorActive}
+        inspectorLocked={inspectorLocked}
+        nodes={children}
+        onInspect={onInspect}
+        onInspectLock={onInspectLock}
+        parentId={node.id}
+        parentStyleReference={node.styleReference}
+      />
+    </GuiHorizontalFlowShell>
+  );
+}
+
 export function GuiWindow({
   title,
   children,
+  bodyChildren = [],
+  bodyStyleReference = null,
   className = "",
   anchor = "gui_window",
   inspectorActive = false,
@@ -247,6 +585,9 @@ export function GuiWindow({
   onTitlebarPointerMove,
   onTitlebarPointerUp,
   onTitlebarPointerCancel,
+  builderDragActive = false,
+  builderDropTarget = null,
+  builderDraggingId = null,
   styleReference = frameStyleReference
 }) {
   const contentSize = getFrameContentSize(styleReference);
@@ -304,6 +645,23 @@ export function GuiWindow({
     onInspect,
     onInspectLock
   });
+  const { ref: bodyDropRef, isDropTarget: isBodyDropTarget } = useDroppable({
+    id: `builder-canvas-parent-${bodyAnchor}`,
+    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    disabled: !builderDragActive,
+    collisionPriority: 1,
+    data: dropTargetData({
+      parentId: bodyAnchor,
+      index: bodyChildren.length,
+      surface: "canvas"
+    })
+  });
+  const bodyDropClass = builderDropTarget?.surface === "canvas" &&
+    builderDropTarget.parentId === bodyAnchor
+    ? "is-builder-drop-parent"
+    : "";
+  const bodyStyle = horizontalFlowStyleVariables(bodyStyleReference);
 
   return (
     <section
@@ -423,7 +781,14 @@ export function GuiWindow({
         />
       </header>
       <div
-        className={["fx-gui-window__body", bodyInspector.className].filter(Boolean).join(" ")}
+        ref={bodyDropRef}
+        className={[
+          "fx-gui-window__body",
+          bodyDropClass || isBodyDropTarget ? "is-builder-drop-parent" : "",
+          bodyInspector.className
+        ]
+          .filter(Boolean)
+          .join(" ")}
         data-anchor={bodyAnchor}
         data-fx-primitive="flow"
         data-fx-style={styleReference.bodyStyle}
@@ -439,12 +804,26 @@ export function GuiWindow({
         data-fx-horizontal-spacing={styleReference.bodyHorizontalSpacing ?? undefined}
         data-fx-vertical-spacing={styleReference.bodyVerticalSpacing ?? undefined}
         data-fx-maximum-vertical-squash-size={styleReference.maximumVerticalSquashSize}
+        style={bodyStyle}
         tabIndex={bodyInspector.tabIndex}
         onMouseEnter={bodyInspector.onMouseEnter}
         onMouseMove={bodyInspector.onMouseMove}
         onClick={bodyInspector.onClick}
         onFocus={bodyInspector.onFocus}
       >
+        <FlowChildren
+          builderDragActive={builderDragActive}
+          builderDropTarget={builderDropTarget}
+          builderDraggingId={builderDraggingId}
+          inspectedAnchor={inspectedAnchor}
+          inspectorActive={inspectorActive}
+          inspectorLocked={inspectorLocked}
+          nodes={bodyChildren}
+          onInspect={onInspect}
+          onInspectLock={onInspectLock}
+          parentId={bodyAnchor}
+          parentStyleReference={bodyStyleReference}
+        />
         {children}
       </div>
     </section>

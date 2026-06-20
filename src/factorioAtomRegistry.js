@@ -581,23 +581,31 @@ export const factorioAtomRegistry = Object.freeze([
     summary: "Horizontal flow component; style variants include frame headers and inset-frame content rows.",
     className: "agui::HorizontalFlow",
     derivedFrom: "horizontal_flow",
-    progress: {
-      evidence: 86,
-      model: 52,
-      renderer: 58,
-      luaExport: 42,
-      behavior: 38
-    },
     fields: [
       field("className", "captured", "`agui::HorizontalFlow`.", {
         type: className,
         example: "agui::HorizontalFlow",
         source: "blueprint-library-header-flow"
       }),
-      field("style variants", "captured", "Observed horizontal flow styles include `frame_header_flow` and `inset_frame_container_horizontal_flow`; the atom identity is still Horizontal Flow.", {
+      field("primitive", "official", "Mapped to Factorio `flow`, which the official runtime docs describe as an invisible container that lays out children horizontally or vertically.", {
+        type: guiPrimitive,
+        example: "flow",
+        source: "factorio-runtime-docs-2.0.77"
+      }),
+      field("direction", "implemented", "Horizontal Flow fixes the Factorio flow direction to `horizontal`; vertical flow remains a separate atom.", {
+        type: string,
+        example: "horizontal",
+        source: "factorio-runtime-docs-2.0.77"
+      }),
+      field("style variants", "implemented", "Observed and editor-created horizontal flow styles are represented as variant data, not separate atom identities.", {
         type: styleName,
-        example: "frame_header_flow / inset_frame_container_horizontal_flow",
+        example: "frame_header_flow / inset_frame_container_horizontal_flow / generic-horizontal-flow / header-action-group role",
         source: "blueprint-library-horizontal-flow-captures"
+      }),
+      field("generic editor-created variant", "implemented", "The no-code builder creates empty Horizontal Flow specs that hydrate to `style = horizontal_flow` with authored Settings panel values for spacing, minimal width/height, padding, and stretch flags. These are editor-owned assumptions until Factorio defaults are proven.", {
+        type: styleName,
+        example: "generic-horizontal-flow",
+        source: "no-code-horizontal-flow-builder"
       }),
       field("relative", "captured", "Captured relative position is role-dependent: the header starts at the Window content origin, while the inset content row starts after the 48 px header.", {
         type: vector2i,
@@ -639,20 +647,172 @@ export const factorioAtomRegistry = Object.freeze([
         example: "12 header, 18 content row, 6 inherited",
         source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("bottomPadding", "captured", "Frame header flow has bottom padding; ordinary content-row captures did not show this override.", {
+      field("spacing model", "implemented", "Horizontal, vertical, and inherited spacing fields are structured style-reference data and inspector rows; Lua export emits the supported explicit spacing assignment for the current flow.", {
+        type: integer,
+        example: "horizontal_spacing = 12 / 18",
+        source: "editor-model"
+      }),
+      field("bottomPadding", "implemented", "Frame header flow bottom padding is carried as structured style-reference data and exported for the titlebar flow; ordinary content-row captures did not show this override.", {
         type: integer,
         example: 6,
         source: "blueprint-library-header-flow"
       }),
-      field("children", "captured", "HorizontalFlow children depend on role: headers can contain label/filler/actions; content rows can contain frames and nested flows.", {
+      field("stretch flags", "implemented", "Captured titlebar stretch/search flags are represented in model and inspector data. Lua export emits horizontally stretchable where the editor currently owns the flow shell.", {
+        type: boolean,
+        example: "header horizontally_stretchable=on, vertically_stretchable=off",
+        source: "blueprint-library-header-flow"
+      }),
+      field("children", "implemented", "HorizontalFlow owns an ordered child-list contract. Headers can contain label/filler/action slots; content rows can contain future child atoms. Child atom behavior remains delegated.", {
         type: nodeList,
         example: "Label/Filler/SearchBar or Frame/FrameWithSubheader/VerticalFlow",
         source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("header action children", "planned", "Blueprint Library captures SearchBar, browse-arrow group, and CloseButton; editor seed only has label + filler.", {
+      field("header action children", "planned", "Blueprint Library captures SearchBar, browse-arrow group, and CloseButton as ordered child slots. Those child atoms are intentionally outside this pass.", {
         type: nodeList,
         example: "SearchBar 36x36, HorizontalFlow 72x36, CloseButton 36x36",
         source: "blueprint-library-header-flow"
+      }),
+      field("Lua export", "implemented", "Current Horizontal Flow nodes export as `type = \"flow\"` with `direction = \"horizontal\"`, stable names, styles, and supported explicit style assignments. Generic builder flows export their authored spacing, minimal size, padding, and stretch settings.", {
+        type: string,
+        example: "parent.add{type=\"flow\", direction=\"horizontal\", style=\"frame_header_flow\"}",
+        source: "editor-export"
+      }),
+      field("runtime behavior", "notApplicable", "Horizontal Flow has no direct click/state behavior in current scope. Runtime behavior belongs to child atoms or Window drag-target wiring.", {
+        type: string,
+        source: "current-scope-contract"
+      })
+    ],
+    progressChecks: [
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Official `flow` primitive checked",
+        note: "Factorio Runtime Docs 2.0.77 list `flow` as a GUI element that lays out children horizontally or vertically."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Header flow capture transcribed",
+        note: "`frame_header_flow` capture includes size/content/clip, stretch/search flags, bottom padding, spacing, squash fields, and ordered children."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Body flow capture transcribed",
+        note: "`inset_frame_container_horizontal_flow` capture includes size/content/clip, spacing, squash fields, and future child slots."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Header action group recorded as role variant",
+        note: "The 72 x 36 browse-arrow group remains a captured HorizontalFlow role; it is not a separate atom and not promoted to product logic."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Fixture values classified",
+        note: "`1440`, `792`, `1236`, `540`, and size-before-stretching values remain capture evidence, not universal Horizontal Flow defaults."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Shared model can create Horizontal Flow nodes",
+        note: "`createHorizontalFlowNode` fixes primitive `flow` and direction `horizontal` while carrying stable ids, style, role, style-reference data, and ordered children."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Style variants represented as data",
+        note: "`frame_header_flow`, `inset_frame_container_horizontal_flow`, the generic editor-created flow, and the header action-group role are tracked as variants of one atom."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Generic builder variant represented",
+        note: "Persisted no-code specs hydrate to `flow` nodes with `direction = \"horizontal\"`, `style = \"horizontal_flow\"`, and ordered nested children."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Window titlebar uses the Horizontal Flow contract"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Window horizontal body flow uses the Horizontal Flow contract",
+        note: "Vertical body references keep their own direction instead of being coerced into this atom."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Ordered child slots are stable",
+        note: "Header label/filler/action rows and body content rows are ordered model/capture data; concrete child atom completion is delegated."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Titlebar Horizontal Flow renders from model data",
+        note: "The browser preview uses the structured titlebar node and exposes primitive/style/direction/spacing data attributes."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Body Horizontal Flow renders from model data",
+        note: "The body node exposes `flow`, horizontal direction, style, dimensions, and spacing from the selected reference."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Inspector rows are structured projections",
+        note: "Header/body flow rows, spacing, geometry, squash fields, and child rows come from model reference data, not parsed DOM text. Implemented child flows navigate as `flow.horizontal`; unknown runtime geometry remains explicit."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Optional children are represented without fake child rendering",
+        note: "Unsupported child atoms appear as captured rows or slots; Horizontal Flow does not render SearchBar, Frame, or CloseButton stand-ins."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Horizontal Flow exports as Factorio `flow`",
+        note: "Exported flow nodes include stable name, style, and `direction = \"horizontal\"` for titlebar and horizontal body flows."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Supported style fields export",
+        note: "Explicit `horizontal_spacing`, header `bottom_padding`, and stretch fields are emitted from style-reference data where supported."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Capture-only metrics stay out of Lua",
+        note: "`size_before_stretching`, clip size, squash sizes, and inherited spacing remain inspector/evidence data until an export rule is proven."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Child order is preserved by add order",
+        note: "Current titlebar export emits label then filler; future child atoms can append in model order."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "No direct Horizontal Flow runtime behavior required",
+        note: "The atom is a layout container. Clicks, search controls, close buttons, and frame content behavior belong to child atoms."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Window drag behavior remains wired through titlebar flow",
+        note: "The flow participates in Window drag-target export, but the behavior is owned by Window and its draggable filler/title children."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Child insertion can build on ordered slots",
+        note: "Later atoms can be inserted without changing the Horizontal Flow identity or direction contract."
       })
     ],
     captures: [
@@ -714,15 +874,32 @@ export const factorioAtomRegistry = Object.freeze([
       })
     ],
     tracking: {
+      document: "Horizontal Flow is current-scope complete as the reusable horizontal layout atom behind Window titlebar and horizontal body rows.",
+      implemented: [
+        "Official Factorio primitive mapping uses `flow` with fixed `direction = \"horizontal\"` for this atom.",
+        "Header/body/action-group roles and the generic builder flow are style variants of one Horizontal Flow atom.",
+        "Model nodes carry stable ids, class/style, fixed direction, style-reference spacing/padding/stretch/search fields, and ordered children.",
+        "Renderer and inspector expose titlebar/body Horizontal Flow facts from structured model data, with implemented nested child flows shown as navigable atom references.",
+        "Lua export emits valid Factorio `flow` nodes with stable names, styles, horizontal direction, and supported explicit style assignments.",
+        "The no-code builder can add, nest, reorder, inspect, render, and export empty generic Horizontal Flow nodes.",
+        "Window remains complete for current shell scope and is not reopened by this pass."
+      ],
       assumptions: [
         "The atom is the component class `agui::HorizontalFlow`; `frame_header_flow` and `inset_frame_container_horizontal_flow` are style/role variants.",
         "The frame header flow is part of the frame definition, not a normal user-authored child.",
-        "`size_before_stretching` for header roles appears to be the minimum natural width of label + filler/action controls before the filler stretches."
+        "`size_before_stretching` for header roles appears to be the minimum natural width of label + filler/action controls before the filler stretches, but that formula is not promoted to a rule yet."
       ],
-      missing: [
-        "Header action child model.",
-        "Frame and FrameWithSubheader child atoms.",
-        "Rule for computing horizontal flow squash sizes from children and role."
+      hardcoded: [
+        "Captured fixture dimensions remain in evidence/reference data only.",
+        "Browser layout still uses CSS flex to approximate Factorio flow layout until a fuller layout solver exists."
+      ],
+      missing: [],
+      deferred: [
+        "Header action child atoms: SearchBar, browse arrows, and CloseButton.",
+        "Body child atoms: Frame, FrameWithSubheader, and Vertical Flow completion.",
+        "General formula for `size_before_stretching` and horizontal/vertical squash values from children and role.",
+        "GUI-scale, viewport, and in-game Lua validation harness for runtime parity.",
+        "No-code child insertion UI waits until child atom contracts exist."
       ]
     }
   }),

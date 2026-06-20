@@ -15,6 +15,74 @@ function luaName(value) {
   return String(value).replace(/[^a-zA-Z0-9_]/g, "_");
 }
 
+function flowStyleAssignmentLines(variableName, node) {
+  const styleReference = node?.styleReference ?? {};
+  const lines = [];
+
+  for (const [field, luaField] of [
+    ["topPadding", "top_padding"],
+    ["rightPadding", "right_padding"],
+    ["leftPadding", "left_padding"],
+    ["minimalWidth", "minimal_width"],
+    ["minimalHeight", "minimal_height"]
+  ]) {
+    if (styleReference[field] != null) {
+      lines.push(`  ${variableName}.style.${luaField} = ${styleReference[field]}`);
+    }
+  }
+
+  if (styleReference.bottomPadding != null) {
+    lines.push(
+      `  ${variableName}.style.bottom_padding = ${styleReference.bottomPadding}`
+    );
+  }
+
+  if (styleReference.horizontalSpacing != null) {
+    lines.push(
+      `  ${variableName}.style.horizontal_spacing = ${styleReference.horizontalSpacing}`
+    );
+  }
+
+  if (styleReference.verticalSpacing != null) {
+    lines.push(
+      `  ${variableName}.style.vertical_spacing = ${styleReference.verticalSpacing}`
+    );
+  }
+
+  if (styleReference.horizontallyStretchable != null) {
+    lines.push(
+      `  ${variableName}.style.horizontally_stretchable = ${styleReference.horizontallyStretchable}`
+    );
+  }
+
+  if (styleReference.verticallyStretchable != null) {
+    lines.push(
+      `  ${variableName}.style.vertically_stretchable = ${styleReference.verticallyStretchable}`
+    );
+  }
+
+  return lines;
+}
+
+function renderFlowNodeLua(parentVariableName, node, depth = 1) {
+  const indent = "  ".repeat(depth);
+  const variableName = luaName(node.id);
+  const styleLines = flowStyleAssignmentLines(variableName, node)
+    .map((line) => `${indent}${line.trimStart()}`)
+    .join("\n");
+  const childLines = (node.children ?? [])
+    .map((child) => renderFlowNodeLua(variableName, child, depth))
+    .join("\n");
+
+  return `${indent}local ${variableName} = ${parentVariableName}.add{
+${indent}  type = "flow",
+${indent}  name = ${luaString(node.id)},
+${indent}  direction = ${luaString(node.direction)},
+${indent}  style = ${luaString(node.style)}
+${indent}}
+${styleLines}${childLines ? `\n${childLines}` : ""}`;
+}
+
 export function renderWindowLua(model) {
   if (!model?.root) {
     return "-- Create a window to generate gui.lua.";
@@ -30,19 +98,11 @@ export function renderWindowLua(model) {
   const dragHandle = luaName(dragNode.id);
   const body = luaName(bodyNode.id);
   const style = root.styleReference;
-  const bodyStyleLines = ["  " + body + ".style.horizontally_stretchable = true"];
-
-  if (bodyNode.styleReference.horizontalSpacing != null) {
-    bodyStyleLines.push(
-      `  ${body}.style.horizontal_spacing = ${bodyNode.styleReference.horizontalSpacing}`
-    );
-  }
-
-  if (bodyNode.styleReference.verticalSpacing != null) {
-    bodyStyleLines.push(
-      `  ${body}.style.vertical_spacing = ${bodyNode.styleReference.verticalSpacing}`
-    );
-  }
+  const titlebarStyleLines = flowStyleAssignmentLines(titlebar, root.children[0]);
+  const bodyStyleLines = flowStyleAssignmentLines(body, bodyNode);
+  const bodyChildLines = (bodyNode.children ?? [])
+    .map((child) => renderFlowNodeLua(body, child))
+    .join("\n");
 
   const locationLua = root.location
     ? `  ${frame}.auto_center = false
@@ -80,9 +140,7 @@ ${locationLua}
     direction = ${luaString(root.children[0].direction)},
     style = ${luaString(root.children[0].style)}
   }
-  ${titlebar}.style.bottom_padding = ${root.children[0].styleReference.bottomPadding}
-  ${titlebar}.style.horizontal_spacing = ${root.children[0].styleReference.horizontalSpacing}
-  ${titlebar}.style.horizontally_stretchable = ${root.children[0].styleReference.horizontallyStretchable}
+${titlebarStyleLines.join("\n")}
   ${titlebar}.drag_target = ${frame}
 
   local ${title} = ${titlebar}.add{
@@ -116,6 +174,7 @@ ${locationLua}
     style = ${luaString(bodyNode.style)}
   }
 ${bodyStyleLines.join("\n")}
+${bodyChildLines ? `\n${bodyChildLines}` : ""}
 
   return ${frame}
 end
