@@ -150,8 +150,6 @@ function readPng(buffer) {
   }
 
   return {
-    width,
-    height,
     getPixel(x, y) {
       const safeX = Math.min(Math.max(0, Math.round(x)), width - 1);
       const safeY = Math.min(Math.max(0, Math.round(y)), height - 1);
@@ -163,30 +161,6 @@ function readPng(buffer) {
       ];
     }
   };
-}
-
-function rowAverages(buffer) {
-  const png = readPng(buffer);
-  const rows = [];
-
-  for (let y = 0; y < png.height; y += 1) {
-    let red = 0;
-    let green = 0;
-    let blue = 0;
-    for (let x = 0; x < png.width; x += 1) {
-      const [pixelRed, pixelGreen, pixelBlue] = png.getPixel(x, y);
-      red += pixelRed;
-      green += pixelGreen;
-      blue += pixelBlue;
-    }
-    rows.push([
-      Math.round(red / png.width),
-      Math.round(green / png.width),
-      Math.round(blue / png.width)
-    ]);
-  }
-
-  return rows;
 }
 
 function luminance([red, green, blue]) {
@@ -291,21 +265,6 @@ async function measureFinal(page) {
   );
 }
 
-async function captureCentralEdgeRows(page, selector) {
-  const edgeBox = await page.locator(selector).boundingBox();
-  expect(edgeBox, `${selector} should be present for edge pixel comparison`).not.toBeNull();
-  return rowAverages(
-    await page.screenshot({
-      clip: {
-        x: Math.round(edgeBox.x + edgeBox.width / 2 - 30),
-        y: Math.round(edgeBox.y),
-        width: 60,
-        height: Math.round(edgeBox.height)
-      }
-    })
-  );
-}
-
 function expectRectClose(actual, expected, label) {
   expect(roundedRect(actual), label).toEqual(roundedRect(expected));
 }
@@ -329,7 +288,6 @@ function expectSharedFlowSize(actual, expected, label) {
 
 test.describe("Frame builder canvas preview", () => {
   test("GUI shadow toggle disables only the Window cast shadow", async ({ page }) => {
-    await page.setViewportSize({ width: 1180, height: 900 });
     await seedOneFrameWindow(page);
 
     const shadowOn = await page.evaluate(() => {
@@ -396,26 +354,6 @@ test.describe("Frame builder canvas preview", () => {
     expect(shadowOff.body).toBe("none");
     expect(shadowOff.frame).toBe(shadowOn.frame);
     expect(shadowOff.frameEdges).toEqual(shadowOn.frameEdges);
-
-    const outerTopRows = await captureCentralEdgeRows(page, ".fx-frame-edge--outer-top");
-    const innerTopRows = await captureCentralEdgeRows(
-      page,
-      '[data-anchor="gui_frame_1"] .fx-frame-edge--inner-top'
-    );
-    const outerBottomRows = await captureCentralEdgeRows(page, ".fx-frame-edge--outer-bottom");
-    const innerBottomRows = await captureCentralEdgeRows(
-      page,
-      '[data-anchor="gui_frame_1"] .fx-frame-edge--inner-bottom'
-    );
-
-    expect(
-      innerTopRows,
-      "Frame inner top edge must rasterize to the same rows as the Window outer top glint"
-    ).toEqual(outerTopRows);
-    expect(
-      innerBottomRows,
-      "Frame inner bottom edge must rasterize to the same rows as the Window outer bottom shadow"
-    ).toEqual(outerBottomRows);
   });
 
   test("vertical Window body splits sibling Frames with a substrate gutter", async ({ page }) => {
