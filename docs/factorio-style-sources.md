@@ -498,8 +498,8 @@ Implemented mapping:
 | `.fx-gui-window__edge--bottom` | outer | bottom | `bottom-shadow` | `0deg` | Window miter clip, unchanged |
 | `.fx-gui-window__edge--left` | outer | left | `left-shadow` | `90deg` | Window miter clip, unchanged |
 | `.fx-gui-window__edge--right` | outer | right | `right-shadow` | `270deg` | Window miter clip, unchanged |
-| `.fx-gui-frame .fx-frame-edge--inner-top` | inner | top | `bottom-shadow` | `180deg` | square stepped |
-| `.fx-gui-frame .fx-frame-edge--inner-bottom` | inner | bottom | `top-glint` | `0deg` | square stepped |
+| `.fx-gui-frame .fx-frame-edge--inner-top` | inner | top | sampled `top-glint` rows | `180deg` | square stepped |
+| `.fx-gui-frame .fx-frame-edge--inner-bottom` | inner | bottom | sampled `bottom-shadow` rows | `180deg` | square stepped |
 | `.fx-gui-frame .fx-frame-edge--inner-left` | inner | left | `left-shadow` | `90deg` | square stepped |
 | `.fx-gui-frame .fx-frame-edge--inner-right` | inner | right | `right-shadow` | `270deg` | square stepped |
 
@@ -507,10 +507,13 @@ The generic shader is renderer chrome, but it is deliberately tied to the same
 6 px graphical band as the Window shell instead of arbitrary CSS shadow values.
 The first refactor keeps the existing Window edge spans and legacy selectors as
 the source of truth while adding `fx-frame-edge` orientation/side classes. The
-child Frame now uses inner-oriented edge spans, so its top lip and bottom glint
-come from the same color-stop bands as the accepted Window shell. The current
-pass does not change the captured `graphicalBorder`, Frame padding, or Flow
-spacing model; future in-game validation may turn more of that chrome into
+child Frame now uses inner-oriented edge spans, so its inner top and bottom
+edges use the same band order as the accepted Window shell instead of an
+inverted hollow-frame interpretation. The inner top/bottom bands use explicit
+1 px rows sampled from the accepted Window edge render because the raw CSS
+gradient stops do not rasterize to the same pixels inside the child Frame. The
+current pass does not change the captured `graphicalBorder`, Frame padding, or
+Flow spacing model; future in-game validation may turn more of that chrome into
 explicit measured Frame style data.
 
 ## Component Translation Targets

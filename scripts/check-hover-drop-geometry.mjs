@@ -122,6 +122,16 @@ assert.match(
   "frame edge shader must keep the Window bottom shadow color band as a reusable source"
 );
 assert.match(
+  declaration(frameEdgeRule, "--fx-frame-edge-top-glint-rows"),
+  /#504e4e 0 1px[\s\S]*#313030 5px 6px/,
+  "frame edge shader must expose rasterized Window top glint rows for inner edges"
+);
+assert.match(
+  declaration(frameEdgeRule, "--fx-frame-edge-bottom-shadow-rows"),
+  /#2e2d2e 0 1px[\s\S]*#0c0c0c 5px 6px/,
+  "frame edge shader must expose rasterized Window bottom shadow rows for inner edges"
+);
+assert.match(
   declaration(outerTopEdgeRule, "background"),
   /linear-gradient\([\s\S]*180deg[\s\S]*var\(--fx-frame-edge-top-glint-band\)/,
   "Window outer top edge must use the reusable top glint shader band"
@@ -133,13 +143,13 @@ assert.match(
 );
 assert.match(
   declaration(innerTopEdgeRule, "background"),
-  /linear-gradient\([\s\S]*180deg[\s\S]*var\(--fx-frame-edge-bottom-shadow-band\)/,
-  "Frame inner top edge must reuse the Window bottom shadow band as the recessed lip"
+  /linear-gradient\([\s\S]*180deg[\s\S]*var\(--fx-frame-edge-top-glint-rows\)/,
+  "Frame inner top edge must reuse the rasterized Window top glint rows in the same order"
 );
 assert.match(
   declaration(innerBottomEdgeRule, "background"),
-  /linear-gradient\([\s\S]*0deg[\s\S]*var\(--fx-frame-edge-top-glint-band\)/,
-  "Frame inner bottom edge must reuse the Window top glint band as the bottom glint"
+  /linear-gradient\([\s\S]*180deg[\s\S]*var\(--fx-frame-edge-bottom-shadow-rows\)/,
+  "Frame inner bottom edge must reuse the rasterized Window bottom shadow rows in the same order"
 );
 assert.equal(
   declaration(innerLeftEdgeRule, "top"),

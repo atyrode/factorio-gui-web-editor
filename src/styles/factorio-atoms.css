@@ -651,6 +651,20 @@
     #262525 54%,
     #2c2b2c 72%,
     var(--fx-panel) 100%;
+  --fx-frame-edge-top-glint-rows:
+    #504e4e 0 1px,
+    #4d4a49 1px 2px,
+    #3c3a39 2px 3px,
+    #32302f 3px 4px,
+    #312f2f 4px 5px,
+    #313030 5px 6px;
+  --fx-frame-edge-bottom-shadow-rows:
+    #2e2d2e 0 1px,
+    #2d2c2d 1px 2px,
+    #282727 2px 3px,
+    #1f1e1e 3px 4px,
+    #151515 4px 5px,
+    #0c0c0c 5px 6px;
   position: absolute;
   z-index: 0;
   pointer-events: none;
@@ -744,7 +758,7 @@
   background:
     linear-gradient(
       180deg,
-      var(--fx-frame-edge-bottom-shadow-band)
+      var(--fx-frame-edge-top-glint-rows)
     );
 }
 
@@ -755,8 +769,8 @@
   height: var(--fx-frame-edge-size);
   background:
     linear-gradient(
-      0deg,
-      var(--fx-frame-edge-top-glint-band)
+      180deg,
+      var(--fx-frame-edge-bottom-shadow-rows)
     );
 }
 
