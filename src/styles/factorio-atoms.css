@@ -877,14 +877,14 @@
 }
 
 .fx-gui-flow-drop-target.is-targeted {
-  background: rgba(227, 152, 39, 0.06);
+  background: transparent;
 }
 
 .fx-gui-flow-drop-preview-slot {
   box-sizing: border-box;
   position: relative;
   flex-grow: 0;
-  flex-shrink: 0;
+  flex-shrink: 1;
   flex-basis: 0;
   min-width: 0;
   min-height: 100%;
@@ -897,6 +897,7 @@
     opacity 140ms ease;
 }
 
+/* Mirror the future Horizontal Flow's flex contract; visuals stay in this paint layer. */
 .fx-gui-flow-drop-preview-slot::before {
   content: "";
   position: absolute;
@@ -927,7 +928,8 @@
 
 .fx-gui-flow-drop-preview-slot.is-expanded {
   flex-grow: 1;
-  flex-basis: var(--fx-horizontal-flow-child-min-width, 168px);
+  flex-shrink: 1;
+  flex-basis: 0;
   min-width: var(--fx-horizontal-flow-child-min-width, 168px);
   opacity: 1;
 }
@@ -937,8 +939,8 @@
 }
 
 .fx-gui-flow-drop-preview-slot.is-empty-parent.is-expanded {
-  flex: 1 1 100%;
-  min-width: 100%;
+  flex: 1 1 0;
+  min-width: var(--fx-horizontal-flow-child-min-width, 168px);
 }
 
 .fx-gui-flow-drop-preview-slot .fx-builder-ghost {
