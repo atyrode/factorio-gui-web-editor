@@ -294,12 +294,17 @@ test.describe("Frame builder canvas preview", () => {
       const root = document.querySelector('[data-anchor="gui_window"]');
       const body = document.querySelector('[data-anchor="gui_window_body"]');
       const frame = document.querySelector('[data-anchor="gui_frame_1"]');
-      const frameBevel = getComputedStyle(frame, "::before");
       return {
         root: getComputedStyle(root).boxShadow,
         body: getComputedStyle(body).boxShadow,
         frame: getComputedStyle(frame).boxShadow,
-        frameBevel: frameBevel.boxShadow
+        frameEdges: Array.from(frame.querySelectorAll(".fx-frame-edge--inner"), (edge) => ({
+          orientation: edge.dataset.fxEdgeOrientation,
+          side: edge.dataset.fxEdgeSide,
+          background: getComputedStyle(edge).backgroundImage,
+          width: Math.round(edge.getBoundingClientRect().width),
+          height: Math.round(edge.getBoundingClientRect().height)
+        }))
       };
     });
 
@@ -307,7 +312,18 @@ test.describe("Frame builder canvas preview", () => {
     expect(shadowOn.root).not.toBe("none");
     expect(shadowOn.body).toBe("none");
     expect(shadowOn.frame).toBe("none");
-    expect(shadowOn.frameBevel).toContain("inset");
+    expect(shadowOn.frameEdges.map((edge) => edge.side)).toEqual([
+      "top",
+      "right",
+      "bottom",
+      "left"
+    ]);
+    expect(new Set(shadowOn.frameEdges.map((edge) => edge.orientation))).toEqual(
+      new Set(["inner"])
+    );
+    expect(shadowOn.frameEdges.every((edge) => edge.background.includes("linear-gradient"))).toBe(
+      true
+    );
 
     await page.locator('[data-anchor="gui_shadow_toggle"] input').click({ force: true });
     await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).not.toBeChecked();
@@ -320,19 +336,24 @@ test.describe("Frame builder canvas preview", () => {
       const root = document.querySelector('[data-anchor="gui_window"]');
       const body = document.querySelector('[data-anchor="gui_window_body"]');
       const frame = document.querySelector('[data-anchor="gui_frame_1"]');
-      const frameBevel = getComputedStyle(frame, "::before");
       return {
         root: getComputedStyle(root).boxShadow,
         body: getComputedStyle(body).boxShadow,
         frame: getComputedStyle(frame).boxShadow,
-        frameBevel: frameBevel.boxShadow
+        frameEdges: Array.from(frame.querySelectorAll(".fx-frame-edge--inner"), (edge) => ({
+          orientation: edge.dataset.fxEdgeOrientation,
+          side: edge.dataset.fxEdgeSide,
+          background: getComputedStyle(edge).backgroundImage,
+          width: Math.round(edge.getBoundingClientRect().width),
+          height: Math.round(edge.getBoundingClientRect().height)
+        }))
       };
     });
 
     expect(shadowOff.root).toBe("none");
     expect(shadowOff.body).toBe("none");
     expect(shadowOff.frame).toBe(shadowOn.frame);
-    expect(shadowOff.frameBevel).toBe(shadowOn.frameBevel);
+    expect(shadowOff.frameEdges).toEqual(shadowOn.frameEdges);
   });
 
   test("vertical Window body splits sibling Frames with a substrate gutter", async ({ page }) => {

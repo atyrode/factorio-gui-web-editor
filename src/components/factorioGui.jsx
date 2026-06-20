@@ -297,6 +297,34 @@ function frameStyleVariables(styleReference = {}) {
   };
 }
 
+const FRAME_EDGE_SIDES = ["top", "right", "bottom", "left"];
+
+function GuiFrameEdgeShader({ orientation, legacyClassPrefix = "" }) {
+  return (
+    <>
+      {FRAME_EDGE_SIDES.map((side) => {
+        const legacyClasses = legacyClassPrefix
+          ? [legacyClassPrefix, `${legacyClassPrefix}--${side}`]
+          : [];
+        return (
+          <span
+            key={side}
+            className={[
+              "fx-frame-edge",
+              `fx-frame-edge--${orientation}`,
+              `fx-frame-edge--${orientation}-${side}`,
+              ...legacyClasses
+            ].join(" ")}
+            data-fx-edge-orientation={orientation}
+            data-fx-edge-side={side}
+            aria-hidden="true"
+          />
+        );
+      })}
+    </>
+  );
+}
+
 function windowBodyStyleVariables(styleReference = {}) {
   const reference = styleReference ?? {};
 
@@ -451,6 +479,7 @@ function GuiFrameShell({
       style={frameStyle}
       {...props}
     >
+      <GuiFrameEdgeShader orientation="inner" />
       {children}
     </div>
   );
@@ -904,10 +933,7 @@ export function GuiWindow({
       onClick={rootInspector.onClick}
       onFocus={rootInspector.onFocus}
     >
-      <span className="fx-gui-window__edge fx-gui-window__edge--top" aria-hidden="true" />
-      <span className="fx-gui-window__edge fx-gui-window__edge--right" aria-hidden="true" />
-      <span className="fx-gui-window__edge fx-gui-window__edge--bottom" aria-hidden="true" />
-      <span className="fx-gui-window__edge fx-gui-window__edge--left" aria-hidden="true" />
+      <GuiFrameEdgeShader orientation="outer" legacyClassPrefix="fx-gui-window__edge" />
       <header
         className={["fx-gui-window__titlebar", titlebarInspector.className]
           .filter(Boolean)

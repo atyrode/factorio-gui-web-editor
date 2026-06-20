@@ -14,8 +14,14 @@ function escapeRegExp(value) {
 }
 
 function ruleFor(selector) {
-  const match = css.match(new RegExp(`${escapeRegExp(selector)}\\s*\\{([^}]*)\\}`, "m"));
-  return match?.[1] ?? null;
+  const blocks = css.matchAll(/(?:^|})\s*([^{}]+)\{([^}]*)\}/gm);
+  for (const block of blocks) {
+    const selectors = block[1].split(",").map((value) => value.trim());
+    if (selectors.includes(selector)) {
+      return block[2];
+    }
+  }
+  return null;
 }
 
 function declaration(rule, property) {
@@ -52,7 +58,13 @@ function flexWidths({ parentWidth, gap, minimumWidth, previewBasis }) {
 
 const realFlowRule = ruleFor(".fx-gui-horizontal-flow");
 const realFrameRule = ruleFor(".fx-gui-frame");
-const realFrameBevelRule = ruleFor(".fx-gui-frame::before");
+const frameEdgeRule = ruleFor(".fx-frame-edge");
+const outerTopEdgeRule = ruleFor(".fx-frame-edge--outer-top");
+const outerBottomEdgeRule = ruleFor(".fx-frame-edge--outer-bottom");
+const innerTopEdgeRule = ruleFor(".fx-frame-edge--inner-top");
+const innerBottomEdgeRule = ruleFor(".fx-frame-edge--inner-bottom");
+const innerLeftEdgeRule = ruleFor(".fx-frame-edge--inner-left");
+const innerRightEdgeRule = ruleFor(".fx-frame-edge--inner-right");
 const bodyRule = ruleFor(".fx-gui-window__body");
 const shadowDisabledWindowRule = ruleFor('.fx-gui-window[data-fx-shadows="hidden"]');
 const previewRule = ruleFor(".fx-gui-flow-drop-preview-slot.is-expanded");
@@ -94,20 +106,50 @@ assert.match(
   /1px solid #0a0909/,
   "real Frame must keep a hard dark outer edge for the inset surface"
 );
-assert.match(
-  declaration(realFrameBevelRule, "box-shadow"),
-  /inset 0 -1px 0 rgba\(255, 255, 255, 0\.20\)/,
-  "real Frame bevel must include the bottom inner glint visible with GUI shadows disabled"
+assert.equal(
+  ruleFor(".fx-gui-frame::before"),
+  null,
+  "real Frame bevel must use reusable edge shader strips, not a one-off pseudo-element shadow"
 );
 assert.match(
-  declaration(realFrameBevelRule, "box-shadow"),
-  /inset 0 2px 2px rgba\(0, 0, 0, 0\.58\)/,
-  "real Frame bevel must include a dark top recessed lip"
+  declaration(frameEdgeRule, "--fx-frame-edge-top-glint-band"),
+  /#62605f 0%[\s\S]*var\(--fx-panel\) 100%/,
+  "frame edge shader must keep the Window top glint color band as a reusable source"
 );
-assert.doesNotMatch(
-  declaration(realFrameBevelRule, "box-shadow"),
-  /inset 0 1px 0 rgba\(255/,
-  "real Frame must not add the extra top highlight line under its border"
+assert.match(
+  declaration(frameEdgeRule, "--fx-frame-edge-bottom-shadow-band"),
+  /#080808 0%[\s\S]*var\(--fx-panel\) 100%/,
+  "frame edge shader must keep the Window bottom shadow color band as a reusable source"
+);
+assert.match(
+  declaration(outerTopEdgeRule, "background"),
+  /linear-gradient\([\s\S]*180deg[\s\S]*var\(--fx-frame-edge-top-glint-band\)/,
+  "Window outer top edge must use the reusable top glint shader band"
+);
+assert.match(
+  declaration(outerBottomEdgeRule, "background"),
+  /linear-gradient\([\s\S]*0deg[\s\S]*var\(--fx-frame-edge-bottom-shadow-band\)/,
+  "Window outer bottom edge must use the reusable bottom shadow shader band"
+);
+assert.match(
+  declaration(innerTopEdgeRule, "background"),
+  /linear-gradient\([\s\S]*180deg[\s\S]*var\(--fx-frame-edge-bottom-shadow-band\)/,
+  "Frame inner top edge must reuse the Window bottom shadow band as the recessed lip"
+);
+assert.match(
+  declaration(innerBottomEdgeRule, "background"),
+  /linear-gradient\([\s\S]*0deg[\s\S]*var\(--fx-frame-edge-top-glint-band\)/,
+  "Frame inner bottom edge must reuse the Window top glint band as the bottom glint"
+);
+assert.equal(
+  declaration(innerLeftEdgeRule, "top"),
+  "var(--fx-frame-edge-size)",
+  "Frame inner side edges must start below the top band to keep square stepped joins"
+);
+assert.equal(
+  declaration(innerRightEdgeRule, "bottom"),
+  "var(--fx-frame-edge-size)",
+  "Frame inner side edges must stop above the bottom band to keep square stepped joins"
 );
 assert.doesNotMatch(
   declaration(realFrameRule, "box-shadow"),
@@ -178,6 +220,21 @@ for (const selector of [
   );
 }
 
+assert.match(
+  guiSource,
+  /function GuiFrameEdgeShader/,
+  "Frame edge rendering must expose a reusable edge shader helper"
+);
+assert.match(
+  guiSource,
+  /<GuiFrameEdgeShader orientation="outer" legacyClassPrefix="fx-gui-window__edge" \/>/,
+  "Window must render through the reusable outer edge shader while retaining legacy selectors"
+);
+assert.match(
+  guiSource,
+  /<GuiFrameEdgeShader orientation="inner" \/>/,
+  "Frame must render through the reusable inner edge shader"
+);
 assert.match(
   guiSource,
   /function GuiHorizontalFlowShell/,
