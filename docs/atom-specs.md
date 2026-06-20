@@ -32,6 +32,12 @@ export perfect Lua, it should still export the best structural skeleton we can
 defend, with behavior hooks or TODO comments where Factorio-side behavior is not
 known yet.
 
+Container atoms can be complete before every child atom is complete. For a
+container such as Window, completion means the shell, layout contract, optional
+slots, and export boundaries are stable enough that later child atoms can be
+inserted without reworking the container. The child atom still owns its own
+renderer, export, and runtime behavior.
+
 ## Evidence Intake
 
 Start each atom with evidence, not code. Prefer sources in this order:

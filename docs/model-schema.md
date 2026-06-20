@@ -80,6 +80,11 @@ selected reference plus the captured frame edge and padding values. This is not
 yet a general layout solver for every top-level window width, height, or
 side-frame variant.
 
+The frame edge in that derivation is a 6 px graphical band. It represents the
+decorative Factorio chrome that surrounds framed or slotted content; it is
+preserved by the browser renderer, but it is not a serialized child node or a
+Lua style assignment.
+
 The same Blueprint Library capture also shows optional header controls and body
 children that are tracked but not yet implemented as editable/exportable child
 atoms:
@@ -100,8 +105,8 @@ root agui::Window inset_frame_container_frame
 
 The generic editor Window intentionally keeps optional header actions and body
 children out of the baseline until those children have explicit model and export
-rules. The tracker should keep these as planned variant work rather than hiding
-them or adding them to every Window.
+rules. Window still owns the stable slots for those children so later child
+atoms can be inserted without changing the Window shell contract.
 
 Each node should keep stable fields:
 
@@ -125,6 +130,12 @@ true for the structure. Current constraints keep the frame top-level, avoid
 freeform absolute positioning inside Factorio layout, require a draggable
 titlebar, stretch the header filler, and keep the body as a Window content flow
 whose direction/style comes from the selected reference.
+
+`relative` fields are captured layout coordinates. For children they are local
+to the parent layout: the Blueprint Library title label's `[0, -4]` matches its
+`top_margin=-4`, and the filler `[209, 0]` follows title width plus spacing and
+left margin. Root `relative` can vary by GUI/root container and is not used as
+the exported screen `location`.
 
 ## Inspector Projection
 

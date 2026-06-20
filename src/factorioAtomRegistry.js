@@ -67,9 +67,9 @@ export const factorioAtomRegistry = Object.freeze([
         example: "frame",
         source: "blueprint-library-window"
       }),
-      field("relative", "captured", "Observed as `[0, 0]` on the top-level window; meaning still needs moved-window captures.", {
+      field("relative", "captured", "Child relative values are parent-layout coordinates. Blueprint Library root stays `[0, 0]` when moved, while Factoriopedia can report screen-offset-like values, so root relative is variant/container-specific and not used as exported location.", {
         type: vector2i,
-        example: "[0, 0]",
+        example: "root [0, 0], title [0, -4], filler [209, 0]",
         source: "blueprint-library-window"
       }),
       field("size", "captured", "Renderer-computed outer size from the Blueprint Library capture.", {
@@ -102,7 +102,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: "540 / 619 / 775 / 673 / 631 / 565",
         source: "top-level-window-captures"
       }),
-      field("maximal_height", "captured", "Observed as 973 across full-height captures but absent from the current Blueprint Library Window capture; appears viewport/window-instance derived, not a static style constant.", {
+      field("maximal_height", "captured", "Observed as 973 on full-height captures but absent from the current Blueprint Library Window capture. Carried as optional reference evidence, not a Window-shell export blocker.", {
         type: integer,
         example: 973,
         source: "top-level-window-captures"
@@ -117,12 +117,12 @@ export const factorioAtomRegistry = Object.freeze([
         example: true,
         source: "blueprint-library-window"
       }),
-      field("children", "captured", "Top-level roots have header/content children, with optional search/header controls depending on GUI.", {
+      field("children", "captured", "Top-level roots have header/content children, with optional search/header controls depending on GUI. Window owns the container slots, not the implementation of every child atom.", {
         type: nodeList,
         example: "HorizontalFlow header, optional SearchPopup, content flow",
         source: "top-level-window-captures"
       }),
-      field("graphicalBorder", "inferred", "Browser renderer uses a 6 px frame band because the captured size/content_size deltas do not reconcile from inspected padding alone.", {
+      field("graphicalBorder", "inferred", "Browser renderer uses a 6 px graphical frame band because captured size/content_size deltas do not reconcile from inspected padding alone. The same 6 px per-side delta appears on inventory slots, so this is treated as Factorio decorative chrome, not a Lua style field.", {
         type: integer,
         example: 6,
         source: "top-level-window-captures"
@@ -133,9 +133,9 @@ export const factorioAtomRegistry = Object.freeze([
         source: "window-reference-captures"
       }),
       field("variant layout solver", "planned", "The current atom derives the reference box; future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation."),
-      field("optional header actions", "planned", "SearchBar, browse arrows, and CloseButton are captured in some vanilla headers but are optional top-level controls, not universal Window children.", {
+      field("optional child slots", "planned", "SearchBar, browse arrows, CloseButton, SearchPopup, Frame, FrameWithSubheader, VerticalFlow, and TabbedPane are captured as optional children or body contents. Window should expose stable slots so those atoms can be added later without reworking the shell.", {
         type: nodeList,
-        example: "SearchBar, HorizontalFlow[BrowseArrow, BrowseArrow], CloseButton",
+        example: "header actions, between-header-and-body overlay, body content children",
         source: "blueprint-library-header"
       })
     ],
@@ -168,9 +168,27 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "evidence",
+        state: "done",
+        label: "Header child relative offsets explained",
+        note: "Title `[0, -4]` follows `top_margin=-4`; filler `[209, 0]` follows title width `191` + spacing `12` + left margin `6`."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "partial",
+        label: "Root relative behavior characterized",
+        note: "Blueprint Library root stays `[0, 0]` when moved, but Factoriopedia can report changing relative values. Root relative is treated as variant/container-specific evidence, not exported location."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "partial",
+        label: "Graphical frame band evidence cross-checked",
+        note: "Window and inventory slot size/content deltas both imply a 6 px per-side graphical band; Ctrl+F5/Ctrl+F7 can still improve visual confidence."
+      }),
+      progressCheck({
+        dimension: "evidence",
         state: "blocked",
-        label: "Moved-window, UI-scale, and Ctrl+F5 validation captures",
-        note: "Needed to settle `relative`, `maximal_height`, frame-band geometry, and squash-size derivation."
+        label: "UI-scale and viewport validation captures",
+        note: "Needed to understand when `maximal_height` and squash sizes change."
       }),
       progressCheck({
         dimension: "model",
@@ -210,15 +228,21 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "model",
-        state: "partial",
-        label: "Optional children represented",
-        note: "SearchPopup, header actions, Frame, FrameWithSubheader, and TabbedPane are visible as gaps but not implemented child atoms."
+        state: "done",
+        label: "Optional child regions identified",
+        note: "Window owns optional regions/slots; the child atoms themselves are separate completion work."
       }),
       progressCheck({
         dimension: "model",
-        state: "blocked",
-        label: "General squash/maximal-height layout solver",
-        note: "Requires more in-game captures or script-visible style dumps."
+        state: "partial",
+        label: "Typed optional slot model",
+        note: "Header actions, between-header/body overlays, and body content slots are documented, but not yet first-class model collections."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Computed metrics carried without over-export",
+        note: "`maximal_height` and squash sizes stay as captured reference evidence until a later solver exists."
       }),
       progressCheck({
         dimension: "renderer",
@@ -248,9 +272,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "renderer",
-        state: "partial",
+        state: "done",
         label: "Optional body/header children render",
-        note: "They are listed as not implemented rather than rendered as real atoms."
+        note: "Window renders stable placeholder rows for optional slots; child atom rendering is separate work."
       }),
       progressCheck({
         dimension: "luaExport",
@@ -281,8 +305,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "luaExport",
-        state: "todo",
-        label: "Optional child atoms export"
+        state: "done",
+        label: "Window shell exports independently of child atoms",
+        note: "Window export is complete for the shell. Child atom export belongs to those atoms once inserted into slots."
       }),
       progressCheck({
         dimension: "behavior",
@@ -307,14 +332,15 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "behavior",
-        state: "blocked",
+        state: "partial",
         label: "In-game moved-window behavior validated",
-        note: "Needed to prove the relationship between Ctrl+F6 `relative`, Lua `location`, and `on_gui_location_changed`."
+        note: "Blueprint Library root relative stays `[0, 0]` when moved. Factoriopedia differs, so root-relative behavior remains variant-specific."
       }),
       progressCheck({
         dimension: "behavior",
-        state: "todo",
-        label: "Optional header/body child behavior hooks"
+        state: "done",
+        label: "Window behavior is independent of child atom behavior",
+        note: "Window owns the slots; each child atom owns its own runtime behavior."
       })
     ],
     captures: [
@@ -494,13 +520,14 @@ export const factorioAtomRegistry = Object.freeze([
         "Editor creates a top-level frame with a titlebar, draggable filler, title label, and body flow.",
         "Inspector rows expose Window class/style/padding/sizing fields from structured data.",
         "Reference Window geometry derives content, clip, titlebar, and body sizes from named Window reference captures.",
-        "Lua export emits a top-level `frame` using the captured style, padding fields, and body flow spacing."
+        "Lua export emits a top-level `frame` using the captured style, padding fields, and body flow spacing.",
+        "Header child relative offsets are modeled as parent-layout coordinates.",
+        "The 6 px graphical frame band is preserved as renderer/layout chrome and is not exported as a Lua style field."
       ],
       assumptions: [
         "GUI-specific root classes still share the same frame-derived top-level layout contract.",
-        "`relative: [0, 0]` is not trusted as screen position until moved-window captures confirm it.",
+        "Root `relative` is variant/container-specific and is not treated as screen location for Lua export.",
         "`maximal_height` is captured as a runtime/layout metric and is not exported until we know when Factorio expects it to be assigned.",
-        "The 6 px visual frame band is inferred from size/content deltas; Ctrl+F6 exposes padding, not a direct border thickness.",
         "`maximum_vertical_squash_size` appears content- and variant-dependent, so the reference value is carried without generalizing it to every future Window."
       ],
       hardcoded: [
@@ -508,9 +535,11 @@ export const factorioAtomRegistry = Object.freeze([
         "Browser CSS paints the frame bevel manually from captured visuals."
       ],
       missing: [
+        "Reference selector UI/export path instead of always using the Blueprint Library default.",
+        "Typed slot model for optional header actions, between-header/body overlays, and body content children.",
         "Rule for deriving maximal_height from viewport, UI scale, screen location, or GUI type.",
         "Rule for deriving maximum_vertical_squash_size from content, natural height, and style variant.",
-        "Variant handling for side frames, optional SearchPopup children, and header action controls."
+        "Complete visual/export handling for side-frame variants."
       ]
     }
   }),

@@ -193,11 +193,14 @@ generic vanilla top-level window class, not `MapEditorGui`.
 | Body flow | `agui::HorizontalFlow`, part of `inset_frame_container_frame` and derived from `inset_frame_container_horizontal_flow` | current reference size `1440 x 792`, content `1440 x 792`, horizontal spacing `18` with inherited horizontal flow spacing `6`, maximum vertical squash `540` |
 
 The top-level `size` and `content_size` values only reconcile when the browser
-frame models Factorio's graphical frame edge as a 6 px border before applying
-the inspected style padding. For the current reference fixture,
+frame models Factorio's graphical frame edge as a 6 px band before applying the
+inspected style padding. For the current reference fixture,
 `1476 - 6 - 6 - 12 - 12 = 1440` and `870 - 6 - 6 - 6 - 12 = 840`.
-The border must stay neutral charcoal/black; it is not the brown
-public-website panel edge.
+This is Factorio's decorative frame chrome: it affects the renderer-computed
+content box, but it is not exposed as `padding` and should not be exported as a
+Lua style assignment. The same 6 px per-side relationship appears on other
+decorated GUI elements such as inventory slots (`60 x 60` outer and `48 x 48`
+content). The local renderer preserves it as the Window bevel/border band.
 
 The editor's default Window reference box is the attached Blueprint Library
 capture: outer size `1476 x 870`, content size `1440 x 840`, clip size
@@ -233,19 +236,33 @@ still derive from or behave like `frame`, use top padding `6`, bottom padding
 `12`, but `character_gui_left_side` has a style-specific `right_padding=6`
 override before the inherited `frame` value.
 
+`relative` needs to be read in context. For normal child elements it is a
+parent-layout coordinate. The Blueprint Library title label reports
+`relative: [0, -4]`, which matches its `top_margin: -4`. The draggable filler
+reports `relative: [209, 0]`, which is explained by the title width `191`,
+header spacing `12`, and filler left margin `6`. Root values are less uniform:
+the Blueprint Library root stays at `[0, 0]` when moved, while Factoriopedia can
+report changing relative values. The editor therefore treats root `relative` as
+capture/variant evidence, not the exported screen `location`; dragged window
+location remains editor-owned state mapped to `LuaGuiElement.location`.
+
 The full-height captures report `maximal_height: 973`, while their outer
 height is also `973` and clip height is `977`. Treat `maximal_height` as a
 captured runtime/layout metric until non-full-height windows and multiple
 resolutions/UI scales show whether it comes from viewport height, screen
 location, or a style assignment. It should not be exported as a fixed Window
-style constant yet.
+style constant yet. This uncertainty should not block the Window shell atom:
+the model can carry `maximal_height` on references where it is captured and omit
+it from references where Factorio does not report it.
 
 The captures do not give a stable formula for `maximum_vertical_squash_size`:
 observed values include `540`, `619`, `775`, `673`, `631`, and `565`. Those
 values are carried as capture evidence. The editor uses the current Blueprint
 Library reference value `540` for its reference box, but the field should not be
 generalized until captures tie it to natural content height, visible viewport,
-or style variant behavior.
+or style variant behavior. This is a future layout-solver problem rather than a
+reason to block the Window container from being complete for its current shell
+scope.
 
 The frame sides are rendered as four trapezoid bands, not as rectangular strips.
 Each band owns the full outer edge and a shorter inner edge facing the panel, so
@@ -264,9 +281,11 @@ Several full-height captures include a `SearchPopup 168 x 42` child between the
 header flow and content flow. Map Editor header captures also include a
 `SearchBar 36 x 36` child after the draggable filler. These appear to be
 optional search/header controls for specific GUIs, not universal top-level
-window requirements. The current generic browser window renders the title label
-and draggable filler only; optional controls need separate model fields and
-export mappings before they should be added to every window.
+window requirements. The Window atom owns stable regions/slots where optional
+header actions, between-header-and-body overlays, and body contents can attach.
+It does not own the implementation, renderer, export, or runtime behavior of
+`SearchPopup`, `CloseButton`, `FrameWithSubheader`, `TabbedPane`, or other child
+atoms.
 
 The header filler visual reads as a repeated 6 px bevel cadence rather than a
 flat stripe. A close-up sample showed a dark recessed half followed by a lighter
