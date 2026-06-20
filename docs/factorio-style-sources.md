@@ -412,6 +412,48 @@ location. The Lua output is toggled from the Inspector section and, when shown,
 occupies a full-width bottom row beneath the editor rather than only the stage
 column.
 
+## Failed Frame Glint Audit
+
+Issue: <https://github.com/atyrode/factorio-gui-web-editor/issues/20>
+
+The requested effect was not just "a brighter bottom line" on child Frames. The
+requested effect was the same visual language as the top-level Window outer
+border glint, applied to every relevant inner bottom edge of the main GUI. The
+glint must read as light catching border or bevel geometry. It must not read as
+a separate stripe, overlay, divider, or decorative rule painted across the
+Frame's inner face.
+
+Failed implementation attempts:
+
+- A low-opacity bottom `box-shadow` on `.fx-gui-frame::before` was too dull and
+  did not match the top Window glint.
+- A brighter multi-pixel gradient inside `.fx-gui-frame::before` matched some
+  colors but rendered as a separate horizontal bar.
+- Moving the shared top gradient into an enlarged bottom border/background made
+  the Frame edge physically larger and still looked detached from the bevel.
+- Computed-style tests that checked for a color, a shadow value, or a shared
+  token were insufficient because they did not prove the visual effect was part
+  of the border geometry.
+
+Root cause: the work treated "same effect" as color or token reuse instead of
+as a rendering/geometry requirement. The correct acceptance target is visual:
+the bottom inner edge must look like the same bevel/glint shader used by the
+outer Window edge, integrated into the edge material rather than overlaid on the
+panel surface.
+
+Rules for the next attempt:
+
+- Start from the reference crop and describe the exact edge geometry before
+  editing CSS.
+- Do not use an inset shadow or inner background stripe as the completion
+  mechanism unless a screenshot proves it reads as border geometry.
+- Prefer an explicit edge layer or pseudo-element whose bounds are the edge
+  itself, not the content face.
+- Keep the shadow-disabled review path mandatory; if the crop shows a detached
+  line, the attempt failed regardless of passing tests.
+- Do not commit or hand off visual styling as complete without including the
+  accepted crop next to the reference crop.
+
 ## Component Translation Targets
 
 | Browser component | Factorio Lua export target later |
