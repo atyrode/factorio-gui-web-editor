@@ -10,6 +10,7 @@ empty body. There is no bundled example project or fixture data.
 
 ```sh
 npm install
+npx playwright install chromium
 npm run dev
 ```
 
@@ -51,6 +52,7 @@ docs/roadmap.md                Builder/shared-renderer roadmap
 docs/factorio-style-sources.md Style/source research notes
 scripts/check.sh               Local validation
 scripts/copy-static-docs.mjs   Copies Markdown docs into production builds
+tests/browser/                 Browser geometry regression tests
 ```
 
 ## Public Dev Mode
@@ -130,8 +132,9 @@ copyrighted Wube assets into this repository.
 scripts/check.sh
 ```
 
-The check validates JavaScript syntax when `node` is available and then runs
-structural source/anchor checks. It does not replace human visual review.
+The check builds the app, runs browser geometry regressions, verifies layout
+tree behavior, and runs structural source/anchor checks. Browser tests protect
+objective layout contracts; they do not replace human visual review.
 
 ## Hosting
 

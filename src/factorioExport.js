@@ -19,6 +19,18 @@ function flowStyleAssignmentLines(variableName, node) {
   const styleReference = node?.styleReference ?? {};
   const lines = [];
 
+  for (const [field, luaField] of [
+    ["topPadding", "top_padding"],
+    ["rightPadding", "right_padding"],
+    ["leftPadding", "left_padding"],
+    ["minimalWidth", "minimal_width"],
+    ["minimalHeight", "minimal_height"]
+  ]) {
+    if (styleReference[field] != null) {
+      lines.push(`  ${variableName}.style.${luaField} = ${styleReference[field]}`);
+    }
+  }
+
   if (styleReference.bottomPadding != null) {
     lines.push(
       `  ${variableName}.style.bottom_padding = ${styleReference.bottomPadding}`
@@ -43,7 +55,32 @@ function flowStyleAssignmentLines(variableName, node) {
     );
   }
 
+  if (styleReference.verticallyStretchable != null) {
+    lines.push(
+      `  ${variableName}.style.vertically_stretchable = ${styleReference.verticallyStretchable}`
+    );
+  }
+
   return lines;
+}
+
+function renderFlowNodeLua(parentVariableName, node, depth = 1) {
+  const indent = "  ".repeat(depth);
+  const variableName = luaName(node.id);
+  const styleLines = flowStyleAssignmentLines(variableName, node)
+    .map((line) => `${indent}${line.trimStart()}`)
+    .join("\n");
+  const childLines = (node.children ?? [])
+    .map((child) => renderFlowNodeLua(variableName, child, depth))
+    .join("\n");
+
+  return `${indent}local ${variableName} = ${parentVariableName}.add{
+${indent}  type = "flow",
+${indent}  name = ${luaString(node.id)},
+${indent}  direction = ${luaString(node.direction)},
+${indent}  style = ${luaString(node.style)}
+${indent}}
+${styleLines}${childLines ? `\n${childLines}` : ""}`;
 }
 
 export function renderWindowLua(model) {
@@ -63,6 +100,9 @@ export function renderWindowLua(model) {
   const style = root.styleReference;
   const titlebarStyleLines = flowStyleAssignmentLines(titlebar, root.children[0]);
   const bodyStyleLines = flowStyleAssignmentLines(body, bodyNode);
+  const bodyChildLines = (bodyNode.children ?? [])
+    .map((child) => renderFlowNodeLua(body, child))
+    .join("\n");
 
   const locationLua = root.location
     ? `  ${frame}.auto_center = false
@@ -134,6 +174,7 @@ ${titlebarStyleLines.join("\n")}
     style = ${luaString(bodyNode.style)}
   }
 ${bodyStyleLines.join("\n")}
+${bodyChildLines ? `\n${bodyChildLines}` : ""}
 
   return ${frame}
 end

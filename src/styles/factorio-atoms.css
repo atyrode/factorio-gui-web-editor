@@ -766,10 +766,12 @@
 }
 
 .fx-gui-window__body {
+  position: relative;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: var(--fx-window-body-vertical-spacing);
   overflow: auto;
   background: #3b3a3b;
@@ -783,19 +785,145 @@
 
 .fx-gui-window__body[data-fx-direction="horizontal"] {
   flex-direction: row;
+  align-items: stretch;
   gap: var(--fx-window-body-horizontal-spacing);
 }
 
 .fx-gui-window__body[data-fx-direction="vertical"] {
   flex-direction: column;
+  align-items: stretch;
   gap: var(--fx-window-body-vertical-spacing);
+}
+
+.fx-gui-horizontal-flow {
+  box-sizing: border-box;
+  position: relative;
+  flex: 1 1 0;
+  min-width: var(--fx-horizontal-flow-min-width, 168px);
+  min-height: var(--fx-horizontal-flow-min-height, 72px);
+  padding:
+    var(--fx-horizontal-flow-padding-top, 8px)
+    var(--fx-horizontal-flow-padding-right, 8px)
+    var(--fx-horizontal-flow-padding-bottom, 8px)
+    var(--fx-horizontal-flow-padding-left, 8px);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  align-self: stretch;
+  gap: var(--fx-horizontal-flow-horizontal-spacing, 6px);
+  overflow: auto;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+    #302f30;
+  border: 1px solid #0a0a0a;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.08),
+    inset -2px -2px 2px rgba(0, 0, 0, 0.48),
+    1px 1px 0 rgba(0, 0, 0, 0.48);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
+.fx-gui-horizontal-flow .fx-gui-horizontal-flow {
+  min-width: var(--fx-horizontal-flow-min-width, 144px);
+}
+
+.fx-gui-window__body.is-builder-drop-parent,
+.fx-gui-horizontal-flow.is-builder-drop-parent {
+  box-shadow:
+    0 0 0 1px rgba(227, 152, 39, 0.95),
+    0 0 12px rgba(227, 152, 39, 0.28),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.10),
+    inset -2px -2px 2px rgba(0, 0, 0, 0.48);
+}
+
+.fx-gui-horizontal-flow.is-builder-dragging-source {
+  opacity: 0.48;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05),
+    inset -2px -2px 2px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(125, 202, 237, 0.55);
+}
+
+.fx-gui-flow-drop-target {
+  box-sizing: border-box;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 32px;
+  min-width: 0;
+  min-height: 0;
+  transform: none;
+  pointer-events: none;
+}
+
+.fx-gui-flow-drop-target.is-middle {
+  transform: translateX(-50%);
+}
+
+.fx-gui-flow-drop-target.is-end-edge {
+  left: auto;
+  right: 0;
+}
+
+.fx-gui-flow-drop-target.is-empty-parent {
+  inset: 0;
+  width: auto;
+  transform: none;
+}
+
+.fx-gui-flow-drop-target.is-targeted {
+  background: transparent;
+}
+
+.fx-gui-flow-drop-preview-slot {
+  box-sizing: border-box;
+  position: relative;
+  flex-grow: 0;
+  flex-shrink: 1;
+  flex-basis: 0;
+  min-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  border-color: rgba(227, 152, 39, 0.95);
+  background:
+    linear-gradient(180deg, rgba(227, 152, 39, 0.16), rgba(227, 152, 39, 0.05)),
+    #302f30;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
+    inset -2px -2px 2px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(227, 152, 39, 0.70),
+    0 0 8px rgba(227, 152, 39, 0.22);
+  transition:
+    flex-basis 180ms ease,
+    flex-grow 180ms ease,
+    min-width 180ms ease,
+    opacity 140ms ease;
+}
+
+.fx-gui-flow-drop-preview-slot.is-expanded {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+  min-width: var(--fx-horizontal-flow-min-width, 168px);
+  opacity: 1;
+}
+
+.fx-gui-flow-drop-preview-slot.is-empty-parent.is-expanded {
+  flex: 1 1 0;
+  min-width: var(--fx-horizontal-flow-min-width, 168px);
 }
 
 .fx-gui-window.is-inspected,
 .fx-gui-window__titlebar.is-inspected,
 .fx-gui-window__title-label.is-inspected,
 .fx-gui-window__drag-handle.is-inspected,
-.fx-gui-window__body.is-inspected {
+.fx-gui-window__body.is-inspected,
+.fx-gui-horizontal-flow.is-inspected {
   position: relative;
 }
 
@@ -803,7 +931,8 @@
 .fx-gui-window__titlebar.is-inspected::after,
 .fx-gui-window__title-label.is-inspected::after,
 .fx-gui-window__drag-handle.is-inspected::after,
-.fx-gui-window__body.is-inspected::after {
+.fx-gui-window__body.is-inspected::after,
+.fx-gui-horizontal-flow.is-inspected::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -820,7 +949,8 @@
 .fx-gui-window.is-inspecting .fx-gui-window__titlebar,
 .fx-gui-window.is-inspecting .fx-gui-window__title-label,
 .fx-gui-window.is-inspecting .fx-gui-window__drag-handle,
-.fx-gui-window.is-inspecting .fx-gui-window__body {
+.fx-gui-window.is-inspecting .fx-gui-window__body,
+.fx-gui-window.is-inspecting .fx-gui-horizontal-flow {
   cursor: crosshair;
   user-select: none;
   -webkit-user-select: none;

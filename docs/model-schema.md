@@ -96,6 +96,56 @@ assignments where the API supports them. Captured values such as
 and one-window fixture dimensions remain inspector/evidence data until a
 layout-solver or additional in-game captures justify formulas.
 
+The no-code builder persists only constrained layout specs under the current
+Window, not hydrated renderer nodes:
+
+```text
+currentWindow.layoutChildren:
+  id: gui_horizontal_flow_N
+  atom: horizontal-flow
+  styleVariant: generic-horizontal-flow
+  children: ordered nested Horizontal Flow specs
+
+currentWindow.nextLayoutNodeNumber:
+  next positive integer used to allocate stable flow ids
+```
+
+The editor also persists authored layout settings at the editor-state level.
+These settings are project/editor assumptions, not captured Factorio defaults,
+until official docs or in-game captures prove otherwise:
+
+```text
+layoutSettings.horizontalFlowSpacing:
+  exported `horizontal_spacing` for editor-created Horizontal Flows
+
+layoutSettings.horizontalFlowMinimumWidth:
+  exported `minimal_width` for top-level editor-created Horizontal Flows
+
+layoutSettings.nestedHorizontalFlowMinimumWidth:
+  exported `minimal_width` for nested editor-created Horizontal Flows
+
+layoutSettings.horizontalFlowMinimumHeight:
+  exported `minimal_height` for editor-created Horizontal Flows
+
+layoutSettings.horizontalFlowPadding:
+  exported top/right/bottom/left padding for editor-created Horizontal Flows
+```
+
+The Settings panel lets those values be edited and reset to authored defaults.
+Renderer CSS reads the hydrated model style facts through custom properties; it
+does not store separate layout truth. Lua export writes the same supported
+`LuaStyle` assignments so the current Horizontal Flow builder slice remains
+structurally compatible with the generated Lua skeleton.
+
+Legacy cached windows normalize to an empty `layoutChildren` array with
+`nextLayoutNodeNumber: 1`. The editor-created `generic-horizontal-flow` variant
+hydrates to `primitive: flow`, `direction: horizontal`, `style:
+horizontal_flow`, the current `layoutSettings` values, and stretch flags that
+make sibling flows fill/split available space. The Window body and user-created
+Horizontal Flow nodes are legal parents. The Window root, titlebar, title
+label, drag filler, a moved node itself, and descendants of the moved node are
+not legal drop parents.
+
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new
 Window fits the canvas instead of copying one arbitrary in-game GUI instance.
@@ -204,7 +254,10 @@ editable: optional mutation target for values the editor owns
 ```
 
 Missing known fields should still render as `not implemented` instead of being
-omitted. This keeps gaps visible while the model is incomplete.
+omitted. This keeps gaps visible while the model is incomplete. Child rows are
+not missing when they reference an implemented atom: they should keep `targetId`
+navigation and show the child atom identity, such as `flow.horizontal`, instead
+of a missing-value placeholder.
 
 Inspector navigation uses `targetId` references. Hovering a child reference
 temporarily highlights the target node in the preview; clicking it locks the

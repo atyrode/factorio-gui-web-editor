@@ -49,6 +49,15 @@ offer constrained operations that preserve translatability.
 
 ## Accepted Builder Operations
 
+The first implemented no-code slice is the Horizontal Flow builder described in
+[no-code-horizontal-flow-builder.md](no-code-horizontal-flow-builder.md). It
+adds a Builder panel, a draggable Horizontal Flow palette item, ordered
+body/nested insertion, subtree removal, ghost drop blocks, recursive preview,
+inspector projection, authored layout settings with reset, and Lua export. It
+still edits only the constrained Factorio GUI model. Browser geometry
+regressions are part of this slice's acceptance gate: objective hover/drop
+layout bugs become Playwright checks run by `scripts/check.sh` and CI.
+
 Future builder operations SHOULD include:
 
 - create a top-level window shell;

@@ -15,6 +15,7 @@ REQUIRED_FILES = [
     "compose.dev.yaml",
     "src/styles.css",
     "src/App.jsx",
+    "src/components/BuilderPanel.jsx",
     "src/components/DocumentPage.jsx",
     "src/components/EditorPage.jsx",
     "src/components/SiteChrome.jsx",
@@ -27,14 +28,21 @@ REQUIRED_FILES = [
     "src/styles/layout.css",
     "src/styles/style-atlas.css",
     "src/docs.js",
+    "src/factorioEditorSettings.js",
+    "src/factorioLayoutTree.js",
     "src/main.jsx",
     "package.json",
     "package-lock.json",
+    "playwright.config.js",
     "vite.config.js",
     "scripts/copy-static-docs.mjs",
+    "scripts/check-hover-drop-geometry.mjs",
+    "scripts/check-layout-tree.mjs",
+    "tests/browser/horizontal-flow-builder.spec.js",
     "README.md",
     "AGENTS.md",
     "docs/README.md",
+    "docs/no-code-horizontal-flow-builder.md",
     "docs/atom-specs.md",
     "docs/hosting.md",
     "docs/spec-factory.md",
@@ -55,6 +63,12 @@ REQUIRED_ANCHORS = [
     "gui_window_titlebar",
     "gui_window_drag_handle",
     "gui_window_body",
+    "builder_panel",
+    "layout_settings_panel",
+    "layout_settings_toggle",
+    "layout_setting_horizontal_flow_min_width",
+    "horizontal_flow_palette_item",
+    "builder_ghost_marker",
 ]
 
 FORBIDDEN_PAYLOADS = [
@@ -95,11 +109,16 @@ def main() -> int:
             "compose.dev.yaml",
             "package.json",
             "package-lock.json",
+            "playwright.config.js",
             "vite.config.js",
             "scripts/copy-static-docs.mjs",
+            "scripts/check-hover-drop-geometry.mjs",
+            "scripts/check-layout-tree.mjs",
+            "tests/browser/horizontal-flow-builder.spec.js",
             "README.md",
             "AGENTS.md",
             "docs/README.md",
+            "docs/no-code-horizontal-flow-builder.md",
             "docs/atom-specs.md",
             "docs/hosting.md",
             "docs/spec-factory.md",
@@ -130,7 +149,18 @@ def main() -> int:
             raise AssertionError(f"removed fixture global is still present: {global_name}")
 
     check_sh = read("scripts/check.sh")
-    assert_contains(check_sh, "scripts/check-app.py", "scripts/check.sh")
+    assert_contains(check_sh, "npm run check", "scripts/check.sh")
+    package_json = read("package.json")
+    assert_contains(package_json, "\"test:browser\"", "package.json")
+    assert_contains(package_json, "playwright test", "package.json")
+    assert_contains(package_json, "scripts/check-app.py", "package.json")
+    assert_contains(package_json, "scripts/check-layout-tree.mjs", "package.json")
+    assert_contains(package_json, "scripts/check-hover-drop-geometry.mjs", "package.json")
+
+    ci_workflow = read(".github/workflows/ci.yml")
+    assert_contains(ci_workflow, "node-version: \"24\"", ".github/workflows/ci.yml")
+    assert_contains(ci_workflow, "npm ci", ".github/workflows/ci.yml")
+    assert_contains(ci_workflow, "npx playwright install --with-deps chromium", ".github/workflows/ci.yml")
 
     return 0
 
