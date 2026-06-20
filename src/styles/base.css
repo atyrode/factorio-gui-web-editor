@@ -33,7 +33,7 @@
   --fx-window-drag-handle-height: 36px;
   --fx-window-drag-handle-margin-x: 6px;
   --fx-window-body-horizontal-spacing: 18px;
-  --fx-window-body-vertical-spacing: 0;
+  --fx-window-body-vertical-spacing: 18px;
   --fx-text: #ffffff;
   --fx-text-soft: #d7d3ca;
   --fx-muted: #a6a6a6;

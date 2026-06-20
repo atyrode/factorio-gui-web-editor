@@ -224,11 +224,13 @@ assert.equal(verticalBody.id, BODY_LAYOUT_ROOT_ID);
 assert.equal(verticalBody.className, "agui::VerticalFlow");
 assert.equal(verticalBody.direction, VERTICAL_FLOW_DIRECTION);
 assert.equal(verticalBody.style, "inside_deep_frame");
+assert.equal(verticalBody.styleReference.verticalSpacing, 18);
 assert.equal(verticalBody.children[0].id, "gui_frame_1");
 const verticalLua = renderWindowLua(verticalBodyModel);
 assert.ok(verticalLua.includes('name = "gui_window_body"'));
 assert.ok(verticalLua.includes('direction = "vertical"'));
 assert.ok(verticalLua.includes('style = "inside_deep_frame"'));
+assert.ok(verticalLua.includes("gui_window_body.style.vertical_spacing = 18"));
 assert.ok(verticalLua.includes('name = "gui_frame_1"'));
 
 console.log("Layout tree checks passed.");

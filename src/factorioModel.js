@@ -846,7 +846,7 @@ function withWindowBodyDirection(styleReference, sourceDirection = HORIZONTAL_FL
     bodyDirection: direction,
     bodyHorizontalSpacing: vertical ? null : 18,
     bodyInheritedHorizontalSpacing: vertical ? null : 6,
-    bodyVerticalSpacing: vertical ? 0 : null,
+    bodyVerticalSpacing: vertical ? 18 : null,
     bodyInheritedVerticalSpacing: vertical ? 6 : null,
     bodyChildRows: Object.freeze([])
   });

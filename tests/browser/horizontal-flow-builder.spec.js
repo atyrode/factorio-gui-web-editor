@@ -35,6 +35,29 @@ const ONE_FRAME_STATE = {
   },
   sidebarWidth: 260
 };
+const TWO_VERTICAL_FRAME_STATE = {
+  ...ONE_FRAME_STATE,
+  windowBodyDirection: "vertical",
+  currentWindow: {
+    ...ONE_FRAME_STATE.currentWindow,
+    bodyDirection: "vertical",
+    layoutChildren: [
+      {
+        id: "gui_frame_1",
+        atom: "frame",
+        styleVariant: "inside-deep-frame",
+        children: []
+      },
+      {
+        id: "gui_frame_2",
+        atom: "frame",
+        styleVariant: "inside-deep-frame",
+        children: []
+      }
+    ],
+    nextLayoutNodeNumber: 3
+  }
+};
 
 function roundedRect(rect) {
   return {
@@ -144,14 +167,18 @@ function luminance([red, green, blue]) {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
-async function seedOneFrameWindow(page) {
+async function seedEditorState(page, state) {
   await page.addInitScript(
     ({ key, state }) => {
       window.localStorage.setItem(key, JSON.stringify(state));
     },
-    { key: EDITOR_STORAGE_KEY, state: ONE_FRAME_STATE }
+    { key: EDITOR_STORAGE_KEY, state }
   );
   await page.goto("/");
+}
+
+async function seedOneFrameWindow(page) {
+  await seedEditorState(page, ONE_FRAME_STATE);
   await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
 }
 
@@ -267,17 +294,20 @@ test.describe("Frame builder canvas preview", () => {
       const root = document.querySelector('[data-anchor="gui_window"]');
       const body = document.querySelector('[data-anchor="gui_window_body"]');
       const frame = document.querySelector('[data-anchor="gui_frame_1"]');
+      const frameBevel = getComputedStyle(frame, "::before");
       return {
         root: getComputedStyle(root).boxShadow,
         body: getComputedStyle(body).boxShadow,
-        frame: getComputedStyle(frame).boxShadow
+        frame: getComputedStyle(frame).boxShadow,
+        frameBevel: frameBevel.boxShadow
       };
     });
 
     await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).toBeChecked();
     expect(shadowOn.root).not.toBe("none");
     expect(shadowOn.body).toBe("none");
-    expect(shadowOn.frame).toContain("inset");
+    expect(shadowOn.frame).toBe("none");
+    expect(shadowOn.frameBevel).toContain("inset");
 
     await page.locator('[data-anchor="gui_shadow_toggle"] input').click({ force: true });
     await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).not.toBeChecked();
@@ -290,16 +320,54 @@ test.describe("Frame builder canvas preview", () => {
       const root = document.querySelector('[data-anchor="gui_window"]');
       const body = document.querySelector('[data-anchor="gui_window_body"]');
       const frame = document.querySelector('[data-anchor="gui_frame_1"]');
+      const frameBevel = getComputedStyle(frame, "::before");
       return {
         root: getComputedStyle(root).boxShadow,
         body: getComputedStyle(body).boxShadow,
-        frame: getComputedStyle(frame).boxShadow
+        frame: getComputedStyle(frame).boxShadow,
+        frameBevel: frameBevel.boxShadow
       };
     });
 
     expect(shadowOff.root).toBe("none");
     expect(shadowOff.body).toBe("none");
     expect(shadowOff.frame).toBe(shadowOn.frame);
+    expect(shadowOff.frameBevel).toBe(shadowOn.frameBevel);
+  });
+
+  test("vertical Window body splits sibling Frames with a substrate gutter", async ({ page }) => {
+    await seedEditorState(page, TWO_VERTICAL_FRAME_STATE);
+    await expect(page.locator('[data-anchor="gui_frame_2"]')).toBeVisible();
+
+    const geometry = await page.evaluate(() => {
+      const body = document.querySelector('[data-anchor="gui_window_body"]');
+      const frames = Array.from(document.querySelectorAll('[data-fx-role="body-frame"]'));
+      return {
+        bodyDirection: body.dataset.fxDirection,
+        bodyGap: getComputedStyle(body).rowGap,
+        frames: frames.map((frame) => {
+          const rect = frame.getBoundingClientRect();
+          return {
+            id: frame.dataset.anchor,
+            top: rect.top,
+            height: rect.height
+          };
+        })
+      };
+    });
+
+    expect(geometry.bodyDirection).toBe("vertical");
+    expect(geometry.bodyGap).toBe("18px");
+    expect(geometry.frames.map((frame) => frame.id)).toEqual([
+      "gui_frame_1",
+      "gui_frame_2"
+    ]);
+    const verticalGap =
+      geometry.frames[1].top - (geometry.frames[0].top + geometry.frames[0].height);
+    expect(Math.round(verticalGap)).toBe(18);
+    expect(Math.round(geometry.frames[0].height)).toBe(
+      Math.round(geometry.frames[1].height)
+    );
   });
 
   test("matches final geometry when inserting left of one existing Frame", async ({ page }) => {

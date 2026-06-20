@@ -135,6 +135,9 @@ this slice without treating CSS as source of truth.
 - Drop placement is an ordered index in the parent, represented by ghost blocks.
 - In the canvas, sibling Frames split available space equally until
   their minimum width is reached; after that the parent flow scrolls.
+- Vertical Window bodies use the same split-gutter substrate rule: sibling
+  Frames split available height equally until minimum height is reached, and the
+  body flow keeps a visible gutter between stacked Frames.
 - The drag overlay, source highlight, active parent highlight, and ghost block
   are visual feedback only. The stored operation remains `{parentId, index}`.
 - Canvas hover previews must use the same flex sizing contract as the atom that

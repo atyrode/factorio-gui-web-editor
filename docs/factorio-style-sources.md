@@ -142,7 +142,7 @@ The current CSS is split by responsibility:
 | `fx-window-titlebar-*` | inspected `frame_header_flow`: `48` height, `42` content height, `6` bottom padding, `12` spacing |
 | `fx-window-drag-handle-*` | inspected `draggable_space_header`: `36` height and `6` left/right margins |
 | `fx-window-body-horizontal-spacing` | inspected `inset_frame_container_horizontal_flow` spacing of `18` |
-| `fx-window-body-vertical-spacing` | inspected `inside_deep_frame` vertical spacing of `0`, retained for vertical body variants |
+| `fx-window-body-vertical-spacing` | editor-authored vertical body split gutter; currently mirrors the horizontal body split spacing until graphical Factorio captures prove a separate vertical value |
 | `fx-gold` | headings and active primary labels |
 | `fx-orange` | selected tab/button accent |
 | `fx-blue` | links and secondary info values |
@@ -209,6 +209,13 @@ the child Frames own the top, bottom, and side edge strokes. The parent body
 must not draw continuous top or bottom rim shadows across split gaps, because
 those strokes visually cap the separator instead of letting it connect into the
 surrounding frame material.
+
+The same substrate rule applies to vertical Window bodies in the editor. Even
+though one captured `inside_deep_frame` reference reported zero vertical
+spacing, the authored vertical body split uses an explicit gutter so stacked
+sibling Frames do not visually merge into one surface. Treat this as an editor
+split rule until a graphical Factorio capture establishes a more precise
+vertical body-flow style.
 
 The editor's GUI shadow toggle mirrors the purpose of Factorio's `Ctrl+F7`
 shadow inspection: it disables cast shadows for review without removing bevel

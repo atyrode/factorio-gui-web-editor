@@ -52,6 +52,7 @@ function flexWidths({ parentWidth, gap, minimumWidth, previewBasis }) {
 
 const realFlowRule = ruleFor(".fx-gui-horizontal-flow");
 const realFrameRule = ruleFor(".fx-gui-frame");
+const realFrameBevelRule = ruleFor(".fx-gui-frame::before");
 const bodyRule = ruleFor(".fx-gui-window__body");
 const shadowDisabledWindowRule = ruleFor('.fx-gui-window[data-fx-shadows="hidden"]');
 const previewRule = ruleFor(".fx-gui-flow-drop-preview-slot.is-expanded");
@@ -78,23 +79,33 @@ assert.equal(
   "1 1 0",
   "real Frame sizing contract changed; update hover/drop preview tests with the new model"
 );
+assert.equal(
+  declaration(realFrameRule, "box-shadow"),
+  "none",
+  "real Frame bevel must be painted by its graphical edge pseudo-element, not by layout shadow"
+);
 assert.match(
-  declaration(realFrameRule, "box-shadow"),
-  /inset 0 2px 2px/,
-  "real Frame must paint the top inset edge while the parent flow only supplies substrate"
+  declaration(realFrameRule, "background"),
+  /#403f40/,
+  "real Frame fill must stay lighter than the parent body substrate"
+);
+assert.match(
+  declaration(realFrameRule, "border"),
+  /1px solid #0a0909/,
+  "real Frame must keep a hard dark outer edge for the inset surface"
+);
+assert.match(
+  declaration(realFrameBevelRule, "box-shadow"),
+  /inset 0 -1px 0 rgba\(255, 255, 255, 0\.20\)/,
+  "real Frame bevel must include the bottom inner glint visible with GUI shadows disabled"
+);
+assert.match(
+  declaration(realFrameBevelRule, "box-shadow"),
+  /inset 0 2px 2px rgba\(0, 0, 0, 0\.58\)/,
+  "real Frame bevel must include a dark top recessed lip"
 );
 assert.doesNotMatch(
-  declaration(realFrameRule, "box-shadow"),
-  /inset 0 -[1-9]/,
-  "real Frame must not add a second bottom edge over the parent substrate"
-);
-assert.doesNotMatch(
-  declaration(realFrameRule, "box-shadow"),
-  /inset -?1px 0/,
-  "real Frame must not add extra inner side strokes over its border"
-);
-assert.doesNotMatch(
-  declaration(realFrameRule, "box-shadow"),
+  declaration(realFrameBevelRule, "box-shadow"),
   /inset 0 1px 0 rgba\(255/,
   "real Frame must not add the extra top highlight line under its border"
 );
