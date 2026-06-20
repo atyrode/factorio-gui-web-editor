@@ -297,6 +297,7 @@ test.describe("Frame builder canvas preview", () => {
     expect(windowBox).not.toBeNull();
     const screenshot = readPng(await page.locator('[data-anchor="gui_window"]').screenshot());
     const topY = finalFrames[0].top - windowBox.y;
+    const bottomY = finalFrames[0].top + finalFrames[0].height - 1 - windowBox.y;
     const gapCenterX =
       (finalFrames[0].left + finalFrames[0].width + finalFrames[1].left) / 2 -
       windowBox.x;
@@ -307,10 +308,19 @@ test.describe("Frame builder canvas preview", () => {
       luminance(screenshot.getPixel(leftFrameTopX, topY)),
       luminance(screenshot.getPixel(rightFrameTopX, topY))
     );
+    const gapBottom = luminance(screenshot.getPixel(gapCenterX, bottomY));
+    const frameBottom = Math.max(
+      luminance(screenshot.getPixel(leftFrameTopX, bottomY)),
+      luminance(screenshot.getPixel(rightFrameTopX, bottomY))
+    );
 
     expect(
       gapTop - frameTop,
       "the Window body must not draw a continuous dark top stroke over the split gap"
+    ).toBeGreaterThan(24);
+    expect(
+      gapBottom - frameBottom,
+      "the Window body must not draw a continuous dark bottom stroke over the split gap"
     ).toBeGreaterThan(24);
   });
 });

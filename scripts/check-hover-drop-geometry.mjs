@@ -79,13 +79,23 @@ assert.equal(
 );
 assert.match(
   declaration(realFrameRule, "box-shadow"),
-  /inset 0 4px 4px -1px/,
-  "real Frame must paint the inset child surface inside its parent flow"
+  /inset 0 2px 2px/,
+  "real Frame must paint the top inset edge while the parent flow only supplies substrate"
+);
+assert.doesNotMatch(
+  declaration(realFrameRule, "box-shadow"),
+  /inset 0 -[1-9]/,
+  "real Frame must not add a second bottom edge over the parent substrate"
 );
 assert.doesNotMatch(
   declaration(realFrameRule, "box-shadow"),
   /1px 1px 0/,
   "real Frame must not use the old raised bottom/right drop shadow"
+);
+assert.doesNotMatch(
+  declaration(realFrameRule, "box-shadow"),
+  /(?:^|,)\s*-?\d+px 0 2px -2px/,
+  "real Frame must not cast external side shadows onto the parent substrate"
 );
 assert.equal(
   declaration(previewRule, "flex-grow"),
@@ -124,8 +134,8 @@ assert.doesNotMatch(
 );
 assert.match(
   declaration(bodyRule, "box-shadow"),
-  /inset 0 -2px 2px/,
-  "Window body may keep bottom depth, but child Frame edges must own the top split rim"
+  /^none$/,
+  "Window body must act as substrate only; child Frames own top and bottom split edges"
 );
 
 for (const selector of [

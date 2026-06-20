@@ -203,6 +203,13 @@ matches Factorio's shared-border/T-junction style behavior, where the separator
 reads as part of the surrounding frame material rather than as a capped child
 overlay.
 
+The browser renderer follows a substrate rule for these splits: the parent body
+or parent flow supplies the panel material visible through spacing gaps, while
+the child Frames own the top, bottom, and side edge strokes. The parent body
+must not draw continuous top or bottom rim shadows across split gaps, because
+those strokes visually cap the separator instead of letting it connect into the
+surrounding frame material.
+
 The official Factorio API docs list `flow` as the runtime primitive for
 horizontal or vertical child layout. The editor therefore treats
 `agui::HorizontalFlow` as one reusable atom whose direction is fixed to
