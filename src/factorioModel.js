@@ -148,6 +148,7 @@ export function createHorizontalFlowNode({
     styleDescription,
     derivedFrom,
     direction: HORIZONTAL_FLOW_DIRECTION,
+    role,
     referenceSize: referenceSize ? { ...referenceSize } : undefined,
     styleReference: freezeHorizontalFlowStyleReference({
       role,
