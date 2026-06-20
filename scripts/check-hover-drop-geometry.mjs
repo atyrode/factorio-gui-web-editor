@@ -89,6 +89,16 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(
   declaration(realFrameRule, "box-shadow"),
+  /inset -?1px 0/,
+  "real Frame must not add extra inner side strokes over its border"
+);
+assert.doesNotMatch(
+  declaration(realFrameRule, "box-shadow"),
+  /inset 0 1px 0 rgba\(255/,
+  "real Frame must not add the extra top highlight line under its border"
+);
+assert.doesNotMatch(
+  declaration(realFrameRule, "box-shadow"),
   /1px 1px 0/,
   "real Frame must not use the old raised bottom/right drop shadow"
 );
