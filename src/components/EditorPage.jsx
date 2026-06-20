@@ -1341,7 +1341,6 @@ export function EditorPage() {
             inspectedAnchor={inspectedAnchor}
             onAddAfter={addHorizontalFlowAfter}
             onAddChild={addHorizontalFlowChild}
-            onAddRoot={() => addHorizontalFlow(BODY_LAYOUT_ROOT_ID)}
             onRemove={removeHorizontalFlow}
             paletteDragging={builderDrag?.kind === "palette"}
             onSelect={selectBuilderNode}

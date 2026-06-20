@@ -75,9 +75,8 @@
 .fx-builder-palette {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  gap: 6px;
   margin-bottom: 10px;
 }
 

@@ -213,8 +213,7 @@ function BuilderBodyTree({
 
 function BuilderPaletteItem({
   currentWindow,
-  paletteDragging,
-  onAddRoot
+  paletteDragging
 }) {
   const { ref, isDragSource } = useDraggable({
     id: "builder-palette-horizontal-flow",
@@ -234,7 +233,6 @@ function BuilderPaletteItem({
         .join(" ")}
       data-anchor="horizontal_flow_palette_item"
       disabled={!currentWindow}
-      onClick={onAddRoot}
       type="button"
     >
       <span>Horizontal Flow</span>
@@ -249,7 +247,6 @@ export function BuilderPanel({
   draggingId = null,
   paletteDragging = false,
   dropTarget,
-  onAddRoot,
   onAddAfter,
   onAddChild,
   onRemove,
@@ -263,14 +260,7 @@ export function BuilderPanel({
       <div className="fx-builder-palette" aria-label="Builder palette">
         <BuilderPaletteItem
           currentWindow={currentWindow}
-          onAddRoot={onAddRoot}
           paletteDragging={paletteDragging}
-        />
-        <FxActionButton
-          disabled={!currentWindow}
-          icon="plus"
-          label="Add Horizontal Flow to body"
-          onClick={onAddRoot}
         />
       </div>
       <BuilderBodyTree

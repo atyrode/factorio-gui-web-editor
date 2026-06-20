@@ -39,7 +39,7 @@ The editor rail contains three pinned sections:
   title, width, height, create/reset
 
 [Builder]
-  [Palette: Horizontal Flow]
+  [Palette: drag-only Horizontal Flow]
   [Scroll: Window body tree]
     [Drop slots and ghost blocks]
     [Rows with add child, add after, remove]
@@ -85,6 +85,8 @@ inspecting, or exporting. The generic editor-created variant maps to
 ## Drop Rules
 
 - Palette drops create a new `horizontal-flow` spec.
+- The palette tile does not append on click; creation requires an explicit drop
+  target.
 - Row drops move an existing spec.
 - Legal parents are `gui_window_body` and user-created Horizontal Flow nodes.
 - Illegal parents include the Window root, titlebar, title label, drag filler,
