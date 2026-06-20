@@ -70,6 +70,32 @@ root agui::Window frame
 `- agui::HorizontalFlow inset_frame_container_horizontal_flow
 ```
 
+Horizontal Flow is the reusable horizontal layout atom behind the titlebar and
+horizontal body rows. It maps to the official Factorio `flow` primitive with
+`direction: "horizontal"`; Vertical Flow remains a separate atom. Role-specific
+styles such as `frame_header_flow`, `inset_frame_container_horizontal_flow`,
+and the captured 72 x 36 header action group are variant data on the Horizontal
+Flow atom, not separate atom identities.
+
+Current Horizontal Flow model nodes keep:
+
+```text
+primitive: flow
+direction: horizontal
+className: agui::HorizontalFlow
+style: captured Factorio style name when known
+role: local slot role, such as window-titlebar or window-body
+styleReference: spacing, inherited spacing, padding, stretch/search flags
+children: ordered child nodes or captured future child slots
+```
+
+The editor exports supported horizontal flows immediately as Factorio `flow`
+Lua with stable `name`, `style`, `direction`, and explicit spacing/stretch
+assignments where the API supports them. Captured values such as
+`size_before_stretching`, `maximum_horizontal_squash_size`, clip rectangles,
+and one-window fixture dimensions remain inspector/evidence data until a
+layout-solver or additional in-game captures justify formulas.
+
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new
 Window fits the canvas instead of copying one arbitrary in-game GUI instance.

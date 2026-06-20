@@ -15,6 +15,37 @@ function luaName(value) {
   return String(value).replace(/[^a-zA-Z0-9_]/g, "_");
 }
 
+function flowStyleAssignmentLines(variableName, node) {
+  const styleReference = node?.styleReference ?? {};
+  const lines = [];
+
+  if (styleReference.bottomPadding != null) {
+    lines.push(
+      `  ${variableName}.style.bottom_padding = ${styleReference.bottomPadding}`
+    );
+  }
+
+  if (styleReference.horizontalSpacing != null) {
+    lines.push(
+      `  ${variableName}.style.horizontal_spacing = ${styleReference.horizontalSpacing}`
+    );
+  }
+
+  if (styleReference.verticalSpacing != null) {
+    lines.push(
+      `  ${variableName}.style.vertical_spacing = ${styleReference.verticalSpacing}`
+    );
+  }
+
+  if (styleReference.horizontallyStretchable != null) {
+    lines.push(
+      `  ${variableName}.style.horizontally_stretchable = ${styleReference.horizontallyStretchable}`
+    );
+  }
+
+  return lines;
+}
+
 export function renderWindowLua(model) {
   if (!model?.root) {
     return "-- Create a window to generate gui.lua.";
@@ -30,19 +61,8 @@ export function renderWindowLua(model) {
   const dragHandle = luaName(dragNode.id);
   const body = luaName(bodyNode.id);
   const style = root.styleReference;
-  const bodyStyleLines = ["  " + body + ".style.horizontally_stretchable = true"];
-
-  if (bodyNode.styleReference.horizontalSpacing != null) {
-    bodyStyleLines.push(
-      `  ${body}.style.horizontal_spacing = ${bodyNode.styleReference.horizontalSpacing}`
-    );
-  }
-
-  if (bodyNode.styleReference.verticalSpacing != null) {
-    bodyStyleLines.push(
-      `  ${body}.style.vertical_spacing = ${bodyNode.styleReference.verticalSpacing}`
-    );
-  }
+  const titlebarStyleLines = flowStyleAssignmentLines(titlebar, root.children[0]);
+  const bodyStyleLines = flowStyleAssignmentLines(body, bodyNode);
 
   const locationLua = root.location
     ? `  ${frame}.auto_center = false
@@ -80,9 +100,7 @@ ${locationLua}
     direction = ${luaString(root.children[0].direction)},
     style = ${luaString(root.children[0].style)}
   }
-  ${titlebar}.style.bottom_padding = ${root.children[0].styleReference.bottomPadding}
-  ${titlebar}.style.horizontal_spacing = ${root.children[0].styleReference.horizontalSpacing}
-  ${titlebar}.style.horizontally_stretchable = ${root.children[0].styleReference.horizontallyStretchable}
+${titlebarStyleLines.join("\n")}
   ${titlebar}.drag_target = ${frame}
 
   local ${title} = ${titlebar}.add{

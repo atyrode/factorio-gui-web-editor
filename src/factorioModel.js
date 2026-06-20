@@ -3,6 +3,7 @@ export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
 
 const FRAME_GRAPHICAL_BORDER = 6;
 const FRAME_CLIP_TOP_OVERFLOW = 4;
+export const HORIZONTAL_FLOW_DIRECTION = "horizontal";
 export const DEFAULT_WINDOW_REFERENCE_ID = "editor-default-window";
 export const DEFAULT_WINDOW_SIZE = Object.freeze({ width: 680, height: 480 });
 export const WINDOW_SIZE_LIMITS = Object.freeze({
@@ -64,6 +65,96 @@ function freezeVectorList(vectors = []) {
 
 function freezeCaptureRows(rows = []) {
   return Object.freeze(rows.map((row) => Object.freeze({ ...row })));
+}
+
+function freezeStyleVariant(variant) {
+  return Object.freeze({
+    ...variant,
+    capturedSize: freezeOptionalSize(variant.capturedSize)
+  });
+}
+
+export const horizontalFlowStyleVariants = Object.freeze({
+  frameHeader: freezeStyleVariant({
+    id: "frame-header-flow",
+    role: "window-titlebar",
+    className: "agui::HorizontalFlow",
+    style: "frame_header_flow",
+    styleDescription: "Part of frame definition",
+    derivedFrom: "frame_header_flow",
+    horizontalSpacing: 12,
+    inheritedHorizontalSpacing: 6,
+    bottomPadding: 6,
+    horizontallyStretchable: true,
+    verticallyStretchable: false,
+    ignoredBySearch: true,
+    captureId: "blueprint-library-header-flow"
+  }),
+  insetFrameContainer: freezeStyleVariant({
+    id: "inset-frame-container-horizontal-flow",
+    role: "window-body",
+    className: "agui::HorizontalFlow",
+    style: "inset_frame_container_horizontal_flow",
+    styleDescription: "Part of inset_frame_container_frame definition",
+    derivedFrom: "inset_frame_container_horizontal_flow",
+    horizontalSpacing: 18,
+    inheritedHorizontalSpacing: 6,
+    captureId: "blueprint-library-content-flow"
+  }),
+  headerActionGroup: freezeStyleVariant({
+    id: "header-action-group-flow",
+    role: "header-action-group",
+    className: "agui::HorizontalFlow",
+    style: null,
+    styleDescription: "Captured child role; exact style not implemented yet",
+    derivedFrom: "horizontal_flow",
+    capturedSize: { width: 72, height: 36 },
+    captureId: "blueprint-library-header-flow"
+  })
+});
+
+function freezeHorizontalFlowStyleReference(styleReference = {}) {
+  return Object.freeze({
+    ...styleReference,
+    direction: HORIZONTAL_FLOW_DIRECTION,
+    horizontalSpacing: styleReference.horizontalSpacing ?? null,
+    inheritedHorizontalSpacing: styleReference.inheritedHorizontalSpacing ?? null,
+    verticalSpacing: styleReference.verticalSpacing ?? null,
+    inheritedVerticalSpacing: styleReference.inheritedVerticalSpacing ?? null,
+    bottomPadding: styleReference.bottomPadding ?? null,
+    horizontallyStretchable: styleReference.horizontallyStretchable ?? null,
+    verticallyStretchable: styleReference.verticallyStretchable ?? null,
+    ignoredBySearch: styleReference.ignoredBySearch ?? null,
+    maximumVerticalSquashSize: styleReference.maximumVerticalSquashSize ?? null
+  });
+}
+
+export function createHorizontalFlowNode({
+  id,
+  className = "agui::HorizontalFlow",
+  style,
+  styleDescription = null,
+  derivedFrom = "horizontal_flow",
+  role = null,
+  referenceSize = null,
+  styleReference = {},
+  children = []
+}) {
+  return {
+    id,
+    primitive: "flow",
+    className,
+    style,
+    styleDescription,
+    derivedFrom,
+    direction: HORIZONTAL_FLOW_DIRECTION,
+    referenceSize: referenceSize ? { ...referenceSize } : undefined,
+    styleReference: freezeHorizontalFlowStyleReference({
+      role,
+      ...styleReference
+    }),
+    children
+  };
 }
 
 function freezeHeaderChildCapture(child = null) {
@@ -779,35 +870,35 @@ function getFrameDragHandleRelative(style, titleLabelWidth, caption) {
   };
 }
 
-function getBodySpacingProperties(bodyStyleReference) {
+function getFlowSpacingProperties(flowStyleReference) {
   const properties = [];
 
-  if (bodyStyleReference.horizontalSpacing != null) {
+  if (flowStyleReference.horizontalSpacing != null) {
     properties.push({
       label: "horizontal_spacing",
-      value: bodyStyleReference.horizontalSpacing
+      value: flowStyleReference.horizontalSpacing
     });
   }
 
-  if (bodyStyleReference.inheritedHorizontalSpacing != null) {
+  if (flowStyleReference.inheritedHorizontalSpacing != null) {
     properties.push({
       label: "horizontal_spacing",
-      value: bodyStyleReference.inheritedHorizontalSpacing,
+      value: flowStyleReference.inheritedHorizontalSpacing,
       indent: 1
     });
   }
 
-  if (bodyStyleReference.verticalSpacing != null) {
+  if (flowStyleReference.verticalSpacing != null) {
     properties.push({
       label: "vertical_spacing",
-      value: bodyStyleReference.verticalSpacing
+      value: flowStyleReference.verticalSpacing
     });
   }
 
-  if (bodyStyleReference.inheritedVerticalSpacing != null) {
+  if (flowStyleReference.inheritedVerticalSpacing != null) {
     properties.push({
       label: "vertical_spacing",
-      value: bodyStyleReference.inheritedVerticalSpacing,
+      value: flowStyleReference.inheritedVerticalSpacing,
       indent: 1
     });
   }
@@ -903,6 +994,41 @@ export function createWindowModel({
     titleLabelWidth,
     caption
   );
+  const bodyStyleReference = {
+    variantId:
+      styleReference.bodyDirection === HORIZONTAL_FLOW_DIRECTION
+        ? horizontalFlowStyleVariants.insetFrameContainer.id
+        : null,
+    horizontalSpacing: styleReference.bodyHorizontalSpacing,
+    inheritedHorizontalSpacing: styleReference.bodyInheritedHorizontalSpacing,
+    verticalSpacing: styleReference.bodyVerticalSpacing,
+    inheritedVerticalSpacing: styleReference.bodyInheritedVerticalSpacing,
+    horizontallyStretchable: true,
+    maximumVerticalSquashSize: styleReference.maximumVerticalSquashSize
+  };
+  const bodyFlowNode =
+    styleReference.bodyDirection === HORIZONTAL_FLOW_DIRECTION
+      ? createHorizontalFlowNode({
+          id: "gui_window_body",
+          className: styleReference.bodyClassName,
+          style: styleReference.bodyStyle,
+          styleDescription: styleReference.bodyStyleDescription,
+          derivedFrom: styleReference.bodyDerivedFrom,
+          role: horizontalFlowStyleVariants.insetFrameContainer.role,
+          styleReference: bodyStyleReference,
+          children: []
+        })
+      : {
+          id: "gui_window_body",
+          primitive: "flow",
+          className: styleReference.bodyClassName,
+          style: styleReference.bodyStyle,
+          styleDescription: styleReference.bodyStyleDescription,
+          derivedFrom: styleReference.bodyDerivedFrom,
+          direction: styleReference.bodyDirection,
+          styleReference: bodyStyleReference,
+          children: []
+        };
 
   return {
     schema: FACTORIO_GUI_MODEL_SCHEMA,
@@ -921,14 +1047,16 @@ export function createWindowModel({
       },
       styleReference,
       children: [
-        {
+        createHorizontalFlowNode({
           id: "gui_window_titlebar",
-          primitive: "flow",
           className: styleReference.titlebarClassName,
           style: styleReference.titlebarStyle,
-          direction: "horizontal",
+          styleDescription: styleReference.titlebarStyleDescription,
+          derivedFrom: styleReference.titlebarDerivedFrom,
+          role: horizontalFlowStyleVariants.frameHeader.role,
           referenceSize: { height: styleReference.titlebarHeight },
           styleReference: {
+            variantId: horizontalFlowStyleVariants.frameHeader.id,
             bottomPadding: styleReference.titlebarBottomPadding,
             horizontalSpacing: styleReference.titlebarHorizontalSpacing,
             inheritedHorizontalSpacing: styleReference.titlebarInheritedHorizontalSpacing,
@@ -978,22 +1106,8 @@ export function createWindowModel({
               role: "header-filler"
             }
           ]
-        },
-        {
-          id: "gui_window_body",
-          primitive: "flow",
-          className: styleReference.bodyClassName,
-          style: styleReference.bodyStyle,
-          direction: styleReference.bodyDirection,
-          styleReference: {
-            horizontalSpacing: styleReference.bodyHorizontalSpacing,
-            inheritedHorizontalSpacing: styleReference.bodyInheritedHorizontalSpacing,
-            verticalSpacing: styleReference.bodyVerticalSpacing,
-            inheritedVerticalSpacing: styleReference.bodyInheritedVerticalSpacing,
-            maximumVerticalSquashSize: styleReference.maximumVerticalSquashSize
-          },
-          children: []
-        }
+        }),
+        bodyFlowNode
       ]
     },
     constraints: [
@@ -1223,7 +1337,7 @@ export function getWindowInspectorRows(model) {
       sizeBeforeStretching: sizePair(bodySizeBeforeStretching),
       maximumHorizontalSquashSize: 0,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
-      properties: getBodySpacingProperties(body.styleReference),
+      properties: getFlowSpacingProperties(body.styleReference),
       childRows: [
         { label: "children", value: "" },
         ...style.bodyChildRows.map((row) => ({ ...row, indent: 1 }))
