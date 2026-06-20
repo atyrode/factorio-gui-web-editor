@@ -66,6 +66,11 @@ Do not promote one capture into a rule until conflicting captures have been
 checked. If a rule is still uncertain, keep it as an assumption or planned task
 instead of hiding it in code.
 
+If the operator decides a known unknown belongs to a later product phase, track
+it as deferred instead of leaving it in the active missing/blocker list. Deferred
+work should state what later capability unlocks it, such as GUI-scale emulation,
+implemented child atoms, or an in-game Lua validation harness.
+
 ## Implementation Pass
 
 Build each atom through the same sequence:

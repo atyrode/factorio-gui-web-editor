@@ -73,6 +73,8 @@ root agui::Window frame
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new
 Window fits the canvas instead of copying one arbitrary in-game GUI instance.
+Future New Window controls should let the user adjust authored width and height
+from that sensible default.
 The model also carries in-game capture fixtures: the Blueprint Library capture
 has outer size `1476 x 870`, content size `1440 x 840`, and clip size
 `{{0, -4}, {1476, 874}}`; Factoriopedia and filter-selection references cover
@@ -82,6 +84,10 @@ evidence, not a scale formula. The model derives titlebar and body geometry
 from the selected reference plus the captured frame edge and padding values.
 This is not yet a general layout solver for every top-level window width,
 height, UI scale, or side-frame variant.
+
+The capture fixtures are internal reconstruction evidence. The editor should
+not expose vanilla GUI presets such as Blueprint Library or Factoriopedia in the
+New Window flow for the current build-from-scratch product direction.
 
 The frame edge in that derivation is a 6 px graphical band. It represents the
 decorative Factorio chrome that surrounds framed or slotted content; it is
@@ -110,7 +116,8 @@ The generic editor Window intentionally keeps optional header actions and body
 children out of the rendered/exported baseline until those children have
 explicit model and export rules. Window still owns the stable captured slots
 for those children so later child atoms can be inserted without changing the
-Window shell contract.
+Window shell contract. The no-code interface should expose actual child
+insertion after those child atoms exist, not before.
 
 For the Blueprint Library reference, the header slot math is captured:
 

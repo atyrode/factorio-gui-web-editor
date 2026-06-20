@@ -293,6 +293,7 @@ export class FactorioAtomDefinition {
       assumptions: [],
       hardcoded: [],
       missing: [],
+      deferred: [],
       notes: [],
       ...tracking
     });

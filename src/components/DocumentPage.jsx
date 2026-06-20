@@ -468,6 +468,7 @@ function AtomTracker() {
             <AtomTrackingSection title="Assumptions" items={selectedAtom.tracking?.assumptions} />
             <AtomTrackingSection title="Hardcoded" items={selectedAtom.tracking?.hardcoded} />
             <AtomTrackingSection title="Missing" items={selectedAtom.tracking?.missing} />
+            <AtomTrackingSection title="Deferred" items={selectedAtom.tracking?.deferred} />
             <AtomTrackingSection title="Notes" items={selectedAtom.tracking?.notes} />
           </div>
           <div className="fx-atom-fields">

@@ -264,21 +264,19 @@ dragged window location remains editor-owned state mapped to
 The full-height captures report `maximal_height: 973`, while their outer
 height is also `973` and clip height is `977`. In the current evidence set,
 those captures are at Manual (pixels) `150%`. Treat `maximal_height` as a
-captured runtime/layout metric until non-full-height windows and multiple
-resolutions/UI scales show whether it comes from viewport height, screen
-location, or a style assignment. It should not be exported as a fixed Window
-style constant yet. This uncertainty should not block the Window shell atom:
-the model can carry `maximal_height` on references where it is captured and omit
-it from references where Factorio does not report it.
+captured runtime/layout metric and defer derivation until the editor can emulate
+Factorio GUI scale, viewport, and screen-location changes. It should not be
+exported as a fixed Window style constant, and it should not block the baseline
+Window shell atom.
 
 The captures do not give a stable formula for `maximum_vertical_squash_size`:
 observed values include `540`, `619`, `775`, `673`, `631`, and `565`. Those
 values are carried as capture evidence. The editor uses the current Blueprint
-Library reference value `540` for its reference box, but the field should not be
-generalized until captures tie it to natural content height, visible viewport,
-or style variant behavior. This is a future layout-solver problem rather than a
-reason to block the Window container from being complete for its current shell
-scope.
+Library fixture value `540` for that capture, but authored Windows should not
+invent a formula yet. The field may be tied to `maximal_height`, natural content
+height, visible viewport, or style variant behavior. This is deferred to a
+future GUI-scale/layout-solver phase rather than treated as a blocker for the
+current Window container.
 
 The frame sides are rendered as four trapezoid bands, not as rectangular strips.
 Each band owns the full outer edge and a shorter inner edge facing the panel, so
@@ -301,7 +299,13 @@ window requirements. The Window atom owns stable regions/slots where optional
 header actions, between-header-and-body overlays, and body contents can attach.
 It does not own the implementation, renderer, export, or runtime behavior of
 `SearchPopup`, `CloseButton`, `FrameWithSubheader`, `TabbedPane`, or other child
-atoms.
+atoms. The no-code interface should expose actual child insertion only after
+those child atoms are implemented.
+
+The vanilla GUI captures are internal reconstruction evidence, not user-facing
+presets. The editor starts from a build-from-scratch Window with sensible
+authored defaults; it should not offer Blueprint Library or Factoriopedia as
+new-window templates unless that product direction changes later.
 
 The header filler visual reads as a repeated 6 px bevel cadence rather than a
 flat stripe. A close-up sample showed a dark recessed half followed by a lighter

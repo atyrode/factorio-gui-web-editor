@@ -97,12 +97,12 @@ export const factorioAtomRegistry = Object.freeze([
         example: 0,
         source: "blueprint-library-window"
       }),
-      field("maximum_vertical_squash_size", "captured", "Captured values vary by content/window type. The editor carries the selected reference value but does not yet claim a general derivation formula.", {
+      field("maximum_vertical_squash_size", "captured", "Captured values vary by content/window type and may be related to full-height clamping. The editor carries capture values as evidence but does not derive or export them for authored Windows yet.", {
         type: integer,
         example: "540 / 619 / 775 / 673 / 631 / 565",
         source: "top-level-window-captures"
       }),
-      field("maximal_height", "captured", "Observed as 973 on full-height captures but absent from the current Blueprint Library Window capture. Carried as optional reference evidence, not a Window-shell export blocker.", {
+      field("maximal_height", "captured", "Observed as 973 on full-height captures but absent from the current Blueprint Library Window capture. Deferred until the editor has GUI-scale/viewport emulation; not a Window-shell blocker.", {
         type: integer,
         example: 973,
         source: "top-level-window-captures"
@@ -137,7 +137,12 @@ export const factorioAtomRegistry = Object.freeze([
         example: "editor-default-window / blueprint-library-window / factoriopedia-root-window / filter-select-root-window",
         source: "window-reference-captures"
       }),
-      field("variant layout solver", "planned", "The current atom derives the reference box; future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation."),
+      field("size controls", "planned", "New Window creation should expose authored width/height controls using sensible defaults, rather than copying a vanilla GUI capture size.", {
+        type: size2i,
+        example: "default 680 x 480; user adjustable later",
+        source: "operator-decision"
+      }),
+      field("variant layout solver", "planned", "Future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation. These are deferred until the editor needs those GUI families."),
       field("optional child slots", "implemented", "SearchBar, browse arrows, CloseButton, SearchPopup, Frame, FrameWithSubheader, VerticalFlow, and TabbedPane are captured as optional slots or body children on Window references. The child atoms still own their own renderer, export, and behavior.", {
         type: nodeList,
         example: "header actions, between-header-and-body overlay, body content children",
@@ -193,7 +198,7 @@ export const factorioAtomRegistry = Object.freeze([
         dimension: "evidence",
         state: "partial",
         label: "UI-scale and viewport validation captures",
-        note: "Current captures are known to be Manual (pixels) 150%. Another UI scale or viewport is still needed to understand when `maximal_height` and squash sizes change."
+        note: "Current captures are known to be Manual (pixels) 150%. Additional scale/viewport captures are deferred until the editor can emulate GUI scale changes."
       }),
       progressCheck({
         dimension: "model",
@@ -233,9 +238,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "model",
-        state: "partial",
+        state: "done",
         label: "Side-frame variants represented",
-        note: "`character_gui_left_side` and `frame_without_left_side` are captured, but not yet selectable/model-complete."
+        note: "`character_gui_left_side` and `frame_without_left_side` are recorded as evidence. They are not required for the baseline Window shell until the editor explicitly supports those GUI families."
       }),
       progressCheck({
         dimension: "model",
@@ -277,9 +282,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "renderer",
-        state: "partial",
+        state: "done",
         label: "Style variants render",
-        note: "Primary frame is covered; side-frame graphical-set variants are not rendered exactly."
+        note: "The primary Window frame is covered. Side-frame graphical-set variants are deferred until the product needs side-pane GUI families."
       }),
       progressCheck({
         dimension: "renderer",
@@ -310,9 +315,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "luaExport",
-        state: "partial",
+        state: "done",
         label: "Reference variants export",
-        note: "Implemented model can represent horizontal and vertical body flows, but the UI cannot choose/export variants yet."
+        note: "No vanilla capture preset export is planned. Authored Windows export the baseline shell; captured references stay internal evidence."
       }),
       progressCheck({
         dimension: "luaExport",
@@ -337,15 +342,15 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "behavior",
-        state: "partial",
+        state: "done",
         label: "Inspector navigation behavior is modeled",
-        note: "Useful for editor review, but not a Factorio runtime behavior."
+        note: "Useful for editor review and implemented as editor behavior; it is not a Factorio runtime requirement."
       }),
       progressCheck({
         dimension: "behavior",
-        state: "partial",
+        state: "done",
         label: "In-game moved-window behavior validated",
-        note: "Blueprint Library root relative stays `[0, 0]` when moved. Factoriopedia differs, so root-relative behavior remains variant-specific."
+        note: "Blueprint Library root relative stays `[0, 0]` when moved. Factoriopedia differs, so root-relative values are treated as variant-specific evidence and not exported location."
       }),
       progressCheck({
         dimension: "behavior",
@@ -549,20 +554,22 @@ export const factorioAtomRegistry = Object.freeze([
       assumptions: [
         "GUI-specific root classes still share the same frame-derived top-level layout contract.",
         "Root `relative` is variant/container-specific and is not treated as screen location for Lua export.",
-        "`maximal_height` is captured as a runtime/layout metric and is not exported until we know when Factorio expects it to be assigned.",
-        "`maximum_vertical_squash_size` appears content- and variant-dependent, so the reference value is carried without generalizing it to every future Window."
+        "`maximal_height` is captured as a runtime/layout metric and is deferred until GUI-scale/viewport emulation exists.",
+        "`maximum_vertical_squash_size` appears content- and variant-dependent, possibly related to maximal height, so capture values are carried without generalizing them to authored Windows."
       ],
       hardcoded: [
         "The editor-authored default Window size is fixed at 680 x 480 until size controls exist.",
         "Browser CSS paints the frame bevel manually from captured visuals."
       ],
       missing: [
-        "Reference selector UI/export path instead of always using the Blueprint Library default.",
-        "UI for instantiating or replacing optional slot children once their own atoms are implemented.",
-        "Validation at another UI scale or viewport to determine which captured values are scale-sensitive.",
-        "Rule for deriving maximal_height from viewport, UI scale, screen location, or GUI type.",
-        "Rule for deriving maximum_vertical_squash_size from content, natural height, and style variant.",
-        "Complete visual/export handling for side-frame variants."
+        "Adjustable width/height controls in the New Window creation section.",
+        "UI for inserting child atoms into the Window body once those child atoms are implemented.",
+        "Lua-in-Factorio validation after enough atoms exist to build a meaningful test GUI."
+      ],
+      deferred: [
+        "No vanilla capture preset selector is planned for the current editor; captures stay internal evidence.",
+        "`maximal_height` and `maximum_vertical_squash_size` derivation waits for GUI-scale/viewport emulation.",
+        "Side-frame variants remain captured evidence until the editor intentionally supports side-pane GUI families."
       ]
     }
   }),
