@@ -454,6 +454,110 @@ Rules for the next attempt:
 - Do not commit or hand off visual styling as complete without including the
   accepted crop next to the reference crop.
 
+## Reverted Frame Edge Shader Failure Audit
+
+Issue: <https://github.com/atyrode/factorio-gui-web-editor/issues/20>
+
+Reverted implementation commits:
+
+- `42f5f6a Add reusable frame edge shader`
+- `1bd7946 Match inner frame edges to sampled window rows`
+
+Revert commits:
+
+- `4581172 Revert "Match inner frame edges to sampled window rows"`
+- `407a238 Revert "Add reusable frame edge shader"`
+
+This pass also failed. It looked more rigorous because it introduced a shared
+`fx-frame-edge` vocabulary, fresh screenshots, and a Playwright pixel-row
+comparison. It still did not satisfy the request because it did not reuse the
+exact rendering/composition logic of the accepted Window top border. It only
+reused increasingly narrow proxies for that logic.
+
+Specific mistakes:
+
+- The first shader pass reused Window color stops and edge-size variables, but
+  placed them in different geometry on the child Frame. Same tokens did not mean
+  same rendered result.
+- The second pass inverted the bands under a "hollow square" interpretation
+  even though the user's request was to apply the same top/bottom styling inside
+  the box, not reinterpret it.
+- The third pass sampled the central 60 x 6 pixel rows from the Window edge and
+  forced the Frame edge to match those rows. That proved only a narrow strip
+  matched. It did not prove the full crop, corner, side join, border placement,
+  containing block, anti-aliasing, or surrounding substrate matched.
+- The comparison target was partially self-referential: browser output from the
+  current Window CSS was treated as source truth, but the user's target was a
+  Factorio-like inner border crop. A row-level match against the local Window did
+  not prove a match against the requested visual.
+- The implementation changed the child Frame rendering before the exact Window
+  edge primitive had been isolated as a reusable composition. The work again
+  treated a visual/compositional requirement as a code-token extraction task.
+
+Expert review incorporated after the revert:
+
+- The model hierarchy change to `Window body Flow -> child Frames` is probably
+  useful and is not the main failure.
+- The visual failure is specifically the CSS rendering of `.fx-gui-frame`.
+- `inside_deep_frame` must not be rendered as a generic CSS card made from
+  `background: #403f40`, a `1px` border, one full-rectangle `::before`, or inset
+  `box-shadow` bands.
+- Factorio's GUI frame should be treated as a pixel-art graphical set: separate
+  corner pieces, separate top/right/bottom/left edge strips, and a center fill.
+- The expected image has hard 1-4 px bands, square stepped joins, no broad
+  blurred shadow, no diagonal chamfer, no smooth vector bevel, and no single
+  full-rect inset shadow acting as the bevel.
+- Acceptance tests should assert pixel/corner geometry: hard square joins, no
+  large diagonal wedges, no broad gradients, bottom edge only a few pixels tall,
+  and inner notch/edge intersections as stepped L-shaped joins.
+- The project currently has the Factorio style name `inside_deep_frame`, but it
+  does not implement the graphical-set pixels for that style.
+
+Why this proved difficult:
+
+- The visible effect is only a few pixels wide. A one-pixel offset, a different
+  clipping box, or a different adjacent fill color changes the perceived result.
+- CSS gradients are not sprites. Reusing the same stops on another element does
+  not reproduce the same raster output when the element has different bounds,
+  clipping, positioning, background, z-index, or subpixel placement.
+- The current Window edge is not a generic primitive. It is a Window-specific
+  construction: transparent border width, absolute spans, negative offsets,
+  trapezoid clips, gradients, panel fill, and shadow context all compose
+  together.
+- The requested "same styling and logic from the top border" was never converted
+  into a complete, testable contract. Partial contracts kept passing while the
+  crop still looked wrong.
+- The implementation path assumed ordinary browser border/shadow/gradient tools
+  could approximate a Factorio graphical set. That assumption was wrong for this
+  atom.
+
+Narrowed task before any future implementation:
+
+- Do not modify production child Frame styling for this issue until the
+  `inside_deep_frame` graphical set has been specified from the reference crop.
+- The next deliverable is a source-of-truth 9-slice-style specification, not CSS
+  implementation: fixed-size corner pieces, top/right/bottom/left edge strips,
+  center fill, geometry, bounds, offsets, clipping, background/fill interaction,
+  corner/join behavior, shadow-disabled behavior, and expected raster output for
+  full corner crops.
+- The specification must explicitly reject the failed rendering family:
+  `background: #403f40`, `border: 1px solid`, one full-rectangle `::before`, and
+  inset `box-shadow` bands as the bevel mechanism.
+- The comparison must use full fresh crops: accepted source Window edge,
+  requested inner-border target crop, and any prototype result, shown side by
+  side. A central-row or computed-style comparison is insufficient.
+- The acceptance check must compare the whole relevant crop, including corner
+  and side join pixels, not only the straight horizontal strip. It must check for
+  hard square joins, stepped L-shaped intersections, no broad gradients, no
+  large diagonal wedges, and bottom/side bands constrained to the few-pixel
+  thickness visible in the reference.
+- Any prototype must live in an isolated visual fixture first. It should not be
+  applied to production Frame rendering until the fixture crop is accepted.
+- If the existing Window CSS cannot be moved inward without changing the visual,
+  the correct next step is to replace the Window edge with a genuinely reusable
+  9-slice/raster-style edge primitive, then prove the Window itself remains
+  unchanged.
+
 ## Component Translation Targets
 
 | Browser component | Factorio Lua export target later |
