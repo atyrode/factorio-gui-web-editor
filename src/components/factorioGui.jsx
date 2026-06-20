@@ -295,9 +295,12 @@ function CanvasDropTarget({
     collisionPriority: 3,
     data: dropTargetData({ parentId, index, surface: "canvas" })
   });
-  const targetStyle = emptyParent
-    ? undefined
-    : { left: `${(index / Math.max(slotCount, 1)) * 100}%` };
+  const isStartEdge = !emptyParent && index === 0;
+  const isEndEdge = !emptyParent && index === slotCount;
+  const isMiddle = !emptyParent && !isStartEdge && !isEndEdge;
+  const targetStyle = isMiddle
+    ? { left: `${(index / Math.max(slotCount, 1)) * 100}%` }
+    : undefined;
 
   return (
     <div
@@ -305,7 +308,10 @@ function CanvasDropTarget({
       className={[
         "fx-gui-flow-drop-target",
         isDropTarget ? "is-targeted" : "",
-        emptyParent ? "is-empty-parent" : ""
+        emptyParent ? "is-empty-parent" : "",
+        isStartEdge ? "is-start-edge" : "",
+        isEndEdge ? "is-end-edge" : "",
+        isMiddle ? "is-middle" : ""
       ]
         .filter(Boolean)
         .join(" ")}
@@ -315,9 +321,14 @@ function CanvasDropTarget({
 }
 
 function CanvasDropPreviewSlot({
+  index = 0,
+  slotCount = 0,
   emptyParent = false
 }) {
   const [expanded, setExpanded] = useState(false);
+  const isStartEdge = !emptyParent && index === 0;
+  const isEndEdge = !emptyParent && index === slotCount;
+  const isMiddle = !emptyParent && !isStartEdge && !isEndEdge;
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setExpanded(true));
@@ -329,7 +340,10 @@ function CanvasDropPreviewSlot({
       className={[
         "fx-gui-flow-drop-preview-slot",
         expanded ? "is-expanded" : "",
-        emptyParent ? "is-empty-parent" : ""
+        emptyParent ? "is-empty-parent" : "",
+        isStartEdge ? "is-start-edge" : "",
+        isEndEdge ? "is-end-edge" : "",
+        isMiddle ? "is-middle" : ""
       ]
         .filter(Boolean)
         .join(" ")}
@@ -376,7 +390,9 @@ function FlowChildren({
     renderedChildren.push(
       <CanvasDropPreviewSlot
         emptyParent={nodes.length === 0}
+        index={0}
         key={`${parentId}-preview-0`}
+        slotCount={nodes.length}
       />
     );
   }
@@ -400,7 +416,9 @@ function FlowChildren({
     if (ghostIndex === index + 1) {
       renderedChildren.push(
         <CanvasDropPreviewSlot
+          index={index + 1}
           key={`${parentId}-preview-${index + 1}`}
+          slotCount={nodes.length}
         />
       );
     }
