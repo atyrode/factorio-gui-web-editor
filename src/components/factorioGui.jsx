@@ -279,12 +279,12 @@ function horizontalFlowStyleVariables(styleReference = {}) {
   };
 }
 
-function CanvasDropSlot({
-  active,
+function CanvasDropTarget({
   dragActive,
   emptyParent = false,
   parentId,
-  index
+  index,
+  slotCount
 }) {
   const { ref, isDropTarget } = useDroppable({
     id: `builder-canvas-slot-${parentId}-${index}`,
@@ -294,20 +294,38 @@ function CanvasDropSlot({
     collisionPriority: 3,
     data: dropTargetData({ parentId, index, surface: "canvas" })
   });
-  const slotActive = active || isDropTarget;
+  const targetStyle = emptyParent
+    ? undefined
+    : { left: `${(index / Math.max(slotCount, 1)) * 100}%` };
 
   return (
     <div
       ref={ref}
       className={[
-        "fx-gui-flow-drop-slot",
-        slotActive ? "is-active" : "",
+        "fx-gui-flow-drop-target",
+        isDropTarget ? "is-targeted" : "",
+        emptyParent ? "is-empty-parent" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={targetStyle}
+    />
+  );
+}
+
+function CanvasDropPreviewSlot({
+  emptyParent = false
+}) {
+  return (
+    <div
+      className={[
+        "fx-gui-flow-drop-preview-slot",
         emptyParent ? "is-empty-parent" : ""
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      {slotActive ? <BuilderGhostBlock /> : null}
+      <BuilderGhostBlock />
     </div>
   );
 }
@@ -331,14 +349,25 @@ function FlowChildren({
   const renderedChildren = [];
 
   if (builderDragActive) {
+    for (let index = 0; index <= nodes.length; index += 1) {
+      renderedChildren.push(
+        <CanvasDropTarget
+          dragActive={builderDragActive}
+          emptyParent={nodes.length === 0}
+          index={index}
+          key={`${parentId}-target-${index}`}
+          parentId={parentId}
+          slotCount={nodes.length}
+        />
+      );
+    }
+  }
+
+  if (ghostIndex === 0) {
     renderedChildren.push(
-      <CanvasDropSlot
-        active={ghostIndex === 0}
-        dragActive={builderDragActive}
+      <CanvasDropPreviewSlot
         emptyParent={nodes.length === 0}
-        index={0}
-        key={`${parentId}-drop-0`}
-        parentId={parentId}
+        key={`${parentId}-preview-0`}
       />
     );
   }
@@ -359,14 +388,10 @@ function FlowChildren({
       />
     );
 
-    if (builderDragActive) {
+    if (ghostIndex === index + 1) {
       renderedChildren.push(
-        <CanvasDropSlot
-          active={ghostIndex === index + 1}
-          dragActive={builderDragActive}
-          index={index + 1}
-          key={`${parentId}-drop-${index + 1}`}
-          parentId={parentId}
+        <CanvasDropPreviewSlot
+          key={`${parentId}-preview-${index + 1}`}
         />
       );
     }
