@@ -14,6 +14,12 @@ shared GUI model with approved primitives.
 Freeform pixel dragging remains out of scope. Drag/drop in this slice means
 choosing a parent flow and ordered insertion index.
 
+Drag/drop interaction plumbing uses `@dnd-kit/react`. The library owns pointer
+tracking, drag source state, droppable collision, and overlay rendering. The
+project still owns tree mutation because the persisted shape is a constrained
+recursive Factorio layout tree, not a flat sortable list or arbitrary DOM
+layout.
+
 ## User Jobs
 
 - Create an empty top-level Window.
@@ -22,7 +28,7 @@ choosing a parent flow and ordered insertion index.
 - Reorder Horizontal Flows across the body and nested flows.
 - Remove a Horizontal Flow subtree.
 - Select a builder row and inspect the same model node in the inspector,
-  component tree, canvas, and Lua output.
+  Builder tree, canvas, and Lua output.
 
 ## Information Architecture
 
@@ -34,7 +40,7 @@ The editor rail contains three pinned sections:
 
 [Builder]
   [Palette: Horizontal Flow]
-  [Window body tree]
+  [Scroll: Window body tree]
     [Drop slots and ghost blocks]
     [Rows with add child, add after, remove]
 
@@ -42,12 +48,14 @@ The editor rail contains three pinned sections:
   Ctrl+F6 style inspector toggle
   Lua output toggle
   selected node details
-  component tree
 ```
 
 The canvas remains the visual preview. It accepts drops into the Window body
 and into user-created Horizontal Flows. The Window header/titlebar is locked and
 is not a builder drop target.
+
+The Builder tree is the only structure navigator. It has a bounded height and
+scrolls when nested flows would otherwise crowd the Inspector.
 
 ## Data Contract
 
@@ -82,6 +90,10 @@ inspecting, or exporting. The generic editor-created variant maps to
 - Illegal parents include the Window root, titlebar, title label, drag filler,
   self, and descendants of the moved source.
 - Drop placement is an ordered index in the parent, represented by ghost blocks.
+- In the canvas, sibling Horizontal Flows split available space equally until
+  their minimum width is reached; after that the parent flow scrolls.
+- The drag overlay, source highlight, active parent highlight, and ghost block
+  are visual feedback only. The stored operation remains `{parentId, index}`.
 - Removing a row removes its subtree in this slice.
 
 ## Fixtures
@@ -108,8 +120,11 @@ inspecting, or exporting. The generic editor-created variant maps to
 Before expanding to Label, Frame, or Action Button insertion, verify:
 
 - ghost placement is visible in both the builder list and canvas;
+- dragged source rows/flows and current drop parents have clear highlighted
+  states;
+- sibling flows visually split the available body or parent-flow space;
+- scrolling appears only after the minimum flow width is exhausted;
 - empty Horizontal Flows look like editable Factorio GUI surfaces, not cards;
 - nested flows remain scannable in the rail at narrow sidebar widths;
 - Lua output order matches the builder tree order;
 - no operation creates arbitrary CSS or absolute-positioned child layout.
-

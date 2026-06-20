@@ -65,7 +65,11 @@
 }
 
 .fx-builder-panel {
-  flex: 0 0 auto;
+  max-height: min(40vh, 380px);
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .fx-builder-palette {
@@ -94,6 +98,7 @@
   font: inherit;
   text-align: left;
   cursor: grab;
+  touch-action: none;
 }
 
 .fx-builder-palette__item:disabled {
@@ -102,13 +107,19 @@
 }
 
 .fx-builder-palette__item:not(:disabled):hover,
-.fx-builder-palette__item:not(:disabled):focus-visible {
+.fx-builder-palette__item:not(:disabled):focus-visible,
+.fx-builder-palette__item.is-dragging {
   outline: 0;
   background: #393839;
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.10),
     inset -2px -2px 2px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(227, 152, 39, 0.55);
+    0 0 0 1px rgba(227, 152, 39, 0.78),
+    0 0 10px rgba(227, 152, 39, 0.22);
+}
+
+.fx-builder-palette__item.is-dragging {
+  cursor: grabbing;
 }
 
 .fx-builder-palette__item span,
@@ -131,7 +142,10 @@
 
 .fx-builder-body {
   min-width: 0;
+  min-height: 74px;
   padding: 6px;
+  flex: 1 1 auto;
+  overflow: auto;
   background: rgba(18, 19, 20, 0.94);
   border: 1px solid #0a0a0a;
   box-shadow:
@@ -139,9 +153,22 @@
     inset -1px 0 0 rgba(0, 0, 0, 0.50);
 }
 
+.fx-builder-body.is-drop-target {
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.05),
+    inset -1px 0 0 rgba(0, 0, 0, 0.50),
+    inset 0 0 0 1px rgba(227, 152, 39, 0.58),
+    0 0 8px rgba(227, 152, 39, 0.22);
+}
+
 .fx-builder-body__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   margin-bottom: 4px;
+  padding-bottom: 4px;
   color: var(--fx-muted);
+  background: rgba(18, 19, 20, 0.98);
   font-size: 12px;
   font-weight: 800;
 }
@@ -176,7 +203,7 @@
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.06),
     inset -1px -1px 0 rgba(0, 0, 0, 0.42);
-  cursor: grab;
+  cursor: default;
 }
 
 .fx-builder-row:hover,
@@ -187,6 +214,14 @@
     inset 1px 1px 0 rgba(255, 255, 255, 0.08),
     inset -1px -1px 0 rgba(0, 0, 0, 0.44),
     0 0 0 1px rgba(227, 152, 39, 0.55);
+}
+
+.fx-builder-row.is-dragging {
+  opacity: 0.48;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.40),
+    0 0 0 1px rgba(125, 202, 237, 0.55);
 }
 
 .fx-builder-row__label {
@@ -200,7 +235,12 @@
   border: 0;
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+}
+
+.fx-builder-row.is-dragging .fx-builder-row__label {
+  cursor: grabbing;
 }
 
 .fx-builder-row__label span,
@@ -236,6 +276,14 @@
 
 .fx-builder-drop-slot {
   min-height: 6px;
+  transition:
+    min-height 120ms ease,
+    background-color 120ms ease;
+}
+
+.fx-builder-drop-slot.is-armed {
+  min-height: 12px;
+  background: rgba(125, 202, 237, 0.02);
 }
 
 .fx-builder-drop-slot.is-active {
@@ -252,6 +300,56 @@
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.12),
     0 0 8px rgba(227, 152, 39, 0.24);
+  animation: fx-builder-ghost-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes fx-builder-ghost-pulse {
+  from {
+    border-color: rgba(227, 152, 39, 0.70);
+    background-color: rgba(227, 152, 39, 0.04);
+  }
+
+  to {
+    border-color: rgba(255, 201, 99, 0.98);
+    background-color: rgba(227, 152, 39, 0.12);
+  }
+}
+
+.fx-builder-drag-overlay {
+  z-index: 60;
+  pointer-events: none;
+}
+
+.fx-builder-drag-preview {
+  min-width: 160px;
+  padding: 7px 9px;
+  display: grid;
+  gap: 2px;
+  color: #eeeeee;
+  background: rgba(49, 48, 49, 0.96);
+  border: 1px solid rgba(227, 152, 39, 0.90);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.42),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.10),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.55);
+}
+
+.fx-builder-drag-preview span,
+.fx-builder-drag-preview code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-builder-drag-preview span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fx-builder-drag-preview code {
+  color: var(--fx-blue);
+  font-size: 10px;
 }
 
 .fx-editor-stage {
@@ -533,120 +631,6 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     inset 0 -1px 0 rgba(0, 0, 0, 0.50);
   font-size: 13px;
-}
-
-.fx-component-tree {
-  --fx-tree-line: rgba(125, 202, 237, 0.30);
-  --fx-tree-bg: #121314;
-  min-width: 0;
-  max-height: 42%;
-  margin-top: auto;
-  padding: 0;
-  flex: 0 0 auto;
-  overflow: auto;
-  color: #eeeeee;
-  background: var(--fx-tree-bg);
-  border: 0;
-  box-shadow:
-    inset 0 2px 3px rgba(0, 0, 0, 0.78),
-    inset 1px 0 0 rgba(255, 255, 255, 0.04),
-    inset -1px 0 0 rgba(0, 0, 0, 0.70),
-    0 -1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.fx-component-tree h3 {
-  margin: 0;
-  padding: 5px 8px;
-  color: var(--fx-gold);
-  background: #2a292a;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.72);
-  font-size: 13px;
-}
-
-.fx-component-tree ul {
-  position: relative;
-  margin: 0;
-  padding-left: 16px;
-  list-style: none;
-}
-
-.fx-component-tree > ul {
-  padding: 6px 6px 6px 0;
-  padding-left: 0;
-}
-
-.fx-component-tree ul ul {
-  margin-left: 8px;
-  border-left: 1px solid var(--fx-tree-line);
-}
-
-.fx-component-tree li {
-  position: relative;
-  margin: 0;
-}
-
-.fx-component-tree ul ul > li::before {
-  content: "";
-  position: absolute;
-  left: -16px;
-  top: 12px;
-  width: 14px;
-  border-top: 1px solid var(--fx-tree-line);
-}
-
-.fx-component-tree ul ul > li:last-child::after {
-  content: "";
-  position: absolute;
-  left: -17px;
-  top: 13px;
-  bottom: 0;
-  width: 2px;
-  background: var(--fx-tree-bg);
-}
-
-.fx-component-tree button {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  min-width: 0;
-  padding: 3px 5px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-  gap: 6px;
-  color: #eeeeee;
-  background: transparent;
-  border: 0;
-  font-size: 12px;
-  text-align: left;
-}
-
-.fx-component-tree button:hover,
-.fx-component-tree button:focus-visible {
-  outline: 0;
-  background: rgba(125, 202, 237, 0.10);
-}
-
-.fx-component-tree button.is-selected {
-  color: var(--fx-gold);
-  background: rgba(227, 152, 39, 0.20);
-  box-shadow: inset 2px 0 0 var(--fx-orange);
-}
-
-.fx-component-tree span,
-.fx-component-tree code {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fx-component-tree code {
-  color: var(--fx-blue);
-  font-family: var(--fx-font-mono);
-  font-size: 11px;
-  text-align: right;
 }
 
 .fx-editor-output__file {

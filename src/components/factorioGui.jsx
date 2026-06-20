@@ -9,6 +9,11 @@ import {
   Search,
   Unlock
 } from "lucide-react";
+import { useDroppable } from "@dnd-kit/react";
+import {
+  HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+  dropTargetData
+} from "../factorioBuilderDnd.js";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -255,29 +260,37 @@ function BuilderGhostBlock() {
   );
 }
 
-function builderDropProps({
+function CanvasDropSlot({
   active,
+  dragActive,
+  emptyParent = false,
   parentId,
-  index,
-  onBuilderDragOver,
-  onBuilderDrop
+  index
 }) {
-  if (!active) {
-    return {};
-  }
+  const { ref, isDropTarget } = useDroppable({
+    id: `builder-canvas-slot-${parentId}-${index}`,
+    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    disabled: !dragActive,
+    collisionPriority: 3,
+    data: dropTargetData({ parentId, index, surface: "canvas" })
+  });
+  const slotActive = active || isDropTarget;
 
-  return {
-    onDragOver: (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      onBuilderDragOver?.({ parentId, index, surface: "canvas" });
-    },
-    onDrop: (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      onBuilderDrop?.(event, { parentId, index, surface: "canvas" });
-    }
-  };
+  return (
+    <div
+      ref={ref}
+      className={[
+        "fx-gui-flow-drop-slot",
+        slotActive ? "is-active" : "",
+        emptyParent ? "is-empty-parent" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {slotActive ? <BuilderGhostBlock /> : null}
+    </div>
+  );
 }
 
 function FlowChildren({
@@ -290,8 +303,7 @@ function FlowChildren({
   onInspectLock,
   builderDragActive,
   builderDropTarget,
-  onBuilderDragOver,
-  onBuilderDrop
+  builderDraggingId
 }) {
   const ghostIndex =
     builderDropTarget?.surface === "canvas" && builderDropTarget.parentId === parentId
@@ -299,31 +311,47 @@ function FlowChildren({
       : null;
   const renderedChildren = [];
 
-  nodes.forEach((node, index) => {
-    if (ghostIndex === index) {
-      renderedChildren.push(<BuilderGhostBlock key={`${parentId}-ghost-${index}`} />);
-    }
+  if (builderDragActive) {
+    renderedChildren.push(
+      <CanvasDropSlot
+        active={ghostIndex === 0}
+        dragActive={builderDragActive}
+        emptyParent={nodes.length === 0}
+        index={0}
+        key={`${parentId}-drop-0`}
+        parentId={parentId}
+      />
+    );
+  }
 
+  nodes.forEach((node, index) => {
     renderedChildren.push(
       <GuiHorizontalFlow
         builderDragActive={builderDragActive}
         builderDropTarget={builderDropTarget}
+        builderDraggingId={builderDraggingId}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
         key={node.id}
         node={node}
-        onBuilderDragOver={onBuilderDragOver}
-        onBuilderDrop={onBuilderDrop}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
       />
     );
-  });
 
-  if (ghostIndex === nodes.length) {
-    renderedChildren.push(<BuilderGhostBlock key={`${parentId}-ghost-${nodes.length}`} />);
-  }
+    if (builderDragActive) {
+      renderedChildren.push(
+        <CanvasDropSlot
+          active={ghostIndex === index + 1}
+          dragActive={builderDragActive}
+          index={index + 1}
+          key={`${parentId}-drop-${index + 1}`}
+          parentId={parentId}
+        />
+      );
+    }
+  });
 
   return renderedChildren;
 }
@@ -337,8 +365,7 @@ export function GuiHorizontalFlow({
   onInspectLock,
   builderDragActive = false,
   builderDropTarget = null,
-  onBuilderDragOver,
-  onBuilderDrop
+  builderDraggingId = null,
 }) {
   const flowInspector = inspectorProps({
     active: inspectorActive,
@@ -349,17 +376,31 @@ export function GuiHorizontalFlow({
     onInspectLock
   });
   const children = node.children ?? [];
-  const dropProps = builderDropProps({
-    active: builderDragActive,
-    parentId: node.id,
-    index: children.length,
-    onBuilderDragOver,
-    onBuilderDrop
+  const isDropParent = builderDropTarget?.surface === "canvas" &&
+    builderDropTarget.parentId === node.id;
+  const isDraggingSource = builderDraggingId === node.id;
+  const { ref: dropRef, isDropTarget } = useDroppable({
+    id: `builder-canvas-parent-${node.id}`,
+    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    disabled: !builderDragActive,
+    collisionPriority: 1,
+    data: dropTargetData({
+      parentId: node.id,
+      index: children.length,
+      surface: "canvas"
+    })
   });
 
   return (
     <div
-      className={["fx-gui-horizontal-flow", flowInspector.className]
+      ref={dropRef}
+      className={[
+        "fx-gui-horizontal-flow",
+        isDropParent || isDropTarget ? "is-builder-drop-parent" : "",
+        isDraggingSource ? "is-builder-dragging-source" : "",
+        flowInspector.className
+      ]
         .filter(Boolean)
         .join(" ")}
       data-anchor={node.id}
@@ -376,17 +417,15 @@ export function GuiHorizontalFlow({
       onFocus={flowInspector.onFocus}
       onMouseEnter={flowInspector.onMouseEnter}
       onMouseMove={flowInspector.onMouseMove}
-      {...dropProps}
     >
       <FlowChildren
         builderDragActive={builderDragActive}
         builderDropTarget={builderDropTarget}
+        builderDraggingId={builderDraggingId}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
         nodes={children}
-        onBuilderDragOver={onBuilderDragOver}
-        onBuilderDrop={onBuilderDrop}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
         parentId={node.id}
@@ -414,8 +453,7 @@ export function GuiWindow({
   onTitlebarPointerCancel,
   builderDragActive = false,
   builderDropTarget = null,
-  onBuilderDragOver,
-  onBuilderDrop,
+  builderDraggingId = null,
   styleReference = frameStyleReference
 }) {
   const contentSize = getFrameContentSize(styleReference);
@@ -473,13 +511,22 @@ export function GuiWindow({
     onInspect,
     onInspectLock
   });
-  const bodyDropProps = builderDropProps({
-    active: builderDragActive,
-    parentId: bodyAnchor,
-    index: bodyChildren.length,
-    onBuilderDragOver,
-    onBuilderDrop
+  const { ref: bodyDropRef, isDropTarget: isBodyDropTarget } = useDroppable({
+    id: `builder-canvas-parent-${bodyAnchor}`,
+    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    disabled: !builderDragActive,
+    collisionPriority: 1,
+    data: dropTargetData({
+      parentId: bodyAnchor,
+      index: bodyChildren.length,
+      surface: "canvas"
+    })
   });
+  const bodyDropClass = builderDropTarget?.surface === "canvas" &&
+    builderDropTarget.parentId === bodyAnchor
+    ? "is-builder-drop-parent"
+    : "";
 
   return (
     <section
@@ -599,7 +646,14 @@ export function GuiWindow({
         />
       </header>
       <div
-        className={["fx-gui-window__body", bodyInspector.className].filter(Boolean).join(" ")}
+        ref={bodyDropRef}
+        className={[
+          "fx-gui-window__body",
+          bodyDropClass || isBodyDropTarget ? "is-builder-drop-parent" : "",
+          bodyInspector.className
+        ]
+          .filter(Boolean)
+          .join(" ")}
         data-anchor={bodyAnchor}
         data-fx-primitive="flow"
         data-fx-style={styleReference.bodyStyle}
@@ -620,17 +674,15 @@ export function GuiWindow({
         onMouseMove={bodyInspector.onMouseMove}
         onClick={bodyInspector.onClick}
         onFocus={bodyInspector.onFocus}
-        {...bodyDropProps}
       >
         <FlowChildren
           builderDragActive={builderDragActive}
           builderDropTarget={builderDropTarget}
+          builderDraggingId={builderDraggingId}
           inspectedAnchor={inspectedAnchor}
           inspectorActive={inspectorActive}
           inspectorLocked={inspectorLocked}
           nodes={bodyChildren}
-          onBuilderDragOver={onBuilderDragOver}
-          onBuilderDrop={onBuilderDrop}
           onInspect={onInspect}
           onInspectLock={onInspectLock}
           parentId={bodyAnchor}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import {
   FxActionButton,
   FxButton,
@@ -26,6 +27,10 @@ import {
   normalizeLayoutState,
   removeLayoutNode
 } from "../factorioLayoutTree.js";
+import {
+  readBuilderDrag,
+  readBuilderDropTarget
+} from "../factorioBuilderDnd.js";
 import { BuilderPanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
@@ -148,8 +153,7 @@ function EditorCanvas({
   onWindowLocationChange,
   builderDragActive,
   builderDropTarget,
-  onBuilderDragOver,
-  onBuilderDrop
+  builderDraggingId
 }) {
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
@@ -311,8 +315,7 @@ function EditorCanvas({
           bodyChildren={bodyChildren}
           builderDragActive={builderDragActive}
           builderDropTarget={builderDropTarget}
-          onBuilderDragOver={onBuilderDragOver}
-          onBuilderDrop={onBuilderDrop}
+          builderDraggingId={builderDraggingId}
         />
       ) : (
         <div className="fx-editor-empty" data-anchor="editor_empty_state">
@@ -348,6 +351,21 @@ function LuaOutput({ model }) {
         <code>{code}</code>
       </pre>
     </FxFrame>
+  );
+}
+
+function BuilderDragPreview({ source }) {
+  const drag = readBuilderDrag(source);
+
+  if (!drag) {
+    return null;
+  }
+
+  return (
+    <div className="fx-builder-drag-preview" data-anchor="builder_drag_preview">
+      <span>Horizontal Flow</span>
+      <code>{drag.kind === "node" ? drag.sourceId : "flow.horizontal"}</code>
+    </div>
   );
 }
 
@@ -696,97 +714,6 @@ function InspectorCard({
   );
 }
 
-function componentClassName(node) {
-  if (node.className) {
-    return node.className;
-  }
-
-  if (node.id?.endsWith("_titlebar")) {
-    return "agui::HorizontalFlow";
-  }
-
-  if (node.id?.endsWith("_title")) {
-    return "agui::Label";
-  }
-
-  if (node.role === "header-filler") {
-    return "agui::Filler";
-  }
-
-  if (node.id?.endsWith("_body")) {
-    return "agui::VerticalFlow";
-  }
-
-  return node.primitive ?? "agui::Element";
-}
-
-function ComponentTreeNode({
-  node,
-  inspectedAnchor,
-  onClearPreview,
-  onPreviewComponent,
-  onSelectComponent
-}) {
-  const children = node.children ?? [];
-  const selected = inspectedAnchor === node.id;
-
-  return (
-    <li>
-      <button
-        className={selected ? "is-selected" : ""}
-        type="button"
-        onClick={() => onSelectComponent(node.id)}
-        onMouseEnter={() => onPreviewComponent(node.id)}
-        onMouseLeave={onClearPreview}
-      >
-        <span>{componentClassName(node)}</span>
-        <code>{node.id}</code>
-      </button>
-      {children.length ? (
-        <ul>
-          {children.map((child) => (
-            <ComponentTreeNode
-              inspectedAnchor={inspectedAnchor}
-              key={child.id}
-              node={child}
-              onClearPreview={onClearPreview}
-              onPreviewComponent={onPreviewComponent}
-              onSelectComponent={onSelectComponent}
-            />
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  );
-}
-
-function ComponentTree({
-  model,
-  inspectedAnchor,
-  onClearPreview,
-  onPreviewComponent,
-  onSelectComponent
-}) {
-  if (!model?.root) {
-    return null;
-  }
-
-  return (
-    <section className="fx-component-tree" data-anchor="component_tree">
-      <h3>Components</h3>
-      <ul>
-        <ComponentTreeNode
-          inspectedAnchor={inspectedAnchor}
-          node={model.root}
-          onClearPreview={onClearPreview}
-          onPreviewComponent={onPreviewComponent}
-          onSelectComponent={onSelectComponent}
-        />
-      </ul>
-    </section>
-  );
-}
-
 function StyleInspector({
   canGoBack,
   canGoForward,
@@ -799,8 +726,6 @@ function StyleInspector({
   onForward,
   onNavigate,
   onPreview,
-  onPreviewComponent,
-  onSelectComponent,
   onToggleLock
 }) {
   const rows = getWindowInspectorRows(model);
@@ -820,13 +745,6 @@ function StyleInspector({
         <div className="fx-inspector-empty" data-anchor="style_inspector_idle">
           Hover a GUI part or select a component to inspect it.
         </div>
-        <ComponentTree
-          inspectedAnchor={inspectedAnchor}
-          model={model}
-          onClearPreview={onClearPreview}
-          onPreviewComponent={onPreviewComponent}
-          onSelectComponent={onSelectComponent}
-        />
       </div>
     );
   }
@@ -845,13 +763,6 @@ function StyleInspector({
         onNavigate={onNavigate}
         onPreview={onPreview}
         onToggleLock={onToggleLock}
-      />
-      <ComponentTree
-        inspectedAnchor={inspectedAnchor}
-        model={model}
-        onClearPreview={onClearPreview}
-        onPreviewComponent={onPreviewComponent}
-        onSelectComponent={onSelectComponent}
       />
     </div>
   );
@@ -1067,14 +978,6 @@ export function EditorPage() {
     setInspectorPreview(preview);
   }
 
-  function previewInspectorComponent(nextAnchor) {
-    setInspectorPreview({
-      kind: "reference",
-      anchor: nextAnchor,
-      label: nextAnchor
-    });
-  }
-
   function clearInspectorPreview() {
     setInspectorPreview(null);
   }
@@ -1097,12 +1000,16 @@ export function EditorPage() {
     selectInspectorComponent(nodeId);
   }
 
-  function dragSourceId() {
-    return builderDrag?.kind === "node" ? builderDrag.sourceId : null;
+  function dragSourceId(drag) {
+    return drag?.kind === "node" ? drag.sourceId : null;
   }
 
-  function normalizeDropTarget(target, layoutChildren = currentWindow?.layoutChildren ?? []) {
-    if (!target || !canDropLayoutNode(layoutChildren, dragSourceId(), target.parentId)) {
+  function normalizeDropTarget(
+    target,
+    drag = builderDrag,
+    layoutChildren = currentWindow?.layoutChildren ?? []
+  ) {
+    if (!target || !drag || !canDropLayoutNode(layoutChildren, dragSourceId(drag), target.parentId)) {
       return null;
     }
 
@@ -1119,12 +1026,12 @@ export function EditorPage() {
     return { parentId: target.parentId, index, surface: target.surface };
   }
 
-  function updateBuilderDropTarget(target) {
-    if (!builderDrag || !currentWindow) {
+  function updateBuilderDropTarget(target, drag = builderDrag) {
+    if (!drag || !currentWindow) {
       return;
     }
 
-    const normalizedTarget = normalizeDropTarget(target);
+    const normalizedTarget = normalizeDropTarget(target, drag);
     if (normalizedTarget) {
       setBuilderDropTarget(normalizedTarget);
     } else {
@@ -1132,39 +1039,31 @@ export function EditorPage() {
     }
   }
 
-  function beginPaletteDrag(event) {
-    if (!currentWindow) {
-      event.preventDefault();
-      return;
-    }
-
-    event.dataTransfer.effectAllowed = "copy";
-    event.dataTransfer.setData("text/plain", "horizontal-flow");
-    setBuilderDrag({ kind: "palette" });
-    setBuilderDropTarget(null);
-  }
-
-  function beginNodeDrag(event, sourceId) {
-    event.stopPropagation();
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", sourceId);
-    setBuilderDrag({ kind: "node", sourceId });
-    setBuilderDropTarget(null);
-  }
-
   function clearBuilderDrag() {
     setBuilderDrag(null);
     setBuilderDropTarget(null);
   }
 
-  function handleBuilderDragOver(event, target) {
-    if (!builderDrag) {
+  function handleBuilderDragStart(event) {
+    const drag = readBuilderDrag(event.operation.source);
+
+    if (!drag || !currentWindow) {
+      clearBuilderDrag();
       return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
-    updateBuilderDropTarget(target);
+    setBuilderDrag(drag);
+    setBuilderDropTarget(null);
+  }
+
+  function handleBuilderDragOver(event) {
+    const drag = readBuilderDrag(event.operation.source) ?? builderDrag;
+
+    if (!drag) {
+      return;
+    }
+
+    updateBuilderDropTarget(readBuilderDropTarget(event.operation.target), drag);
   }
 
   function applyLayoutUpdate(updater) {
@@ -1232,21 +1131,18 @@ export function EditorPage() {
     });
   }
 
-  function commitBuilderDrop(event, target = builderDropTarget) {
-    if (!builderDrag) {
+  function commitBuilderDrop(target = builderDropTarget, drag = builderDrag) {
+    if (!drag) {
       return;
     }
 
-    event?.preventDefault();
-    event?.stopPropagation();
-
     applyLayoutUpdate((layoutState) => {
-      const normalizedTarget = normalizeDropTarget(target, layoutState.layoutChildren);
+      const normalizedTarget = normalizeDropTarget(target, drag, layoutState.layoutChildren);
       if (!normalizedTarget) {
         return { changed: false };
       }
 
-      if (builderDrag.kind === "palette") {
+      if (drag.kind === "palette") {
         const node = createHorizontalFlowSpec(layoutState.nextLayoutNodeNumber);
         const insertion = insertLayoutNode(
           layoutState.layoutChildren,
@@ -1263,16 +1159,16 @@ export function EditorPage() {
         };
       }
 
-      if (builderDrag.kind === "node") {
+      if (drag.kind === "node") {
         const movement = moveLayoutNode(
           layoutState.layoutChildren,
-          builderDrag.sourceId,
+          drag.sourceId,
           normalizedTarget.parentId,
           normalizedTarget.index
         );
         return {
           ...movement,
-          selectedAnchor: builderDrag.sourceId,
+          selectedAnchor: drag.sourceId,
           nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
         };
       }
@@ -1281,6 +1177,17 @@ export function EditorPage() {
     });
 
     clearBuilderDrag();
+  }
+
+  function handleBuilderDragEnd(event) {
+    if (event.canceled) {
+      clearBuilderDrag();
+      return;
+    }
+
+    const drag = readBuilderDrag(event.operation.source) ?? builderDrag;
+    const target = readBuilderDropTarget(event.operation.target) ?? builderDropTarget;
+    commitBuilderDrop(target, drag);
   }
 
   function updateWindowLocation(location) {
@@ -1369,147 +1276,156 @@ export function EditorPage() {
   }
 
   return (
-    <main
-      className="fx-editor-shell"
-      ref={shellRef}
-      style={{ "--fx-editor-sidebar-width": `${sidebarWidth}px` }}
+    <DragDropProvider
+      onDragEnd={handleBuilderDragEnd}
+      onDragOver={handleBuilderDragOver}
+      onDragStart={handleBuilderDragStart}
     >
-      <aside className="fx-editor-rail" aria-label="Editor controls">
-        <FxFrame title="Window" className="fx-editor-panel">
-          <label className="fx-field">
-            <span>Title</span>
-            <FxTextInput
-              id="window-title"
-              type="text"
-              value={title}
-              autoComplete="off"
-              onChange={updateTitle}
-            />
-          </label>
-          <div className="fx-field-grid fx-field-grid--two">
+      <main
+        className="fx-editor-shell"
+        ref={shellRef}
+        style={{ "--fx-editor-sidebar-width": `${sidebarWidth}px` }}
+      >
+        <aside className="fx-editor-rail" aria-label="Editor controls">
+          <FxFrame title="Window" className="fx-editor-panel">
             <label className="fx-field">
-              <span>Width</span>
+              <span>Title</span>
               <FxTextInput
-                id="window-width"
-                type="number"
-                min={WINDOW_SIZE_LIMITS.minWidth}
-                max={WINDOW_SIZE_LIMITS.maxWidth}
-                step="10"
-                value={windowSize.width}
-                onChange={updateWindowWidth}
+                id="window-title"
+                type="text"
+                value={title}
+                autoComplete="off"
+                onChange={updateTitle}
               />
             </label>
-            <label className="fx-field">
-              <span>Height</span>
-              <FxTextInput
-                id="window-height"
-                type="number"
-                min={WINDOW_SIZE_LIMITS.minHeight}
-                max={WINDOW_SIZE_LIMITS.maxHeight}
-                step="10"
-                value={windowSize.height}
-                onChange={updateWindowHeight}
-              />
-            </label>
-          </div>
-          <div className="fx-actions">
-            <FxButton id="create-window" onClick={createWindow}>
-              {currentWindow ? "Recreate window" : "Create window"}
-            </FxButton>
-            <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
-              Reset
-            </FxButton>
-          </div>
-        </FxFrame>
+            <div className="fx-field-grid fx-field-grid--two">
+              <label className="fx-field">
+                <span>Width</span>
+                <FxTextInput
+                  id="window-width"
+                  type="number"
+                  min={WINDOW_SIZE_LIMITS.minWidth}
+                  max={WINDOW_SIZE_LIMITS.maxWidth}
+                  step="10"
+                  value={windowSize.width}
+                  onChange={updateWindowWidth}
+                />
+              </label>
+              <label className="fx-field">
+                <span>Height</span>
+                <FxTextInput
+                  id="window-height"
+                  type="number"
+                  min={WINDOW_SIZE_LIMITS.minHeight}
+                  max={WINDOW_SIZE_LIMITS.maxHeight}
+                  step="10"
+                  value={windowSize.height}
+                  onChange={updateWindowHeight}
+                />
+              </label>
+            </div>
+            <div className="fx-actions">
+              <FxButton id="create-window" onClick={createWindow}>
+                {currentWindow ? "Recreate window" : "Create window"}
+              </FxButton>
+              <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
+                Reset
+              </FxButton>
+            </div>
+          </FxFrame>
 
-        <BuilderPanel
-          currentWindow={currentWindow}
-          dropTarget={builderDropTarget}
-          inspectedAnchor={inspectedAnchor}
-          onAddAfter={addHorizontalFlowAfter}
-          onAddChild={addHorizontalFlowChild}
-          onAddRoot={() => addHorizontalFlow(BODY_LAYOUT_ROOT_ID)}
-          onBuilderDragOver={handleBuilderDragOver}
-          onBuilderDrop={commitBuilderDrop}
-          onDragEnd={clearBuilderDrag}
-          onDragStartNode={beginNodeDrag}
-          onDragStartPalette={beginPaletteDrag}
-          onRemove={removeHorizontalFlow}
-          onSelect={selectBuilderNode}
-        />
-
-        <FxFrame title="Inspector" className="fx-editor-panel fx-editor-panel--inspector">
-          <FxCheckbox
-            checked={showInspector}
-            readOnly={false}
-            onChange={updateInspectorEnabled}
-          >
-            Ctrl+F6 style inspector
-          </FxCheckbox>
-          <FxCheckbox
-            checked={showLuaOutput}
-            readOnly={false}
-            onChange={updateLuaOutputEnabled}
-          >
-            Lua output
-          </FxCheckbox>
-          {showInspector ? (
-            <StyleInspector
-              canGoBack={inspectorHistory.back.length > 0}
-              canGoForward={inspectorHistory.forward.length > 0}
-              model={currentModel}
-              inspectedAnchor={inspectedAnchor}
-              locked={inspectorLocked}
-              onBack={goInspectorBack}
-              onClearPreview={clearInspectorPreview}
-              onEdit={updateInspectorEditableValue}
-              onForward={goInspectorForward}
-              onNavigate={navigateInspector}
-              onPreview={previewInspector}
-              onPreviewComponent={previewInspectorComponent}
-              onSelectComponent={selectInspectorComponent}
-              onToggleLock={() => lockInspectedAnchor(inspectedAnchor)}
-            />
-          ) : null}
-        </FxFrame>
-        <div
-          aria-label="Resize editor sidebar"
-          aria-orientation="vertical"
-          aria-valuemax={SIDEBAR_MAX_WIDTH}
-          aria-valuemin={SIDEBAR_MIN_WIDTH}
-          aria-valuenow={sidebarWidth}
-          className="fx-editor-rail__resize"
-          onKeyDown={handleSidebarResizeKey}
-          onPointerCancel={endSidebarResize}
-          onPointerDown={startSidebarResize}
-          onPointerMove={moveSidebarResize}
-          onPointerUp={endSidebarResize}
-          role="separator"
-          tabIndex={0}
-        />
-      </aside>
-
-      <section className="fx-editor-stage" aria-label="Editor canvas">
-        <div id="editor-root">
-          <EditorCanvas
+          <BuilderPanel
             currentWindow={currentWindow}
-            model={currentModel}
-            inspectorActive={showInspector}
-            inspectorLocked={inspectorLocked}
+            draggingId={builderDrag?.kind === "node" ? builderDrag.sourceId : null}
+            dropTarget={builderDropTarget}
             inspectedAnchor={inspectedAnchor}
-            inspectorPreview={inspectorPreview}
-            onInspect={updateInspectedAnchor}
-            onInspectClear={clearHoveredInspection}
-            onInspectLock={lockInspectedAnchor}
-            onWindowLocationChange={updateWindowLocation}
-            builderDragActive={Boolean(builderDrag)}
-            builderDropTarget={builderDropTarget}
-            onBuilderDragOver={updateBuilderDropTarget}
-            onBuilderDrop={commitBuilderDrop}
+            onAddAfter={addHorizontalFlowAfter}
+            onAddChild={addHorizontalFlowChild}
+            onAddRoot={() => addHorizontalFlow(BODY_LAYOUT_ROOT_ID)}
+            onRemove={removeHorizontalFlow}
+            paletteDragging={builderDrag?.kind === "palette"}
+            onSelect={selectBuilderNode}
           />
-        </div>
-      </section>
-      {showLuaOutput ? <LuaOutput model={currentModel} /> : null}
-    </main>
+
+          <FxFrame title="Inspector" className="fx-editor-panel fx-editor-panel--inspector">
+            <FxCheckbox
+              checked={showInspector}
+              readOnly={false}
+              onChange={updateInspectorEnabled}
+            >
+              Ctrl+F6 style inspector
+            </FxCheckbox>
+            <FxCheckbox
+              checked={showLuaOutput}
+              readOnly={false}
+              onChange={updateLuaOutputEnabled}
+            >
+              Lua output
+            </FxCheckbox>
+            {showInspector ? (
+              <StyleInspector
+                canGoBack={inspectorHistory.back.length > 0}
+                canGoForward={inspectorHistory.forward.length > 0}
+                model={currentModel}
+                inspectedAnchor={inspectedAnchor}
+                locked={inspectorLocked}
+                onBack={goInspectorBack}
+                onClearPreview={clearInspectorPreview}
+                onEdit={updateInspectorEditableValue}
+                onForward={goInspectorForward}
+                onNavigate={navigateInspector}
+                onPreview={previewInspector}
+                onToggleLock={() => lockInspectedAnchor(inspectedAnchor)}
+              />
+            ) : null}
+          </FxFrame>
+          <div
+            aria-label="Resize editor sidebar"
+            aria-orientation="vertical"
+            aria-valuemax={SIDEBAR_MAX_WIDTH}
+            aria-valuemin={SIDEBAR_MIN_WIDTH}
+            aria-valuenow={sidebarWidth}
+            className="fx-editor-rail__resize"
+            onKeyDown={handleSidebarResizeKey}
+            onPointerCancel={endSidebarResize}
+            onPointerDown={startSidebarResize}
+            onPointerMove={moveSidebarResize}
+            onPointerUp={endSidebarResize}
+            role="separator"
+            tabIndex={0}
+          />
+        </aside>
+
+        <section className="fx-editor-stage" aria-label="Editor canvas">
+          <div id="editor-root">
+            <EditorCanvas
+              currentWindow={currentWindow}
+              model={currentModel}
+              inspectorActive={showInspector}
+              inspectorLocked={inspectorLocked}
+              inspectedAnchor={inspectedAnchor}
+              inspectorPreview={inspectorPreview}
+              onInspect={updateInspectedAnchor}
+              onInspectClear={clearHoveredInspection}
+              onInspectLock={lockInspectedAnchor}
+              onWindowLocationChange={updateWindowLocation}
+              builderDragActive={Boolean(builderDrag)}
+              builderDropTarget={builderDropTarget}
+              builderDraggingId={builderDrag?.kind === "node" ? builderDrag.sourceId : null}
+            />
+          </div>
+        </section>
+        {showLuaOutput ? <LuaOutput model={currentModel} /> : null}
+      </main>
+      <DragOverlay
+        className="fx-builder-drag-overlay"
+        dropAnimation={{
+          duration: 160,
+          easing: "cubic-bezier(0.2, 0, 0.2, 1)"
+        }}
+      >
+        {(source) => <BuilderDragPreview source={source} />}
+      </DragOverlay>
+    </DragDropProvider>
   );
 }
