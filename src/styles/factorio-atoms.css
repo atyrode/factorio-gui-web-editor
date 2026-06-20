@@ -872,12 +872,28 @@
 
 .fx-gui-flow-drop-preview-slot {
   box-sizing: border-box;
-  flex: 1 0 var(--fx-horizontal-flow-child-min-width, 168px);
-  min-width: var(--fx-horizontal-flow-child-min-width, 168px);
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: 0;
+  min-width: 0;
   min-height: 100%;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    flex-basis 180ms ease,
+    flex-grow 180ms ease,
+    min-width 180ms ease,
+    opacity 140ms ease;
 }
 
-.fx-gui-flow-drop-preview-slot.is-empty-parent {
+.fx-gui-flow-drop-preview-slot.is-expanded {
+  flex-grow: 1;
+  flex-basis: var(--fx-horizontal-flow-child-min-width, 168px);
+  min-width: var(--fx-horizontal-flow-child-min-width, 168px);
+  opacity: 1;
+}
+
+.fx-gui-flow-drop-preview-slot.is-empty-parent.is-expanded {
   flex: 1 1 100%;
   min-width: 100%;
 }

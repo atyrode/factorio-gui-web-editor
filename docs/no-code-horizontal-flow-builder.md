@@ -140,6 +140,8 @@ slice without treating CSS as source of truth.
 Before expanding to Label, Frame, or Action Button insertion, verify:
 
 - ghost placement is visible in both the builder list and canvas;
+- canvas ghost placement expands smoothly so affected sibling flows slide into
+  the proposed drop layout instead of jumping instantly;
 - dragged source rows/flows and current drop parents have clear highlighted
   states;
 - sibling flows visually split the available body or parent-flow space;

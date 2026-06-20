@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   CornerDownRight,
   ListPlus,
@@ -316,10 +317,18 @@ function CanvasDropTarget({
 function CanvasDropPreviewSlot({
   emptyParent = false
 }) {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setExpanded(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
   return (
     <div
       className={[
         "fx-gui-flow-drop-preview-slot",
+        expanded ? "is-expanded" : "",
         emptyParent ? "is-empty-parent" : ""
       ]
         .filter(Boolean)
