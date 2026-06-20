@@ -812,14 +812,49 @@
   align-self: stretch;
   gap: var(--fx-horizontal-flow-horizontal-spacing, 6px);
   overflow: auto;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
+.fx-gui-frame {
+  box-sizing: border-box;
+  position: relative;
+  flex: 1 1 0;
+  min-width: var(--fx-gui-frame-min-width, 168px);
+  min-height: var(--fx-gui-frame-min-height, 72px);
+  padding:
+    var(--fx-gui-frame-padding-top, 0)
+    var(--fx-gui-frame-padding-right, 0)
+    var(--fx-gui-frame-padding-bottom, 0)
+    var(--fx-gui-frame-padding-left, 0);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  align-self: stretch;
+  overflow: auto;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
-    #302f30;
-  border: 1px solid #0a0a0a;
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(0, 0, 0, 0.20) 3px,
+      transparent 14px
+    ),
+    #333233;
+  border: 1px solid #131111;
   box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.08),
-    inset -2px -2px 2px rgba(0, 0, 0, 0.48),
-    1px 1px 0 rgba(0, 0, 0, 0.48);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 4px 4px -1px rgba(0, 0, 0, 0.64),
+    inset 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset -1px 0 0 rgba(0, 0, 0, 0.58),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -3px 3px -1px rgba(0, 0, 0, 0.62),
+    -2px 0 2px -2px rgba(0, 0, 0, 0.85),
+    2px 0 2px -2px rgba(0, 0, 0, 0.85);
   transition:
     background-color 120ms ease,
     box-shadow 120ms ease,
@@ -830,20 +865,47 @@
   min-width: var(--fx-horizontal-flow-min-width, 144px);
 }
 
-.fx-gui-window__body.is-builder-drop-parent,
+.fx-gui-frame > .fx-gui-horizontal-flow {
+  min-width: 0;
+}
+
+.fx-gui-window__body.is-builder-drop-parent {
+  box-shadow:
+    0 -1px 0 #0a0a0a,
+    inset 0 3px 4px rgba(0, 0, 0, 0.70),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(227, 152, 39, 0.95),
+    0 0 12px rgba(227, 152, 39, 0.28);
+}
+
 .fx-gui-horizontal-flow.is-builder-drop-parent {
   box-shadow:
     0 0 0 1px rgba(227, 152, 39, 0.95),
-    0 0 12px rgba(227, 152, 39, 0.28),
-    inset 1px 1px 0 rgba(255, 255, 255, 0.10),
-    inset -2px -2px 2px rgba(0, 0, 0, 0.48);
+    0 0 12px rgba(227, 152, 39, 0.28);
 }
 
-.fx-gui-horizontal-flow.is-builder-dragging-source {
+.fx-gui-frame.is-builder-drop-parent {
+  box-shadow:
+    0 0 0 1px rgba(227, 152, 39, 0.95),
+    0 0 12px rgba(227, 152, 39, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 4px 4px -1px rgba(0, 0, 0, 0.64),
+    inset 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset -1px 0 0 rgba(0, 0, 0, 0.58),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -3px 3px -1px rgba(0, 0, 0, 0.62),
+    -2px 0 2px -2px rgba(0, 0, 0, 0.85),
+    2px 0 2px -2px rgba(0, 0, 0, 0.85);
+}
+
+.fx-gui-horizontal-flow.is-builder-dragging-source,
+.fx-gui-frame.is-builder-dragging-source {
   opacity: 0.48;
   box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.05),
-    inset -2px -2px 2px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 4px 4px -1px rgba(0, 0, 0, 0.56),
+    inset 0 -3px 3px -1px rgba(0, 0, 0, 0.54),
     0 0 0 1px rgba(125, 202, 237, 0.55);
 }
 
@@ -890,14 +952,6 @@
   opacity: 0;
   pointer-events: none;
   border-color: rgba(227, 152, 39, 0.95);
-  background:
-    linear-gradient(180deg, rgba(227, 152, 39, 0.16), rgba(227, 152, 39, 0.05)),
-    #302f30;
-  box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.12),
-    inset -2px -2px 2px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(227, 152, 39, 0.70),
-    0 0 8px rgba(227, 152, 39, 0.22);
   transition:
     flex-basis 180ms ease,
     flex-grow 180ms ease,
@@ -909,13 +963,19 @@
   flex-grow: 1;
   flex-shrink: 1;
   flex-basis: 0;
-  min-width: var(--fx-horizontal-flow-min-width, 168px);
   opacity: 1;
 }
 
 .fx-gui-flow-drop-preview-slot.is-empty-parent.is-expanded {
   flex: 1 1 0;
-  min-width: var(--fx-horizontal-flow-min-width, 168px);
+}
+
+.fx-gui-frame.fx-gui-flow-drop-preview-slot.is-expanded {
+  min-width: var(--fx-gui-frame-min-width, 168px);
+}
+
+.fx-gui-horizontal-flow.fx-gui-flow-drop-preview-slot.is-expanded {
+  min-width: var(--fx-horizontal-flow-min-width, 0);
 }
 
 .fx-gui-window.is-inspected,
@@ -923,6 +983,7 @@
 .fx-gui-window__title-label.is-inspected,
 .fx-gui-window__drag-handle.is-inspected,
 .fx-gui-window__body.is-inspected,
+.fx-gui-frame.is-inspected,
 .fx-gui-horizontal-flow.is-inspected {
   position: relative;
 }
@@ -932,6 +993,7 @@
 .fx-gui-window__title-label.is-inspected::after,
 .fx-gui-window__drag-handle.is-inspected::after,
 .fx-gui-window__body.is-inspected::after,
+.fx-gui-frame.is-inspected::after,
 .fx-gui-horizontal-flow.is-inspected::after {
   content: "";
   position: absolute;
@@ -950,6 +1012,7 @@
 .fx-gui-window.is-inspecting .fx-gui-window__title-label,
 .fx-gui-window.is-inspecting .fx-gui-window__drag-handle,
 .fx-gui-window.is-inspecting .fx-gui-window__body,
+.fx-gui-window.is-inspecting .fx-gui-frame,
 .fx-gui-window.is-inspecting .fx-gui-horizontal-flow {
   cursor: crosshair;
   user-select: none;

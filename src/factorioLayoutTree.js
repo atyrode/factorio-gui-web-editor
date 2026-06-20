@@ -1,4 +1,7 @@
 export const BODY_LAYOUT_ROOT_ID = "gui_window_body";
+export const FRAME_ATOM_ID = "frame";
+export const INSIDE_DEEP_FRAME_STYLE_VARIANT = "inside-deep-frame";
+export const FRAME_ID_PREFIX = "gui_frame_";
 export const HORIZONTAL_FLOW_ATOM_ID = "horizontal-flow";
 export const GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT = "generic-horizontal-flow";
 export const HORIZONTAL_FLOW_ID_PREFIX = "gui_horizontal_flow_";
@@ -7,12 +10,12 @@ function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function nodeNumberFromId(id) {
-  if (typeof id !== "string" || !id.startsWith(HORIZONTAL_FLOW_ID_PREFIX)) {
+function nodeNumberFromId(id, prefix) {
+  if (typeof id !== "string" || !id.startsWith(prefix)) {
     return null;
   }
 
-  const rawValue = id.slice(HORIZONTAL_FLOW_ID_PREFIX.length);
+  const rawValue = id.slice(prefix.length);
   if (!/^\d+$/.test(rawValue)) {
     return null;
   }
@@ -26,11 +29,37 @@ function normalizeNextNumber(value) {
   return Number.isSafeInteger(numberValue) && numberValue > 0 ? numberValue : 1;
 }
 
+function canonicalStyleVariant(atom) {
+  return atom === FRAME_ATOM_ID
+    ? INSIDE_DEEP_FRAME_STYLE_VARIANT
+    : GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT;
+}
+
+function prefixForAtom(atom) {
+  return atom === FRAME_ATOM_ID
+    ? FRAME_ID_PREFIX
+    : HORIZONTAL_FLOW_ID_PREFIX;
+}
+
+function normalizeAtom(atom, parentAtom) {
+  if (atom === FRAME_ATOM_ID || atom === HORIZONTAL_FLOW_ATOM_ID) {
+    return atom;
+  }
+
+  if (atom != null) {
+    return null;
+  }
+
+  return parentAtom === FRAME_ATOM_ID
+    ? HORIZONTAL_FLOW_ATOM_ID
+    : FRAME_ATOM_ID;
+}
+
 function cloneNode(node) {
   return {
     id: node.id,
-    atom: HORIZONTAL_FLOW_ATOM_ID,
-    styleVariant: GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
+    atom: node.atom,
+    styleVariant: canonicalStyleVariant(node.atom),
     children: node.children.map(cloneNode)
   };
 }
@@ -44,61 +73,88 @@ function clampInsertionIndex(index, length) {
   return Math.min(Math.max(0, Math.round(numberValue)), length);
 }
 
-export function createHorizontalFlowSpec(nodeNumber) {
+function createLayoutSpec(atom, nodeNumber) {
   const safeNumber = normalizeNextNumber(nodeNumber);
 
   return {
-    id: `${HORIZONTAL_FLOW_ID_PREFIX}${safeNumber}`,
-    atom: HORIZONTAL_FLOW_ATOM_ID,
-    styleVariant: GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
+    id: `${prefixForAtom(atom)}${safeNumber}`,
+    atom,
+    styleVariant: canonicalStyleVariant(atom),
     children: []
   };
+}
+
+export function createFrameSpec(nodeNumber) {
+  return createLayoutSpec(FRAME_ATOM_ID, nodeNumber);
+}
+
+export function createHorizontalFlowSpec(nodeNumber) {
+  return createLayoutSpec(HORIZONTAL_FLOW_ATOM_ID, nodeNumber);
 }
 
 export function normalizeLayoutState(value = {}) {
   const usedIds = new Set();
   let nextNumber = normalizeNextNumber(value?.nextLayoutNodeNumber);
 
-  function allocateId() {
-    let id = `${HORIZONTAL_FLOW_ID_PREFIX}${nextNumber}`;
+  function allocateId(atom) {
+    const prefix = prefixForAtom(atom);
+    let id = `${prefix}${nextNumber}`;
     while (usedIds.has(id)) {
       nextNumber += 1;
-      id = `${HORIZONTAL_FLOW_ID_PREFIX}${nextNumber}`;
+      id = `${prefix}${nextNumber}`;
     }
     usedIds.add(id);
     nextNumber += 1;
     return id;
   }
 
-  function normalizeNode(node) {
-    if (!isObject(node) || node.atom !== HORIZONTAL_FLOW_ATOM_ID) {
+  function normalizeNode(node, parentAtom = HORIZONTAL_FLOW_ATOM_ID) {
+    if (!isObject(node)) {
       return null;
     }
 
-    const idNumber = nodeNumberFromId(node.id);
+    let atom = normalizeAtom(node.atom, parentAtom);
+    if (atom == null) {
+      return null;
+    }
+
+    const acceptedAtom = parentAtom === FRAME_ATOM_ID
+      ? HORIZONTAL_FLOW_ATOM_ID
+      : FRAME_ATOM_ID;
+    if (acceptedAtom && atom !== acceptedAtom) {
+      atom = acceptedAtom;
+    }
+
+    if (atom !== FRAME_ATOM_ID && atom !== HORIZONTAL_FLOW_ATOM_ID) {
+      return null;
+    }
+
+    const idNumber = nodeNumberFromId(node.id, prefixForAtom(atom));
     let id = null;
-    if (idNumber != null && !usedIds.has(node.id)) {
+    if (typeof node.id === "string" && idNumber != null && !usedIds.has(node.id)) {
       id = node.id;
       usedIds.add(id);
       nextNumber = Math.max(nextNumber, idNumber + 1);
     } else {
-      id = allocateId();
+      id = allocateId(atom);
     }
 
     const children = Array.isArray(node.children)
-      ? node.children.map(normalizeNode).filter(Boolean)
+      ? node.children.map((child) => normalizeNode(child, atom)).filter(Boolean)
       : [];
 
     return {
       id,
-      atom: HORIZONTAL_FLOW_ATOM_ID,
-      styleVariant: GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
+      atom,
+      styleVariant: canonicalStyleVariant(atom),
       children
     };
   }
 
   const layoutChildren = Array.isArray(value?.layoutChildren)
-    ? value.layoutChildren.map(normalizeNode).filter(Boolean)
+    ? value.layoutChildren
+        .map((node) => normalizeNode(node, HORIZONTAL_FLOW_ATOM_ID))
+        .filter(Boolean)
     : [];
 
   return {
@@ -131,6 +187,28 @@ export function findLayoutParentChildren(layoutChildren = [], parentId) {
   return findLayoutNode(layoutChildren, parentId)?.node.children ?? null;
 }
 
+export function findLayoutParentAtom(layoutChildren = [], parentId) {
+  if (parentId === BODY_LAYOUT_ROOT_ID) {
+    return HORIZONTAL_FLOW_ATOM_ID;
+  }
+
+  return findLayoutNode(layoutChildren, parentId)?.node.atom ?? null;
+}
+
+export function acceptedLayoutChildAtom(layoutChildren = [], parentId) {
+  const parentAtom = findLayoutParentAtom(layoutChildren, parentId);
+
+  if (parentAtom === HORIZONTAL_FLOW_ATOM_ID) {
+    return FRAME_ATOM_ID;
+  }
+
+  if (parentAtom === FRAME_ATOM_ID) {
+    return HORIZONTAL_FLOW_ATOM_ID;
+  }
+
+  return null;
+}
+
 export function isLayoutDescendant(layoutChildren = [], ancestorId, nodeId) {
   const ancestor = findLayoutNode(layoutChildren, ancestorId)?.node;
   if (!ancestor) {
@@ -140,8 +218,21 @@ export function isLayoutDescendant(layoutChildren = [], ancestorId, nodeId) {
   return Boolean(findLayoutNode(ancestor.children, nodeId, ancestor.id));
 }
 
-export function canDropLayoutNode(layoutChildren = [], sourceId, targetParentId) {
-  if (targetParentId !== BODY_LAYOUT_ROOT_ID && !findLayoutNode(layoutChildren, targetParentId)) {
+export function canDropLayoutNode(
+  layoutChildren = [],
+  sourceId,
+  targetParentId,
+  sourceAtom = null
+) {
+  const targetChildren = findLayoutParentChildren(layoutChildren, targetParentId);
+  if (!targetChildren) {
+    return false;
+  }
+
+  const draggedAtom = sourceAtom ?? (
+    sourceId ? findLayoutNode(layoutChildren, sourceId)?.node.atom : FRAME_ATOM_ID
+  );
+  if (draggedAtom !== acceptedLayoutChildAtom(layoutChildren, targetParentId)) {
     return false;
   }
 
@@ -157,11 +248,12 @@ export function canDropLayoutNode(layoutChildren = [], sourceId, targetParentId)
 }
 
 export function insertLayoutNode(layoutChildren = [], parentId, index, node) {
-  if (!node || !canDropLayoutNode(layoutChildren, null, parentId)) {
+  if (!node || !canDropLayoutNode(layoutChildren, null, parentId, node.atom)) {
     return { layoutChildren, changed: false };
   }
 
   const normalizedNode = cloneNode({
+    atom: node.atom,
     ...node,
     children: Array.isArray(node.children) ? node.children : []
   });
@@ -241,4 +333,3 @@ export function moveLayoutNode(layoutChildren = [], sourceId, targetParentId, in
 
   return insertion.changed ? insertion : { layoutChildren, changed: false };
 }
-

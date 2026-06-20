@@ -602,7 +602,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: "frame_header_flow / inset_frame_container_horizontal_flow / generic-horizontal-flow / header-action-group role",
         source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("generic editor-created variant", "implemented", "The no-code builder creates empty Horizontal Flow specs that hydrate to `style = horizontal_flow` with authored Settings panel values for spacing, minimal width/height, padding, and stretch flags. These are editor-owned assumptions until Factorio defaults are proven.", {
+      field("generic editor-created variant", "implemented", "The no-code builder creates empty Horizontal Flow specs inside Frames when inner horizontal layout is needed. They hydrate to `style = horizontal_flow` with authored Settings panel values for spacing, padding, and stretch flags. Body-level visible splits use Frame children instead.", {
         type: styleName,
         example: "generic-horizontal-flow",
         source: "no-code-horizontal-flow-builder"
@@ -672,7 +672,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: "SearchBar 36x36, HorizontalFlow 72x36, CloseButton 36x36",
         source: "blueprint-library-header-flow"
       }),
-      field("Lua export", "implemented", "Current Horizontal Flow nodes export as `type = \"flow\"` with `direction = \"horizontal\"`, stable names, styles, and supported explicit style assignments. Generic builder flows export their authored spacing, minimal size, padding, and stretch settings.", {
+      field("Lua export", "implemented", "Current Horizontal Flow nodes export as `type = \"flow\"` with `direction = \"horizontal\"`, stable names, styles, and supported explicit style assignments. Generic builder flows export their authored spacing, padding, and stretch settings.", {
         type: string,
         example: "parent.add{type=\"flow\", direction=\"horizontal\", style=\"frame_header_flow\"}",
         source: "editor-export"
@@ -881,7 +881,7 @@ export const factorioAtomRegistry = Object.freeze([
         "Model nodes carry stable ids, class/style, fixed direction, style-reference spacing/padding/stretch/search fields, and ordered children.",
         "Renderer and inspector expose titlebar/body Horizontal Flow facts from structured model data, with implemented nested child flows shown as navigable atom references.",
         "Lua export emits valid Factorio `flow` nodes with stable names, styles, horizontal direction, and supported explicit style assignments.",
-        "The no-code builder can add, nest, reorder, inspect, render, and export empty generic Horizontal Flow nodes.",
+        "The no-code builder can add, move, inspect, render, and export generic Horizontal Flow nodes inside Frames.",
         "Window remains complete for current shell scope and is not reopened by this pass."
       ],
       assumptions: [
@@ -896,10 +896,110 @@ export const factorioAtomRegistry = Object.freeze([
       missing: [],
       deferred: [
         "Header action child atoms: SearchBar, browse arrows, and CloseButton.",
-        "Body child atoms: Frame, FrameWithSubheader, and Vertical Flow completion.",
+        "Additional body child atoms: FrameWithSubheader and Vertical Flow completion.",
         "General formula for `size_before_stretching` and horizontal/vertical squash values from children and role.",
         "GUI-scale, viewport, and in-game Lua validation harness for runtime parity.",
-        "No-code child insertion UI waits until child atom contracts exist."
+        "More no-code child insertion UI waits until those child atom contracts exist."
+      ]
+    }
+  }),
+  atomDefinition({
+    id: "frame",
+    name: "Frame",
+    primitive: "frame",
+    style: "inside_deep_frame",
+    availability: "Builder / Blueprint Library content capture",
+    summary: "Visible Factorio frame container used as the Window body split child.",
+    className: "agui::Frame",
+    derivedFrom: "frame",
+    progress: {
+      evidence: 58,
+      model: 65,
+      renderer: 58,
+      luaExport: 55,
+      behavior: 15
+    },
+    fields: [
+      field("className", "captured", "Blueprint Library content flow reports direct `class agui::Frame` children.", {
+        type: className,
+        example: "agui::Frame",
+        source: "blueprint-library-content-flow"
+      }),
+      field("primitive", "official", "Mapped to Factorio `frame`, the visible container primitive used for framed GUI regions.", {
+        type: guiPrimitive,
+        example: "frame",
+        source: "factorio-runtime-docs-2.0.77"
+      }),
+      field("style", "captured", "Current builder Frame uses `inside_deep_frame` as the visible body child style until more frame variants are implemented.", {
+        type: styleName,
+        example: "inside_deep_frame",
+        source: "blueprint-library-content-flow"
+      }),
+      field("body split role", "implemented", "The Window body Horizontal Flow lays out Frame children, matching the inspected real-game hierarchy instead of making Horizontal Flow paint the visible container surface.", {
+        type: nodeList,
+        example: "HorizontalFlow -> Frame, Frame",
+        source: "operator-screenshot-blueprint-content-flow"
+      }),
+      field("children", "implemented", "Frame can contain a Horizontal Flow child when inner layout is needed. Later atoms can be added after their own contracts exist.", {
+        type: nodeList,
+        example: "Frame -> HorizontalFlow -> Frame",
+        source: "editor-model"
+      }),
+      field("padding and size", "editorOwned", "Builder-created Frames use authored layout settings for minimum width/height and zero padding for the current empty body-frame role.", {
+        type: integer,
+        example: "minimal_width from Settings, padding 0",
+        source: "editor-model"
+      }),
+      field("visual skin", "implemented", "Browser renderer paints the deep inset surface on Frame, while the parent flow owns the spacing/gutter between sibling Frames.", {
+        type: string,
+        source: "editor-renderer"
+      }),
+      field("Lua export", "implemented", "Generated Lua emits builder Frames as `type = \"frame\"`, stable name, style, direction, and supported style assignments.", {
+        type: string,
+        example: "parent.add{type=\"frame\", style=\"inside_deep_frame\"}",
+        source: "editor-export"
+      }),
+      field("runtime behavior", "notApplicable", "The current body Frame has no direct interaction behavior; behavior belongs to child atoms added inside it.", {
+        type: string,
+        source: "current-scope-contract"
+      })
+    ],
+    captures: [
+      atomCapture({
+        id: "blueprint-library-body-frame-child",
+        label: "Blueprint Library body Frame child",
+        screenTitle: "Blueprint library",
+        className: "agui::Frame",
+        style: "inside_deep_frame",
+        rows: [
+          captureRow("parent", string, "agui::HorizontalFlow inset_frame_container_horizontal_flow"),
+          captureRow("size", size2i, "636 x 792 / 636 x 1722 in user split capture"),
+          captureRow("Style", styleName, "inside_deep_frame"),
+          captureRow("Derived from", styleName, "frame")
+        ]
+      })
+    ],
+    tracking: {
+      document: "Frame is now the visible body-split atom used under the Window body flow.",
+      implemented: [
+        "Builder creates Frame specs as direct Window body or Horizontal Flow children.",
+        "Hydrated model renders Frames as `primitive: frame`, `className: agui::Frame`, `style: inside_deep_frame`.",
+        "Browser renderer paints the inset body-child surface on Frame instead of on Horizontal Flow.",
+        "Lua export emits Frame nodes and preserves model child order."
+      ],
+      assumptions: [
+        "`inside_deep_frame` is the current body-frame style variant; more frame styles need their own evidence before becoming selectable."
+      ],
+      hardcoded: [
+        "Current empty Frame padding is zero and minimum size comes from editor layout settings."
+      ],
+      missing: [
+        "Full captured geometry rows for generic Frame children, including exact content_size, clip_size, and size_before_stretching.",
+        "Additional Frame variants such as `FrameWithSubheader`."
+      ],
+      deferred: [
+        "Behavioral child atoms inside Frames.",
+        "In-game Lua validation of exported Frame/Flow nesting."
       ]
     }
   }),

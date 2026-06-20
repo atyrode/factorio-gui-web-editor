@@ -193,6 +193,16 @@ generic vanilla top-level window class, not `MapEditorGui`.
 | Header action slots | `SearchBar`, browse-arrow `agui::HorizontalFlow`, `CloseButton` | SearchBar relative `[1272, 0]`, size `36 x 36`, content `24 x 24`, style `frame_action_button`; CloseButton relative `[1404, 0]`, size `36 x 36`, content `24 x 24`, style `close_button`; the browse-arrow group occupies the `72 x 36` gap between them |
 | Body flow | `agui::HorizontalFlow`, part of `inset_frame_container_frame` and derived from `inset_frame_container_horizontal_flow` | current reference size `1440 x 792`, content `1440 x 792`, horizontal spacing `18` with inherited horizontal flow spacing `6`, maximum vertical squash `540` |
 
+The body split reference shows the content `agui::HorizontalFlow` with direct
+visible `agui::Frame` children. That distinction matters for the browser
+renderer and Lua export: Flow owns ordered layout and spacing, while Frame owns
+the visible deep/inset surface. A body split should therefore be modeled as
+`HorizontalFlow -> Frame, Frame`, not as sibling Horizontal Flows that paint
+their own visible container chrome. Keeping the split gutter in the parent flow also better
+matches Factorio's shared-border/T-junction style behavior, where the separator
+reads as part of the surrounding frame material rather than as a capped child
+overlay.
+
 The official Factorio API docs list `flow` as the runtime primitive for
 horizontal or vertical child layout. The editor therefore treats
 `agui::HorizontalFlow` as one reusable atom whose direction is fixed to

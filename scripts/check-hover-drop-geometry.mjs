@@ -51,13 +51,41 @@ function flexWidths({ parentWidth, gap, minimumWidth, previewBasis }) {
 }
 
 const realFlowRule = ruleFor(".fx-gui-horizontal-flow");
+const realFrameRule = ruleFor(".fx-gui-frame");
+const bodyRule = ruleFor(".fx-gui-window__body");
 const previewRule = ruleFor(".fx-gui-flow-drop-preview-slot.is-expanded");
+const previewFrameRule = ruleFor(".fx-gui-frame.fx-gui-flow-drop-preview-slot.is-expanded");
 const targetedDropRule = ruleFor(".fx-gui-flow-drop-target.is-targeted");
 
 assert.equal(
   declaration(realFlowRule, "flex"),
   "1 1 0",
   "real Horizontal Flow sizing contract changed; update hover/drop preview tests with the new model"
+);
+assert.match(
+  declaration(realFlowRule, "background"),
+  /transparent/,
+  "real Horizontal Flow must remain a layout container, not the visible body Frame skin"
+);
+assert.equal(
+  declaration(realFlowRule, "box-shadow"),
+  "none",
+  "real Horizontal Flow must not paint the inset Frame surface"
+);
+assert.equal(
+  declaration(realFrameRule, "flex"),
+  "1 1 0",
+  "real Frame sizing contract changed; update hover/drop preview tests with the new model"
+);
+assert.match(
+  declaration(realFrameRule, "box-shadow"),
+  /inset 0 4px 4px -1px/,
+  "real Frame must paint the inset child surface inside its parent flow"
+);
+assert.doesNotMatch(
+  declaration(realFrameRule, "box-shadow"),
+  /1px 1px 0/,
+  "real Frame must not use the old raised bottom/right drop shadow"
 );
 assert.equal(
   declaration(previewRule, "flex-grow"),
@@ -75,14 +103,24 @@ assert.equal(
   "hover preview must not add a nonzero base width before flex distribution"
 );
 assert.equal(
-  declaration(previewRule, "min-width"),
-  "var(--fx-horizontal-flow-min-width, 168px)",
-  "hover preview must use the same atom min-width variable as a real Horizontal Flow"
+  declaration(previewFrameRule, "min-width"),
+  "var(--fx-gui-frame-min-width, 168px)",
+  "hover preview must use the same Frame min-width variable as a real Frame"
 );
 assert.equal(
   declaration(targetedDropRule, "background"),
   "transparent",
   "drop hit targets are collision geometry and must not paint over previews"
+);
+assert.equal(
+  ruleFor(".fx-gui-window__body::before"),
+  null,
+  "Window body must not use a fake top rail or overlay above child flows"
+);
+assert.match(
+  declaration(bodyRule, "box-shadow"),
+  /inset 0 3px 4px/,
+  "Window body inset shadow must remain part of the real body flow surface"
 );
 
 for (const selector of [
@@ -105,13 +143,38 @@ assert.match(
 );
 assert.match(
   guiSource,
-  /function CanvasDropPreviewSlot[\s\S]*<GuiHorizontalFlowShell/,
-  "canvas preview must render through the same Horizontal Flow shell as the dropped node"
+  /function GuiFrameShell/,
+  "Frame rendering must expose a shared atom shell"
+);
+assert.match(
+  guiSource,
+  /function windowBodyStyleVariables[\s\S]*--fx-window-body-horizontal-spacing[\s\S]*reference\.horizontalSpacing/,
+  "Window body rendering must bind horizontal spacing from the generated body flow style reference"
+);
+assert.match(
+  guiSource,
+  /function windowBodyStyleVariables[\s\S]*--fx-window-body-vertical-spacing[\s\S]*reference\.verticalSpacing/,
+  "Window body rendering must bind vertical spacing from the generated body flow style reference"
+);
+assert.match(
+  guiSource,
+  /function CanvasDropPreviewSlot[\s\S]*const PreviewShell[\s\S]*<PreviewShell/,
+  "canvas preview must render through the same atom shell as the dropped node"
 );
 assert.match(
   guiSource,
   /export function GuiHorizontalFlow[\s\S]*<GuiHorizontalFlowShell/,
   "real Horizontal Flow nodes must render through the shared atom shell"
+);
+assert.match(
+  guiSource,
+  /export function GuiFrame[\s\S]*<GuiFrameShell/,
+  "real Frame nodes must render through the shared atom shell"
+);
+assert.match(
+  guiSource,
+  /function GuiLayoutNode[\s\S]*props\.node\?\.primitive === "frame"[\s\S]*<GuiFrame/,
+  "layout node rendering must dispatch Frame primitives to the Frame atom"
 );
 assert.doesNotMatch(
   guiSource,
@@ -145,7 +208,7 @@ const widths = flexWidths({
 assert.equal(
   Math.round(widths.preview),
   Math.round(widths.existing),
-  "one-flow insert-left hover preview must split width exactly like the final two-flow layout"
+  "one-frame insert-left hover preview must split width exactly like the final two-frame layout"
 );
 
 console.log("Hover/drop geometry checks passed.");

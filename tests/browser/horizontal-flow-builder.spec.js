@@ -1,18 +1,20 @@
 import { expect, test } from "@playwright/test";
 
 const EDITOR_STORAGE_KEY = "labtorio.editorState.v1";
-const ONE_FLOW_STATE = {
+const ONE_FRAME_STATE = {
   title: "Machin truc lab",
   windowSize: { width: 1100, height: 450 },
+  windowBodyDirection: "horizontal",
   currentWindow: {
     title: "Machin truc lab",
     location: null,
     size: { width: 1100, height: 450 },
+    bodyDirection: "horizontal",
     layoutChildren: [
       {
-        id: "gui_horizontal_flow_1",
-        atom: "horizontal-flow",
-        styleVariant: "generic-horizontal-flow",
+        id: "gui_frame_1",
+        atom: "frame",
+        styleVariant: "inside-deep-frame",
         children: []
       }
     ],
@@ -42,19 +44,19 @@ function roundedRect(rect) {
   };
 }
 
-async function seedOneFlowWindow(page) {
+async function seedOneFrameWindow(page) {
   await page.addInitScript(
     ({ key, state }) => {
       window.localStorage.setItem(key, JSON.stringify(state));
     },
-    { key: EDITOR_STORAGE_KEY, state: ONE_FLOW_STATE }
+    { key: EDITOR_STORAGE_KEY, state: ONE_FRAME_STATE }
   );
   await page.goto("/");
-  await expect(page.locator('[data-anchor="gui_horizontal_flow_1"]')).toBeVisible();
+  await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
 }
 
 async function dragPaletteToBodyStart(page) {
-  const paletteBox = await page.locator('[data-anchor="horizontal_flow_palette_item"]').boundingBox();
+  const paletteBox = await page.locator('[data-anchor="frame_palette_item"]').boundingBox();
   const bodyBox = await page.locator('[data-anchor="gui_window_body"]').boundingBox();
 
   expect(paletteBox).not.toBeNull();
@@ -102,13 +104,13 @@ async function measureHover(page) {
       '[data-anchor="gui_window_body"] > [data-anchor="builder_ghost_marker"].fx-gui-flow-drop-preview-slot'
     );
     const previewStyle = window.getComputedStyle(preview);
-    const existing = document.querySelector('[data-anchor="gui_horizontal_flow_1"]');
+    const existing = document.querySelector('[data-anchor="gui_frame_1"]');
     const existingStyle = window.getComputedStyle(existing);
     return {
       preview: rect(
         '[data-anchor="gui_window_body"] > [data-anchor="builder_ghost_marker"].fx-gui-flow-drop-preview-slot'
       ),
-      existing: rect('[data-anchor="gui_horizontal_flow_1"]'),
+      existing: rect('[data-anchor="gui_frame_1"]'),
       gap: existing.getBoundingClientRect().left - preview.getBoundingClientRect().right,
       previewPaddingLeft: previewStyle.paddingLeft,
       previewPaddingRight: previewStyle.paddingRight,
@@ -125,7 +127,7 @@ async function measureHover(page) {
 }
 
 async function measureFinal(page) {
-  return page.locator('[data-fx-role="builder-horizontal-flow"]').evaluateAll((elements) =>
+  return page.locator('[data-fx-role="body-frame"]').evaluateAll((elements) =>
     elements.map((element) => ({
       id: element.dataset.anchor,
       left: element.getBoundingClientRect().left,
@@ -157,16 +159,16 @@ function expectSharedFlowSize(actual, expected, label) {
   });
 }
 
-test.describe("Horizontal Flow builder canvas preview", () => {
-  test("matches final geometry when inserting left of one existing flow", async ({ page }) => {
-    await seedOneFlowWindow(page);
+test.describe("Frame builder canvas preview", () => {
+  test("matches final geometry when inserting left of one existing Frame", async ({ page }) => {
+    await seedOneFrameWindow(page);
     await dragPaletteToBodyStart(page);
 
     const hover = await measureHover(page);
     expectSharedFlowSize(
       hover.preview,
       hover.existing,
-      "hover preview and shifted existing flow should split the body into equal-sized siblings"
+      "hover preview and shifted existing Frame should split the body into equal-sized siblings"
     );
     expect(hover.preview.left).toBeLessThan(hover.existing.left);
     expect(hover.previewPaddingLeft).toBe(hover.existingPaddingLeft);
@@ -175,19 +177,19 @@ test.describe("Horizontal Flow builder canvas preview", () => {
     expect(new Set(hover.dropTargetBackgrounds)).toEqual(new Set(["rgba(0, 0, 0, 0)"]));
 
     await page.mouse.up();
-    await expect(page.locator('[data-fx-role="builder-horizontal-flow"]')).toHaveCount(2);
-    const finalFlows = await measureFinal(page);
+    await expect(page.locator('[data-fx-role="body-frame"]')).toHaveCount(2);
+    const finalFrames = await measureFinal(page);
 
-    expect(finalFlows.map((flow) => flow.id)).toEqual([
-      "gui_horizontal_flow_2",
-      "gui_horizontal_flow_1"
+    expect(finalFrames.map((frame) => frame.id)).toEqual([
+      "gui_frame_2",
+      "gui_frame_1"
     ]);
-    const finalGap = finalFlows[1].left - (finalFlows[0].left + finalFlows[0].width);
-    expectRectClose(hover.preview, finalFlows[0], "hover preview should match dropped flow");
+    const finalGap = finalFrames[1].left - (finalFrames[0].left + finalFrames[0].width);
+    expectRectClose(hover.preview, finalFrames[0], "hover preview should match dropped Frame");
     expectRectClose(
       hover.existing,
-      finalFlows[1],
-      "hover-shifted existing flow should match final existing flow"
+      finalFrames[1],
+      "hover-shifted existing Frame should match final existing Frame"
     );
     expect(Math.round(hover.gap)).toBe(Math.round(finalGap));
   });

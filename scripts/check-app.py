@@ -67,7 +67,7 @@ REQUIRED_ANCHORS = [
     "layout_settings_panel",
     "layout_settings_toggle",
     "layout_setting_horizontal_flow_min_width",
-    "horizontal_flow_palette_item",
+    "frame_palette_item",
     "builder_ghost_marker",
 ]
 
@@ -139,6 +139,17 @@ def main() -> int:
 
     for anchor in REQUIRED_ANCHORS:
         assert_contains(source_blob, anchor, "app source")
+
+    assert_contains(source_blob, "Window body Horizontal Flow", "app source")
+    assert_contains(source_blob, "create-window", "app source")
+    assert_contains(source_blob, "fx-body-direction-toggle", "app source")
+    assert_contains(source_blob, "windowBodyDirection", "app source")
+    assert_contains(source_blob, "fx-builder-row--locked", "app source")
+    assert_contains(source_blob, "draggable={false}", "app source")
+    assert_contains(source_blob, "GuiFrameShell", "app source")
+    assert_contains(source_blob, "FRAME_ATOM_ID", "app source")
+    assert_contains(source_blob, "data-fx-class={styleReference.bodyClassName}", "app source")
+    assert_contains(source_blob, "data-fx-role=\"window-body\"", "app source")
 
     for forbidden in FORBIDDEN_PAYLOADS:
         if forbidden in source_blob:

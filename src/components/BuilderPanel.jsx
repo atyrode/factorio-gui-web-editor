@@ -7,8 +7,38 @@ import {
   nodeDragData,
   paletteDragData
 } from "../factorioBuilderDnd.js";
-import { BODY_LAYOUT_ROOT_ID } from "../factorioLayoutTree.js";
+import {
+  BODY_LAYOUT_ROOT_ID,
+  FRAME_ATOM_ID,
+  HORIZONTAL_FLOW_ATOM_ID
+} from "../factorioLayoutTree.js";
 import { FxActionButton, FxFrame } from "./factorioGui.jsx";
+
+function bodyFlowLabel(currentWindow) {
+  return currentWindow?.bodyDirection === "vertical"
+    ? "Window body Vertical Flow"
+    : "Window body Horizontal Flow";
+}
+
+function atomLabel(atom) {
+  return atom === HORIZONTAL_FLOW_ATOM_ID ? "Horizontal Flow" : "Frame";
+}
+
+function childLabel(node, locked) {
+  if (locked || node.atom === HORIZONTAL_FLOW_ATOM_ID) {
+    return "Add Frame";
+  }
+
+  return "Add Horizontal Flow";
+}
+
+function addAfterLabel(node) {
+  return `Add ${atomLabel(node.atom)} after this item`;
+}
+
+function removeLabel(node) {
+  return `Remove ${atomLabel(node.atom)} subtree`;
+}
 
 function BuilderDropSlot({
   parentId,
@@ -48,6 +78,10 @@ function BuilderDropSlot({
 
 function BuilderNodeRow({
   node,
+  code = node.id,
+  draggable = true,
+  label = atomLabel(node.atom),
+  locked = false,
   inspectedAnchor,
   draggingId,
   onAddAfter,
@@ -58,7 +92,8 @@ function BuilderNodeRow({
   const { ref, handleRef, isDragSource } = useDraggable({
     id: `builder-node-${node.id}`,
     type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
-    data: nodeDragData(node.id)
+    disabled: !draggable,
+    data: nodeDragData(node.id, node.atom)
   });
 
   return (
@@ -66,6 +101,7 @@ function BuilderNodeRow({
       ref={ref}
       className={[
         "fx-builder-row",
+        locked ? "fx-builder-row--locked" : "",
         draggingId === node.id || isDragSource ? "is-dragging" : "",
         inspectedAnchor === node.id ? "is-selected" : ""
       ]
@@ -74,7 +110,7 @@ function BuilderNodeRow({
       onClick={() => onSelect(node.id)}
     >
       <button
-        ref={handleRef}
+        ref={draggable ? handleRef : undefined}
         className="fx-builder-row__label"
         onClick={(event) => {
           event.stopPropagation();
@@ -82,34 +118,38 @@ function BuilderNodeRow({
         }}
         type="button"
       >
-        <span>Horizontal Flow</span>
-        <code>{node.id}</code>
+        <span>{label}</span>
+        <code>{code}</code>
       </button>
       <div className="fx-builder-row__actions" aria-label={`${node.id} actions`}>
         <FxActionButton
           icon="add-child"
-          label="Add nested Horizontal Flow"
+          label={childLabel(node, locked)}
           onClick={(event) => {
             event.stopPropagation();
             onAddChild(node.id);
           }}
         />
-        <FxActionButton
-          icon="add-after"
-          label="Add Horizontal Flow after this item"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddAfter(node.id);
-          }}
-        />
-        <FxActionButton
-          icon="trash"
-          label="Remove Horizontal Flow subtree"
-          onClick={(event) => {
-            event.stopPropagation();
-            onRemove(node.id);
-          }}
-        />
+        {onAddAfter ? (
+          <FxActionButton
+            icon="add-after"
+            label={addAfterLabel(node)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddAfter(node.id);
+            }}
+          />
+        ) : null}
+        {onRemove ? (
+          <FxActionButton
+            icon="trash"
+            label={removeLabel(node)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRemove(node.id);
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -211,15 +251,45 @@ function BuilderBodyTree({
   );
 }
 
+function BuilderBodyRoot({
+  children,
+  currentWindow,
+  inspectedAnchor,
+  onAddChild,
+  onSelect
+}) {
+  if (!currentWindow) {
+    return children;
+  }
+
+  return (
+    <ul className="fx-builder-tree fx-builder-tree--body-root">
+      <li className="fx-builder-tree__item">
+        <BuilderNodeRow
+          code="gui_window_body"
+          draggable={false}
+          inspectedAnchor={inspectedAnchor}
+          label={bodyFlowLabel(currentWindow)}
+          locked
+          node={{ id: BODY_LAYOUT_ROOT_ID }}
+          onAddChild={onAddChild}
+          onSelect={onSelect}
+        />
+        {children}
+      </li>
+    </ul>
+  );
+}
+
 function BuilderPaletteItem({
   currentWindow,
   paletteDragging
 }) {
   const { ref, isDragSource } = useDraggable({
-    id: "builder-palette-horizontal-flow",
+    id: "builder-palette-frame",
     type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
     disabled: !currentWindow,
-    data: paletteDragData()
+    data: paletteDragData(FRAME_ATOM_ID)
   });
 
   return (
@@ -231,12 +301,12 @@ function BuilderPaletteItem({
       ]
         .filter(Boolean)
         .join(" ")}
-      data-anchor="horizontal_flow_palette_item"
+      data-anchor="frame_palette_item"
       disabled={!currentWindow}
       type="button"
     >
-      <span>Horizontal Flow</span>
-      <code>flow.horizontal</code>
+      <span>Frame</span>
+      <code>frame</code>
     </button>
   );
 }
@@ -269,20 +339,27 @@ export function BuilderPanel({
         dropTarget={dropTarget}
       >
         <div className="fx-builder-body__header">
-          <span>Window body</span>
+          <span>Component tree</span>
         </div>
-        <BuilderNodeList
-          dragActive={dragActive}
-          dropTarget={dropTarget}
-          draggingId={draggingId}
+        <BuilderBodyRoot
+          currentWindow={currentWindow}
           inspectedAnchor={inspectedAnchor}
-          nodes={layoutChildren}
-          onAddAfter={onAddAfter}
           onAddChild={onAddChild}
-          onRemove={onRemove}
           onSelect={onSelect}
-          parentId={BODY_LAYOUT_ROOT_ID}
-        />
+        >
+          <BuilderNodeList
+            dragActive={dragActive}
+            dropTarget={dropTarget}
+            draggingId={draggingId}
+            inspectedAnchor={inspectedAnchor}
+            nodes={layoutChildren}
+            onAddAfter={onAddAfter}
+            onAddChild={onAddChild}
+            onRemove={onRemove}
+            onSelect={onSelect}
+            parentId={BODY_LAYOUT_ROOT_ID}
+          />
+        </BuilderBodyRoot>
       </BuilderBodyTree>
     </FxFrame>
   );

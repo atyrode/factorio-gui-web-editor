@@ -72,10 +72,11 @@ root agui::Window frame
 
 Horizontal Flow is the reusable horizontal layout atom behind the titlebar and
 horizontal body rows. It maps to the official Factorio `flow` primitive with
-`direction: "horizontal"`; Vertical Flow remains a separate atom. Role-specific
-styles such as `frame_header_flow`, `inset_frame_container_horizontal_flow`,
-and the captured 72 x 36 header action group are variant data on the Horizontal
-Flow atom, not separate atom identities.
+`direction: "horizontal"`; Vertical Flow remains a separate atom. Frame is the
+visible container atom used for body split children. Role-specific styles such
+as `frame_header_flow`, `inset_frame_container_horizontal_flow`,
+`inside_deep_frame`, and the captured 72 x 36 header action group are variant
+data on their real atoms, not separate atom identities.
 
 Current Horizontal Flow model nodes keep:
 
@@ -100,11 +101,25 @@ The no-code builder persists only constrained layout specs under the current
 Window, not hydrated renderer nodes:
 
 ```text
+windowBodyDirection:
+  selected body flow direction used by the next create/recreate Window action;
+  one of horizontal or vertical
+
+currentWindow.bodyDirection:
+  generated Window body flow direction for this Window; one of horizontal or
+  vertical
+
 currentWindow.layoutChildren:
+  id: gui_frame_N
+  atom: frame
+  styleVariant: inside-deep-frame
+  children: ordered nested Horizontal Flow specs
+
+nested Horizontal Flow specs:
   id: gui_horizontal_flow_N
   atom: horizontal-flow
   styleVariant: generic-horizontal-flow
-  children: ordered nested Horizontal Flow specs
+  children: ordered nested Frame specs
 
 currentWindow.nextLayoutNodeNumber:
   next positive integer used to allocate stable flow ids
@@ -119,13 +134,13 @@ layoutSettings.horizontalFlowSpacing:
   exported `horizontal_spacing` for editor-created Horizontal Flows
 
 layoutSettings.horizontalFlowMinimumWidth:
-  exported `minimal_width` for top-level editor-created Horizontal Flows
+  exported `minimal_width` for top-level editor-created Frames
 
 layoutSettings.nestedHorizontalFlowMinimumWidth:
-  exported `minimal_width` for nested editor-created Horizontal Flows
+  exported `minimal_width` for nested editor-created Frames
 
 layoutSettings.horizontalFlowMinimumHeight:
-  exported `minimal_height` for editor-created Horizontal Flows
+  exported `minimal_height` for editor-created Frames and Horizontal Flows
 
 layoutSettings.horizontalFlowPadding:
   exported top/right/bottom/left padding for editor-created Horizontal Flows
@@ -134,23 +149,32 @@ layoutSettings.horizontalFlowPadding:
 The Settings panel lets those values be edited and reset to authored defaults.
 Renderer CSS reads the hydrated model style facts through custom properties; it
 does not store separate layout truth. Lua export writes the same supported
-`LuaStyle` assignments so the current Horizontal Flow builder slice remains
+`LuaStyle` assignments so the current Frame/Horizontal Flow builder slice remains
 structurally compatible with the generated Lua skeleton.
 
 Legacy cached windows normalize to an empty `layoutChildren` array with
-`nextLayoutNodeNumber: 1`. The editor-created `generic-horizontal-flow` variant
-hydrates to `primitive: flow`, `direction: horizontal`, `style:
-horizontal_flow`, the current `layoutSettings` values, and stretch flags that
-make sibling flows fill/split available space. The Window body and user-created
-Horizontal Flow nodes are legal parents. The Window root, titlebar, title
-label, drag filler, a moved node itself, and descendants of the moved node are
-not legal drop parents.
+`nextLayoutNodeNumber: 1`. Legacy root `horizontal-flow` specs normalize into
+root Frame specs because the real-game content split is `HorizontalFlow` body
+with direct `Frame` children. `gui_window_body` is still generated as the
+non-deletable Window body flow in the hydrated model and Lua export; it is not
+stored in `layoutChildren` because the Window shell owns that Factorio element.
+The Builder tree shows that fixed body flow root so the component list matches
+the Inspector and generated Lua structure. Editor-created root Frame specs
+hydrate to `primitive: frame`, `style: inside_deep_frame`, and stretch flags
+that make sibling Frames fill/split available space. Editor-created
+`generic-horizontal-flow` specs hydrate to `primitive: flow`, `direction:
+horizontal`, `style: horizontal_flow`, the current `layoutSettings` spacing and
+padding values, and ordered Frame children. Legal parents alternate by primitive:
+the Window body and Horizontal Flow nodes accept Frames, while Frame nodes accept
+Horizontal Flows. The Window root, titlebar, title label, drag filler, a moved
+node itself, and descendants of the moved node are not legal drop parents.
 
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new
 Window fits the canvas instead of copying one arbitrary in-game GUI instance.
 New Window controls let the user adjust authored width and height from that
-sensible default.
+sensible default and choose the generated body flow direction before creating
+or recreating the Window.
 The model also carries in-game capture fixtures: the Blueprint Library capture
 has outer size `1476 x 870`, content size `1440 x 840`, and clip size
 `{{0, -4}, {1476, 874}}`; Factoriopedia and filter-selection references cover
@@ -192,8 +216,9 @@ The generic editor Window intentionally keeps optional header actions and body
 children out of the rendered/exported baseline until those children have
 explicit model and export rules. Window still owns the stable captured slots
 for those children so later child atoms can be inserted without changing the
-Window shell contract. The no-code interface should expose actual child
-insertion after those child atoms exist, not before.
+Window shell contract. The no-code interface now exposes the `Frame` atom
+because it is the observed direct child used for body splits. Other body child
+atoms should be exposed only after their own model and export rules exist.
 
 For the Blueprint Library reference, the header slot math is captured:
 

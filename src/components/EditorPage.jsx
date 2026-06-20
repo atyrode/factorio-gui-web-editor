@@ -13,16 +13,23 @@ import {
   createWindowModel,
   DEFAULT_WINDOW_SIZE,
   getWindowInspectorRows,
+  HORIZONTAL_FLOW_DIRECTION,
+  normalizeWindowBodyDirection,
   normalizeWindowSize,
   renderWindowLua,
+  VERTICAL_FLOW_DIRECTION,
   WINDOW_SIZE_LIMITS
 } from "../factorioExport.js";
 import {
   BODY_LAYOUT_ROOT_ID,
+  acceptedLayoutChildAtom,
   canDropLayoutNode,
+  createFrameSpec,
   createHorizontalFlowSpec,
+  FRAME_ATOM_ID,
   findLayoutNode,
   findLayoutParentChildren,
+  HORIZONTAL_FLOW_ATOM_ID,
   insertLayoutNode,
   moveLayoutNode,
   normalizeLayoutState,
@@ -51,6 +58,7 @@ const SIDEBAR_STAGE_MIN_WIDTH = 420;
 const DEFAULT_EDITOR_STATE = {
   title: "Untitled window",
   windowSize: DEFAULT_WINDOW_SIZE,
+  windowBodyDirection: HORIZONTAL_FLOW_DIRECTION,
   currentWindow: null,
   showInspector: false,
   showLuaOutput: true,
@@ -90,6 +98,7 @@ function normalizeWindow(value) {
     title: windowTitle(String(value.title ?? DEFAULT_EDITOR_STATE.title)),
     location: normalizeLocation(value.location),
     size,
+    bodyDirection: normalizeWindowBodyDirection(value.bodyDirection),
     layoutChildren: layoutState.layoutChildren,
     nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
   };
@@ -121,6 +130,9 @@ function readCachedEditorState() {
     return {
       title: String(parsedValue.title ?? DEFAULT_EDITOR_STATE.title),
       windowSize: normalizeWindowSize(parsedValue.windowSize ?? currentWindow?.size),
+      windowBodyDirection: normalizeWindowBodyDirection(
+        parsedValue.windowBodyDirection ?? currentWindow?.bodyDirection
+      ),
       currentWindow,
       showInspector: Boolean(parsedValue.showInspector),
       showLuaOutput:
@@ -373,13 +385,44 @@ function BuilderDragPreview({ source }) {
   if (!drag) {
     return null;
   }
+  const atom = drag.atom;
 
   return (
     <div className="fx-builder-drag-preview" data-anchor="builder_drag_preview">
-      <span>Horizontal Flow</span>
-      <code>{drag.kind === "node" ? drag.sourceId : "flow.horizontal"}</code>
+      <span>{atomLabel(atom)}</span>
+      <code>{drag.kind === "node" ? drag.sourceId : atomCode(atom)}</code>
     </div>
   );
+}
+
+function atomLabel(atom) {
+  if (atom === HORIZONTAL_FLOW_ATOM_ID) {
+    return "Horizontal Flow";
+  }
+  if (atom === FRAME_ATOM_ID) {
+    return "Frame";
+  }
+  return "Component";
+}
+
+function atomCode(atom) {
+  if (atom === HORIZONTAL_FLOW_ATOM_ID) {
+    return "flow.horizontal";
+  }
+  if (atom === FRAME_ATOM_ID) {
+    return "frame";
+  }
+  return "layout";
+}
+
+function createSpecForAtom(atom, nodeNumber) {
+  return atom === HORIZONTAL_FLOW_ATOM_ID
+    ? createHorizontalFlowSpec(nodeNumber)
+    : createFrameSpec(nodeNumber);
+}
+
+function dragAtom(drag) {
+  return drag?.atom ?? null;
 }
 
 const LAYOUT_SETTING_FIELDS = Object.freeze([
@@ -877,6 +920,7 @@ export function EditorPage() {
   const {
     title,
     windowSize,
+    windowBodyDirection,
     currentWindow,
     showInspector,
     showLuaOutput,
@@ -893,6 +937,7 @@ export function EditorPage() {
         layoutSettings: normalizedLayoutSettings
       })
     : null;
+  const selectedBodyDirection = normalizeWindowBodyDirection(windowBodyDirection);
 
   useEffect(() => {
     writeCachedEditorState(editorState);
@@ -907,10 +952,18 @@ export function EditorPage() {
         title: windowTitle(state.title),
         location: state.currentWindow?.location ?? null,
         size: normalizeWindowSize(state.windowSize),
+        bodyDirection: normalizeWindowBodyDirection(state.windowBodyDirection),
         ...normalizeLayoutState(state.currentWindow ?? {})
       },
       inspectorLocked: false,
-      inspectedAnchor: null
+      inspectedAnchor: BODY_LAYOUT_ROOT_ID
+    }));
+  }
+
+  function updateWindowBodyDirection(direction) {
+    setEditorState((state) => ({
+      ...state,
+      windowBodyDirection: normalizeWindowBodyDirection(direction)
     }));
   }
 
@@ -1139,7 +1192,16 @@ export function EditorPage() {
     drag = builderDrag,
     layoutChildren = currentWindow?.layoutChildren ?? []
   ) {
-    if (!target || !drag || !canDropLayoutNode(layoutChildren, dragSourceId(drag), target.parentId)) {
+    if (
+      !target ||
+      !drag ||
+      !canDropLayoutNode(
+        layoutChildren,
+        dragSourceId(drag),
+        target.parentId,
+        dragAtom(drag)
+      )
+    ) {
       return null;
     }
 
@@ -1222,9 +1284,13 @@ export function EditorPage() {
     });
   }
 
-  function addHorizontalFlow(parentId = BODY_LAYOUT_ROOT_ID, index = Infinity) {
+  function addLayoutNode(parentId = BODY_LAYOUT_ROOT_ID, index = Infinity, requestedAtom = null) {
     applyLayoutUpdate((layoutState) => {
-      const node = createHorizontalFlowSpec(layoutState.nextLayoutNodeNumber);
+      const atom =
+        requestedAtom ??
+        acceptedLayoutChildAtom(layoutState.layoutChildren, parentId) ??
+        FRAME_ATOM_ID;
+      const node = createSpecForAtom(atom, layoutState.nextLayoutNodeNumber);
       const insertion = insertLayoutNode(layoutState.layoutChildren, parentId, index, node);
       return {
         ...insertion,
@@ -1236,21 +1302,21 @@ export function EditorPage() {
     });
   }
 
-  function addHorizontalFlowAfter(nodeId) {
+  function addLayoutNodeAfter(nodeId) {
     const match = findLayoutNode(currentWindow?.layoutChildren ?? [], nodeId);
     if (!match) {
       return;
     }
 
-    addHorizontalFlow(match.parentId, match.index + 1);
+    addLayoutNode(match.parentId, match.index + 1, match.node.atom);
   }
 
-  function addHorizontalFlowChild(nodeId) {
+  function addLayoutNodeChild(nodeId) {
     const children = findLayoutParentChildren(currentWindow?.layoutChildren ?? [], nodeId);
-    addHorizontalFlow(nodeId, children?.length ?? Infinity);
+    addLayoutNode(nodeId, children?.length ?? Infinity);
   }
 
-  function removeHorizontalFlow(nodeId) {
+  function removeLayoutSubtree(nodeId) {
     applyLayoutUpdate((layoutState) => {
       const removal = removeLayoutNode(layoutState.layoutChildren, nodeId);
       return {
@@ -1273,7 +1339,7 @@ export function EditorPage() {
       }
 
       if (drag.kind === "palette") {
-        const node = createHorizontalFlowSpec(layoutState.nextLayoutNodeNumber);
+        const node = createSpecForAtom(drag.atom, layoutState.nextLayoutNodeNumber);
         const insertion = insertLayoutNode(
           layoutState.layoutChildren,
           normalizedTarget.parentId,
@@ -1454,10 +1520,30 @@ export function EditorPage() {
                 />
               </label>
             </div>
-            <div className="fx-actions">
+            <div className="fx-window-create-row">
               <FxButton id="create-window" onClick={createWindow}>
                 {currentWindow ? "Recreate window" : "Create window"}
               </FxButton>
+              <div className="fx-body-direction-toggle" role="group" aria-label="Default body flow">
+                <button
+                  aria-pressed={selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION}
+                  className={selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION ? "is-active" : ""}
+                  onClick={() => updateWindowBodyDirection(HORIZONTAL_FLOW_DIRECTION)}
+                  type="button"
+                >
+                  Horizontal
+                </button>
+                <button
+                  aria-pressed={selectedBodyDirection === VERTICAL_FLOW_DIRECTION}
+                  className={selectedBodyDirection === VERTICAL_FLOW_DIRECTION ? "is-active" : ""}
+                  onClick={() => updateWindowBodyDirection(VERTICAL_FLOW_DIRECTION)}
+                  type="button"
+                >
+                  Vertical
+                </button>
+              </div>
+            </div>
+            <div className="fx-actions">
               <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
                 Reset
               </FxButton>
@@ -1469,9 +1555,9 @@ export function EditorPage() {
             draggingId={builderDrag?.kind === "node" ? builderDrag.sourceId : null}
             dropTarget={builderDropTarget}
             inspectedAnchor={inspectedAnchor}
-            onAddAfter={addHorizontalFlowAfter}
-            onAddChild={addHorizontalFlowChild}
-            onRemove={removeHorizontalFlow}
+            onAddAfter={addLayoutNodeAfter}
+            onAddChild={addLayoutNodeChild}
+            onRemove={removeLayoutSubtree}
             paletteDragging={builderDrag?.kind === "palette"}
             onSelect={selectBuilderNode}
           />
