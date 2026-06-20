@@ -597,10 +597,15 @@ export const factorioAtomRegistry = Object.freeze([
         example: "horizontal",
         source: "factorio-runtime-docs-2.0.77"
       }),
-      field("style variants", "implemented", "Observed horizontal flow styles are represented as variant data, not separate atom identities.", {
+      field("style variants", "implemented", "Observed and editor-created horizontal flow styles are represented as variant data, not separate atom identities.", {
         type: styleName,
-        example: "frame_header_flow / inset_frame_container_horizontal_flow / header-action-group role",
+        example: "frame_header_flow / inset_frame_container_horizontal_flow / generic-horizontal-flow / header-action-group role",
         source: "blueprint-library-horizontal-flow-captures"
+      }),
+      field("generic editor-created variant", "implemented", "The no-code builder creates empty Horizontal Flow specs that hydrate to `style = horizontal_flow` with base spacing and no captured fixture dimensions.", {
+        type: styleName,
+        example: "generic-horizontal-flow",
+        source: "no-code-horizontal-flow-builder"
       }),
       field("relative", "captured", "Captured relative position is role-dependent: the header starts at the Window content origin, while the inset content row starts after the 48 px header.", {
         type: vector2i,
@@ -718,7 +723,13 @@ export const factorioAtomRegistry = Object.freeze([
         dimension: "model",
         state: "done",
         label: "Style variants represented as data",
-        note: "`frame_header_flow`, `inset_frame_container_horizontal_flow`, and the header action-group role are tracked as variants of one atom."
+        note: "`frame_header_flow`, `inset_frame_container_horizontal_flow`, the generic editor-created flow, and the header action-group role are tracked as variants of one atom."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Generic builder variant represented",
+        note: "Persisted no-code specs hydrate to `flow` nodes with `direction = \"horizontal\"`, `style = \"horizontal_flow\"`, and ordered nested children."
       }),
       progressCheck({
         dimension: "model",
@@ -866,10 +877,11 @@ export const factorioAtomRegistry = Object.freeze([
       document: "Horizontal Flow is current-scope complete as the reusable horizontal layout atom behind Window titlebar and horizontal body rows.",
       implemented: [
         "Official Factorio primitive mapping uses `flow` with fixed `direction = \"horizontal\"` for this atom.",
-        "Header/body/action-group roles are style variants of one Horizontal Flow atom.",
+        "Header/body/action-group roles and the generic builder flow are style variants of one Horizontal Flow atom.",
         "Model nodes carry stable ids, class/style, fixed direction, style-reference spacing/padding/stretch/search fields, and ordered children.",
         "Renderer and inspector expose titlebar/body Horizontal Flow facts from structured model data.",
         "Lua export emits valid Factorio `flow` nodes with stable names, styles, horizontal direction, and supported explicit style assignments.",
+        "The no-code builder can add, nest, reorder, inspect, render, and export empty generic Horizontal Flow nodes.",
         "Window remains complete for current shell scope and is not reopened by this pass."
       ],
       assumptions: [

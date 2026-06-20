@@ -9,6 +9,7 @@ else
   echo "npm not found; skipping React build checks." >&2
 fi
 
+node scripts/check-layout-tree.mjs
 python3 scripts/check-app.py
 
 echo "Checks passed."

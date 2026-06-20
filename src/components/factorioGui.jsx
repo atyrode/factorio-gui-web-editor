@@ -1,4 +1,14 @@
-import { ChevronLeft, ChevronRight, Lock, Search, Unlock } from "lucide-react";
+import {
+  CornerDownRight,
+  ListPlus,
+  Plus,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Search,
+  Unlock
+} from "lucide-react";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -34,10 +44,14 @@ export function FxButton({
 }
 
 const actionButtonIcons = {
+  "add-after": ListPlus,
+  "add-child": CornerDownRight,
   back: ChevronLeft,
   forward: ChevronRight,
   "lock-closed": Lock,
   "lock-open": Unlock,
+  plus: Plus,
+  trash: Trash2,
   search: Search
 };
 
@@ -231,9 +245,160 @@ function inspectorProps({ active, locked, anchor, inspectedAnchor, onInspect, on
   };
 }
 
+function BuilderGhostBlock() {
+  return (
+    <div
+      className="fx-builder-ghost"
+      data-anchor="builder_ghost_marker"
+      aria-hidden="true"
+    />
+  );
+}
+
+function builderDropProps({
+  active,
+  parentId,
+  index,
+  onBuilderDragOver,
+  onBuilderDrop
+}) {
+  if (!active) {
+    return {};
+  }
+
+  return {
+    onDragOver: (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onBuilderDragOver?.({ parentId, index, surface: "canvas" });
+    },
+    onDrop: (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onBuilderDrop?.(event, { parentId, index, surface: "canvas" });
+    }
+  };
+}
+
+function FlowChildren({
+  nodes,
+  parentId,
+  inspectorActive,
+  inspectorLocked,
+  inspectedAnchor,
+  onInspect,
+  onInspectLock,
+  builderDragActive,
+  builderDropTarget,
+  onBuilderDragOver,
+  onBuilderDrop
+}) {
+  const ghostIndex =
+    builderDropTarget?.surface === "canvas" && builderDropTarget.parentId === parentId
+      ? builderDropTarget.index
+      : null;
+  const renderedChildren = [];
+
+  nodes.forEach((node, index) => {
+    if (ghostIndex === index) {
+      renderedChildren.push(<BuilderGhostBlock key={`${parentId}-ghost-${index}`} />);
+    }
+
+    renderedChildren.push(
+      <GuiHorizontalFlow
+        builderDragActive={builderDragActive}
+        builderDropTarget={builderDropTarget}
+        inspectedAnchor={inspectedAnchor}
+        inspectorActive={inspectorActive}
+        inspectorLocked={inspectorLocked}
+        key={node.id}
+        node={node}
+        onBuilderDragOver={onBuilderDragOver}
+        onBuilderDrop={onBuilderDrop}
+        onInspect={onInspect}
+        onInspectLock={onInspectLock}
+      />
+    );
+  });
+
+  if (ghostIndex === nodes.length) {
+    renderedChildren.push(<BuilderGhostBlock key={`${parentId}-ghost-${nodes.length}`} />);
+  }
+
+  return renderedChildren;
+}
+
+export function GuiHorizontalFlow({
+  node,
+  inspectorActive = false,
+  inspectorLocked = false,
+  inspectedAnchor = node.id,
+  onInspect,
+  onInspectLock,
+  builderDragActive = false,
+  builderDropTarget = null,
+  onBuilderDragOver,
+  onBuilderDrop
+}) {
+  const flowInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: node.id,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+  const children = node.children ?? [];
+  const dropProps = builderDropProps({
+    active: builderDragActive,
+    parentId: node.id,
+    index: children.length,
+    onBuilderDragOver,
+    onBuilderDrop
+  });
+
+  return (
+    <div
+      className={["fx-gui-horizontal-flow", flowInspector.className]
+        .filter(Boolean)
+        .join(" ")}
+      data-anchor={node.id}
+      data-fx-primitive="flow"
+      data-fx-class={node.className}
+      data-fx-style={node.style}
+      data-fx-derived-from={node.derivedFrom}
+      data-fx-direction={node.direction}
+      data-fx-horizontal-spacing={node.styleReference?.horizontalSpacing ?? undefined}
+      data-fx-style-variant={node.styleReference?.variantId ?? undefined}
+      data-fx-role={node.role ?? undefined}
+      tabIndex={flowInspector.tabIndex}
+      onClick={flowInspector.onClick}
+      onFocus={flowInspector.onFocus}
+      onMouseEnter={flowInspector.onMouseEnter}
+      onMouseMove={flowInspector.onMouseMove}
+      {...dropProps}
+    >
+      <FlowChildren
+        builderDragActive={builderDragActive}
+        builderDropTarget={builderDropTarget}
+        inspectedAnchor={inspectedAnchor}
+        inspectorActive={inspectorActive}
+        inspectorLocked={inspectorLocked}
+        nodes={children}
+        onBuilderDragOver={onBuilderDragOver}
+        onBuilderDrop={onBuilderDrop}
+        onInspect={onInspect}
+        onInspectLock={onInspectLock}
+        parentId={node.id}
+      />
+    </div>
+  );
+}
+
 export function GuiWindow({
   title,
   children,
+  bodyChildren = [],
   className = "",
   anchor = "gui_window",
   inspectorActive = false,
@@ -247,6 +412,10 @@ export function GuiWindow({
   onTitlebarPointerMove,
   onTitlebarPointerUp,
   onTitlebarPointerCancel,
+  builderDragActive = false,
+  builderDropTarget = null,
+  onBuilderDragOver,
+  onBuilderDrop,
   styleReference = frameStyleReference
 }) {
   const contentSize = getFrameContentSize(styleReference);
@@ -303,6 +472,13 @@ export function GuiWindow({
     inspectedAnchor,
     onInspect,
     onInspectLock
+  });
+  const bodyDropProps = builderDropProps({
+    active: builderDragActive,
+    parentId: bodyAnchor,
+    index: bodyChildren.length,
+    onBuilderDragOver,
+    onBuilderDrop
   });
 
   return (
@@ -444,7 +620,21 @@ export function GuiWindow({
         onMouseMove={bodyInspector.onMouseMove}
         onClick={bodyInspector.onClick}
         onFocus={bodyInspector.onFocus}
+        {...bodyDropProps}
       >
+        <FlowChildren
+          builderDragActive={builderDragActive}
+          builderDropTarget={builderDropTarget}
+          inspectedAnchor={inspectedAnchor}
+          inspectorActive={inspectorActive}
+          inspectorLocked={inspectorLocked}
+          nodes={bodyChildren}
+          onBuilderDragOver={onBuilderDragOver}
+          onBuilderDrop={onBuilderDrop}
+          onInspect={onInspect}
+          onInspectLock={onInspectLock}
+          parentId={bodyAnchor}
+        />
         {children}
       </div>
     </section>

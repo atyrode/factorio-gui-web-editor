@@ -1,6 +1,7 @@
 import styleSourcesMarkdown from "../docs/factorio-style-sources.md?raw";
 import atomSpecsMarkdown from "../docs/atom-specs.md?raw";
 import modelSchemaMarkdown from "../docs/model-schema.md?raw";
+import noCodeHorizontalFlowBuilderMarkdown from "../docs/no-code-horizontal-flow-builder.md?raw";
 import roadmapMarkdown from "../docs/roadmap.md?raw";
 import specFactoryMarkdown from "../docs/spec-factory.md?raw";
 
@@ -16,6 +17,12 @@ export const docPages = [
     title: "Roadmap",
     summary: "Sequencing for the constrained builder, shared renderer, and exports.",
     markdown: roadmapMarkdown
+  },
+  {
+    path: "/no-code-horizontal-flow-builder",
+    title: "No-Code Builder",
+    summary: "Product spec for nested Horizontal Flow insertion.",
+    markdown: noCodeHorizontalFlowBuilderMarkdown
   },
   {
     path: "/atom-specs",

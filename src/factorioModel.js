@@ -1,3 +1,8 @@
+import {
+  GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
+  normalizeLayoutState
+} from "./factorioLayoutTree.js";
+
 export const FACTORIO_GUI_MODEL_SCHEMA = "factorio-gui-layout.v0";
 export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
 
@@ -110,6 +115,16 @@ export const horizontalFlowStyleVariants = Object.freeze({
     derivedFrom: "horizontal_flow",
     capturedSize: { width: 72, height: 36 },
     captureId: "blueprint-library-header-flow"
+  }),
+  generic: freezeStyleVariant({
+    id: GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
+    role: "builder-horizontal-flow",
+    className: "agui::HorizontalFlow",
+    style: "horizontal_flow",
+    styleDescription: "Editor-created Horizontal Flow",
+    derivedFrom: "horizontal_flow",
+    horizontalSpacing: 6,
+    captureId: null
   })
 });
 
@@ -949,6 +964,67 @@ function getTitlebarChildRows({
   ];
 }
 
+function modelNodeChildRows(children = []) {
+  if (!children.length) {
+    return [];
+  }
+
+  return [
+    { label: "children", value: "" },
+    ...children.map((child) => ({
+      label: `class ${child.className ?? "agui::Element"}`,
+      value: FACTORIO_NOT_IMPLEMENTED,
+      indent: 1,
+      targetId: child.id
+    }))
+  ];
+}
+
+function createLayoutHorizontalFlowNode(spec) {
+  const variant = horizontalFlowStyleVariants.generic;
+
+  return createHorizontalFlowNode({
+    id: spec.id,
+    className: variant.className,
+    style: variant.style,
+    styleDescription: variant.styleDescription,
+    derivedFrom: variant.derivedFrom,
+    role: variant.role,
+    styleReference: {
+      variantId: variant.id,
+      horizontalSpacing: variant.horizontalSpacing,
+      inheritedHorizontalSpacing: null,
+      horizontallyStretchable: null,
+      verticallyStretchable: null,
+      ignoredBySearch: false
+    },
+    children: spec.children.map(createLayoutHorizontalFlowNode)
+  });
+}
+
+function createLayoutHorizontalFlowInspectorRows(node) {
+  const childRows = modelNodeChildRows(node.children);
+
+  return [
+    {
+      id: node.id,
+      title: `class ${node.className}`,
+      style: node.styleDescription ?? node.style,
+      derivedFrom: node.derivedFrom,
+      relative: FACTORIO_NOT_IMPLEMENTED,
+      size: FACTORIO_NOT_IMPLEMENTED,
+      contentSize: FACTORIO_NOT_IMPLEMENTED,
+      clipSize: FACTORIO_NOT_IMPLEMENTED,
+      sizeBeforeStretching: FACTORIO_NOT_IMPLEMENTED,
+      maximumHorizontalSquashSize: FACTORIO_NOT_IMPLEMENTED,
+      maximumVerticalSquashSize: FACTORIO_NOT_IMPLEMENTED,
+      properties: getFlowSpacingProperties(node.styleReference),
+      childRows: childRows.length ? childRows : [{ label: "children", value: "" }]
+    },
+    ...node.children.flatMap(createLayoutHorizontalFlowInspectorRows)
+  ];
+}
+
 function sizePair({ width, height }) {
   return `{${width}, ${height}}`;
 }
@@ -978,7 +1054,8 @@ export function createWindowModel({
   title = "Untitled window",
   location: sourceLocation = null,
   referenceId = DEFAULT_WINDOW_REFERENCE_ID,
-  size = null
+  size = null,
+  layoutChildren = []
 } = {}) {
   const caption = title.trim() || "Untitled window";
   const location = normalizeModelLocation(sourceLocation);
@@ -995,6 +1072,11 @@ export function createWindowModel({
     titleLabelWidth,
     caption
   );
+  const normalizedLayout = normalizeLayoutState({ layoutChildren });
+  const hydratedLayoutChildren =
+    styleReference.bodyDirection === HORIZONTAL_FLOW_DIRECTION
+      ? normalizedLayout.layoutChildren.map(createLayoutHorizontalFlowNode)
+      : [];
   const bodyStyleReference = {
     variantId:
       styleReference.bodyDirection === HORIZONTAL_FLOW_DIRECTION
@@ -1017,7 +1099,7 @@ export function createWindowModel({
           derivedFrom: styleReference.bodyDerivedFrom,
           role: horizontalFlowStyleVariants.insetFrameContainer.role,
           styleReference: bodyStyleReference,
-          children: []
+          children: hydratedLayoutChildren
         })
       : {
           id: "gui_window_body",
@@ -1185,6 +1267,12 @@ export function getWindowInspectorRows(model) {
     dragHandle,
     dragHandleWidth
   });
+  const bodyChildRows = body.children.length
+    ? modelNodeChildRows(body.children)
+    : [
+        { label: "children", value: "" },
+        ...style.bodyChildRows.map((row) => ({ ...row, indent: 1 }))
+      ];
 
   return [
     {
@@ -1339,10 +1427,8 @@ export function getWindowInspectorRows(model) {
       maximumHorizontalSquashSize: 0,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
       properties: getFlowSpacingProperties(body.styleReference),
-      childRows: [
-        { label: "children", value: "" },
-        ...style.bodyChildRows.map((row) => ({ ...row, indent: 1 }))
-      ]
-    }
+      childRows: bodyChildRows
+    },
+    ...body.children.flatMap(createLayoutHorizontalFlowInspectorRows)
   ];
 }

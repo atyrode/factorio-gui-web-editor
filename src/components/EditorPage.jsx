@@ -15,6 +15,18 @@ import {
   renderWindowLua,
   WINDOW_SIZE_LIMITS
 } from "../factorioExport.js";
+import {
+  BODY_LAYOUT_ROOT_ID,
+  canDropLayoutNode,
+  createHorizontalFlowSpec,
+  findLayoutNode,
+  findLayoutParentChildren,
+  insertLayoutNode,
+  moveLayoutNode,
+  normalizeLayoutState,
+  removeLayoutNode
+} from "../factorioLayoutTree.js";
+import { BuilderPanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
   return value.trim() || "Untitled window";
@@ -58,11 +70,14 @@ function normalizeWindow(value) {
   }
 
   const size = normalizeWindowSize(value.size);
+  const layoutState = normalizeLayoutState(value);
 
   return {
     title: windowTitle(String(value.title ?? DEFAULT_EDITOR_STATE.title)),
     location: normalizeLocation(value.location),
-    size
+    size,
+    layoutChildren: layoutState.layoutChildren,
+    nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
   };
 }
 
@@ -130,7 +145,11 @@ function EditorCanvas({
   onInspect,
   onInspectClear,
   onInspectLock,
-  onWindowLocationChange
+  onWindowLocationChange,
+  builderDragActive,
+  builderDropTarget,
+  onBuilderDragOver,
+  onBuilderDrop
 }) {
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
@@ -269,6 +288,7 @@ function EditorCanvas({
   ]
     .filter(Boolean)
     .join(" ");
+  const bodyChildren = model?.root?.children?.[1]?.children ?? [];
 
   return (
     <div className="fx-editor-canvas" data-anchor="editor_canvas" ref={canvasRef}>
@@ -288,6 +308,11 @@ function EditorCanvas({
           onTitlebarPointerMove={moveWindowDrag}
           onTitlebarPointerUp={endWindowDrag}
           onTitlebarPointerCancel={endWindowDrag}
+          bodyChildren={bodyChildren}
+          builderDragActive={builderDragActive}
+          builderDropTarget={builderDropTarget}
+          onBuilderDragOver={onBuilderDragOver}
+          onBuilderDrop={onBuilderDrop}
         />
       ) : (
         <div className="fx-editor-empty" data-anchor="editor_empty_state">
@@ -836,6 +861,8 @@ export function EditorPage() {
   const [editorState, setEditorState] = useState(readCachedEditorState);
   const [inspectorHistory, setInspectorHistory] = useState({ back: [], forward: [] });
   const [inspectorPreview, setInspectorPreview] = useState(null);
+  const [builderDrag, setBuilderDrag] = useState(null);
+  const [builderDropTarget, setBuilderDropTarget] = useState(null);
   const shellRef = useRef(null);
   const sidebarResizeRef = useRef(null);
   const {
@@ -862,7 +889,8 @@ export function EditorPage() {
       currentWindow: {
         title: windowTitle(state.title),
         location: state.currentWindow?.location ?? null,
-        size: normalizeWindowSize(state.windowSize)
+        size: normalizeWindowSize(state.windowSize),
+        ...normalizeLayoutState(state.currentWindow ?? {})
       },
       inspectorLocked: false,
       inspectedAnchor: null
@@ -872,6 +900,8 @@ export function EditorPage() {
   function resetWindow() {
     setInspectorHistory({ back: [], forward: [] });
     setInspectorPreview(null);
+    setBuilderDrag(null);
+    setBuilderDropTarget(null);
     setEditorState((state) => ({
       ...state,
       currentWindow: null,
@@ -1063,6 +1093,196 @@ export function EditorPage() {
     }));
   }
 
+  function selectBuilderNode(nodeId) {
+    selectInspectorComponent(nodeId);
+  }
+
+  function dragSourceId() {
+    return builderDrag?.kind === "node" ? builderDrag.sourceId : null;
+  }
+
+  function normalizeDropTarget(target, layoutChildren = currentWindow?.layoutChildren ?? []) {
+    if (!target || !canDropLayoutNode(layoutChildren, dragSourceId(), target.parentId)) {
+      return null;
+    }
+
+    const parentChildren = findLayoutParentChildren(layoutChildren, target.parentId);
+    if (!parentChildren) {
+      return null;
+    }
+
+    const index = Math.min(
+      Math.max(0, Math.round(Number(target.index) || 0)),
+      parentChildren.length
+    );
+
+    return { parentId: target.parentId, index, surface: target.surface };
+  }
+
+  function updateBuilderDropTarget(target) {
+    if (!builderDrag || !currentWindow) {
+      return;
+    }
+
+    const normalizedTarget = normalizeDropTarget(target);
+    if (normalizedTarget) {
+      setBuilderDropTarget(normalizedTarget);
+    } else {
+      setBuilderDropTarget(null);
+    }
+  }
+
+  function beginPaletteDrag(event) {
+    if (!currentWindow) {
+      event.preventDefault();
+      return;
+    }
+
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("text/plain", "horizontal-flow");
+    setBuilderDrag({ kind: "palette" });
+    setBuilderDropTarget(null);
+  }
+
+  function beginNodeDrag(event, sourceId) {
+    event.stopPropagation();
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", sourceId);
+    setBuilderDrag({ kind: "node", sourceId });
+    setBuilderDropTarget(null);
+  }
+
+  function clearBuilderDrag() {
+    setBuilderDrag(null);
+    setBuilderDropTarget(null);
+  }
+
+  function handleBuilderDragOver(event, target) {
+    if (!builderDrag) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    updateBuilderDropTarget(target);
+  }
+
+  function applyLayoutUpdate(updater) {
+    setInspectorPreview(null);
+    setEditorState((state) => {
+      if (!state.currentWindow) {
+        return state;
+      }
+
+      const layoutState = normalizeLayoutState(state.currentWindow);
+      const result = updater(layoutState);
+      if (!result?.changed) {
+        return state;
+      }
+
+      return {
+        ...state,
+        inspectedAnchor: result.selectedAnchor ?? state.inspectedAnchor,
+        inspectorLocked: result.selectedAnchor ? true : state.inspectorLocked,
+        currentWindow: {
+          ...state.currentWindow,
+          layoutChildren: result.layoutChildren,
+          nextLayoutNodeNumber: result.nextLayoutNodeNumber ?? layoutState.nextLayoutNodeNumber
+        }
+      };
+    });
+  }
+
+  function addHorizontalFlow(parentId = BODY_LAYOUT_ROOT_ID, index = Infinity) {
+    applyLayoutUpdate((layoutState) => {
+      const node = createHorizontalFlowSpec(layoutState.nextLayoutNodeNumber);
+      const insertion = insertLayoutNode(layoutState.layoutChildren, parentId, index, node);
+      return {
+        ...insertion,
+        selectedAnchor: node.id,
+        nextLayoutNodeNumber: insertion.changed
+          ? layoutState.nextLayoutNodeNumber + 1
+          : layoutState.nextLayoutNodeNumber
+      };
+    });
+  }
+
+  function addHorizontalFlowAfter(nodeId) {
+    const match = findLayoutNode(currentWindow?.layoutChildren ?? [], nodeId);
+    if (!match) {
+      return;
+    }
+
+    addHorizontalFlow(match.parentId, match.index + 1);
+  }
+
+  function addHorizontalFlowChild(nodeId) {
+    const children = findLayoutParentChildren(currentWindow?.layoutChildren ?? [], nodeId);
+    addHorizontalFlow(nodeId, children?.length ?? Infinity);
+  }
+
+  function removeHorizontalFlow(nodeId) {
+    applyLayoutUpdate((layoutState) => {
+      const removal = removeLayoutNode(layoutState.layoutChildren, nodeId);
+      return {
+        ...removal,
+        selectedAnchor: BODY_LAYOUT_ROOT_ID,
+        nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+      };
+    });
+  }
+
+  function commitBuilderDrop(event, target = builderDropTarget) {
+    if (!builderDrag) {
+      return;
+    }
+
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    applyLayoutUpdate((layoutState) => {
+      const normalizedTarget = normalizeDropTarget(target, layoutState.layoutChildren);
+      if (!normalizedTarget) {
+        return { changed: false };
+      }
+
+      if (builderDrag.kind === "palette") {
+        const node = createHorizontalFlowSpec(layoutState.nextLayoutNodeNumber);
+        const insertion = insertLayoutNode(
+          layoutState.layoutChildren,
+          normalizedTarget.parentId,
+          normalizedTarget.index,
+          node
+        );
+        return {
+          ...insertion,
+          selectedAnchor: node.id,
+          nextLayoutNodeNumber: insertion.changed
+            ? layoutState.nextLayoutNodeNumber + 1
+            : layoutState.nextLayoutNodeNumber
+        };
+      }
+
+      if (builderDrag.kind === "node") {
+        const movement = moveLayoutNode(
+          layoutState.layoutChildren,
+          builderDrag.sourceId,
+          normalizedTarget.parentId,
+          normalizedTarget.index
+        );
+        return {
+          ...movement,
+          selectedAnchor: builderDrag.sourceId,
+          nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+        };
+      }
+
+      return { changed: false };
+    });
+
+    clearBuilderDrag();
+  }
+
   function updateWindowLocation(location) {
     setEditorState((state) =>
       state.currentWindow
@@ -1202,6 +1422,22 @@ export function EditorPage() {
           </div>
         </FxFrame>
 
+        <BuilderPanel
+          currentWindow={currentWindow}
+          dropTarget={builderDropTarget}
+          inspectedAnchor={inspectedAnchor}
+          onAddAfter={addHorizontalFlowAfter}
+          onAddChild={addHorizontalFlowChild}
+          onAddRoot={() => addHorizontalFlow(BODY_LAYOUT_ROOT_ID)}
+          onBuilderDragOver={handleBuilderDragOver}
+          onBuilderDrop={commitBuilderDrop}
+          onDragEnd={clearBuilderDrag}
+          onDragStartNode={beginNodeDrag}
+          onDragStartPalette={beginPaletteDrag}
+          onRemove={removeHorizontalFlow}
+          onSelect={selectBuilderNode}
+        />
+
         <FxFrame title="Inspector" className="fx-editor-panel fx-editor-panel--inspector">
           <FxCheckbox
             checked={showInspector}
@@ -1266,6 +1502,10 @@ export function EditorPage() {
             onInspectClear={clearHoveredInspection}
             onInspectLock={lockInspectedAnchor}
             onWindowLocationChange={updateWindowLocation}
+            builderDragActive={Boolean(builderDrag)}
+            builderDropTarget={builderDropTarget}
+            onBuilderDragOver={updateBuilderDropTarget}
+            onBuilderDrop={commitBuilderDrop}
           />
         </div>
       </section>

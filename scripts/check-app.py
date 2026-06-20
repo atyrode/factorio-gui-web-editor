@@ -15,6 +15,7 @@ REQUIRED_FILES = [
     "compose.dev.yaml",
     "src/styles.css",
     "src/App.jsx",
+    "src/components/BuilderPanel.jsx",
     "src/components/DocumentPage.jsx",
     "src/components/EditorPage.jsx",
     "src/components/SiteChrome.jsx",
@@ -27,14 +28,17 @@ REQUIRED_FILES = [
     "src/styles/layout.css",
     "src/styles/style-atlas.css",
     "src/docs.js",
+    "src/factorioLayoutTree.js",
     "src/main.jsx",
     "package.json",
     "package-lock.json",
     "vite.config.js",
     "scripts/copy-static-docs.mjs",
+    "scripts/check-layout-tree.mjs",
     "README.md",
     "AGENTS.md",
     "docs/README.md",
+    "docs/no-code-horizontal-flow-builder.md",
     "docs/atom-specs.md",
     "docs/hosting.md",
     "docs/spec-factory.md",
@@ -55,6 +59,9 @@ REQUIRED_ANCHORS = [
     "gui_window_titlebar",
     "gui_window_drag_handle",
     "gui_window_body",
+    "builder_panel",
+    "horizontal_flow_palette_item",
+    "builder_ghost_marker",
 ]
 
 FORBIDDEN_PAYLOADS = [
@@ -97,9 +104,11 @@ def main() -> int:
             "package-lock.json",
             "vite.config.js",
             "scripts/copy-static-docs.mjs",
+            "scripts/check-layout-tree.mjs",
             "README.md",
             "AGENTS.md",
             "docs/README.md",
+            "docs/no-code-horizontal-flow-builder.md",
             "docs/atom-specs.md",
             "docs/hosting.md",
             "docs/spec-factory.md",
@@ -131,6 +140,7 @@ def main() -> int:
 
     check_sh = read("scripts/check.sh")
     assert_contains(check_sh, "scripts/check-app.py", "scripts/check.sh")
+    assert_contains(check_sh, "scripts/check-layout-tree.mjs", "scripts/check.sh")
 
     return 0
 

@@ -791,11 +791,36 @@
   gap: var(--fx-window-body-vertical-spacing);
 }
 
+.fx-gui-horizontal-flow {
+  min-width: 104px;
+  min-height: 54px;
+  padding: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
+  overflow: auto;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+    #302f30;
+  border: 1px solid #0a0a0a;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.08),
+    inset -2px -2px 2px rgba(0, 0, 0, 0.48),
+    1px 1px 0 rgba(0, 0, 0, 0.48);
+}
+
+.fx-gui-horizontal-flow .fx-gui-horizontal-flow {
+  min-width: 88px;
+  min-height: 38px;
+}
+
 .fx-gui-window.is-inspected,
 .fx-gui-window__titlebar.is-inspected,
 .fx-gui-window__title-label.is-inspected,
 .fx-gui-window__drag-handle.is-inspected,
-.fx-gui-window__body.is-inspected {
+.fx-gui-window__body.is-inspected,
+.fx-gui-horizontal-flow.is-inspected {
   position: relative;
 }
 
@@ -803,7 +828,8 @@
 .fx-gui-window__titlebar.is-inspected::after,
 .fx-gui-window__title-label.is-inspected::after,
 .fx-gui-window__drag-handle.is-inspected::after,
-.fx-gui-window__body.is-inspected::after {
+.fx-gui-window__body.is-inspected::after,
+.fx-gui-horizontal-flow.is-inspected::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -820,7 +846,8 @@
 .fx-gui-window.is-inspecting .fx-gui-window__titlebar,
 .fx-gui-window.is-inspecting .fx-gui-window__title-label,
 .fx-gui-window.is-inspecting .fx-gui-window__drag-handle,
-.fx-gui-window.is-inspecting .fx-gui-window__body {
+.fx-gui-window.is-inspecting .fx-gui-window__body,
+.fx-gui-window.is-inspecting .fx-gui-horizontal-flow {
   cursor: crosshair;
   user-select: none;
   -webkit-user-select: none;
