@@ -112,6 +112,10 @@ slice without treating CSS as source of truth.
   their minimum width is reached; after that the parent flow scrolls.
 - The drag overlay, source highlight, active parent highlight, and ghost block
   are visual feedback only. The stored operation remains `{parentId, index}`.
+- Canvas hover previews must use the same flex sizing contract as the
+  Horizontal Flow node that will exist after drop. Hit/collision geometry must
+  not paint layout feedback, and highlight paint must not extend the future
+  node's bounds.
 - Removing a row removes its subtree in this slice.
 
 ## Fixtures
@@ -150,3 +154,17 @@ Before expanding to Label, Frame, or Action Button insertion, verify:
 - nested flows remain scannable in the rail at narrow sidebar widths;
 - Lua output order matches the builder tree order;
 - no operation creates arbitrary CSS or absolute-positioned child layout.
+
+## Automated Regression Gate
+
+Every objective builder bug should become a check before the fix is accepted.
+The first browser regression covers the `one-flow` fixture: dragging a palette
+Horizontal Flow to index `0` of the Window body must make the hover preview,
+visible ghost, shifted existing flow, and final dropped flow use matching
+rectangles within a 1px tolerance. The test also verifies that drop hit targets
+stay visually transparent and that preview paint does not extend outside the
+future node bounds.
+
+`scripts/check.sh` runs build, layout-tree, hover/drop geometry, structural,
+and Playwright browser checks. CI installs dependencies, installs Chromium, and
+runs the same script, so this gate is required for pull requests.

@@ -3,6 +3,8 @@ node_modules/
 .vite-cache/
 dist/
 coverage/
+playwright-report/
+test-results/
 .env
 .env.*
 !.env.example

@@ -33,9 +33,12 @@ REQUIRED_FILES = [
     "src/main.jsx",
     "package.json",
     "package-lock.json",
+    "playwright.config.js",
     "vite.config.js",
     "scripts/copy-static-docs.mjs",
+    "scripts/check-hover-drop-geometry.mjs",
     "scripts/check-layout-tree.mjs",
+    "tests/browser/horizontal-flow-builder.spec.js",
     "README.md",
     "AGENTS.md",
     "docs/README.md",
@@ -106,9 +109,12 @@ def main() -> int:
             "compose.dev.yaml",
             "package.json",
             "package-lock.json",
+            "playwright.config.js",
             "vite.config.js",
             "scripts/copy-static-docs.mjs",
+            "scripts/check-hover-drop-geometry.mjs",
             "scripts/check-layout-tree.mjs",
+            "tests/browser/horizontal-flow-builder.spec.js",
             "README.md",
             "AGENTS.md",
             "docs/README.md",
@@ -143,8 +149,18 @@ def main() -> int:
             raise AssertionError(f"removed fixture global is still present: {global_name}")
 
     check_sh = read("scripts/check.sh")
-    assert_contains(check_sh, "scripts/check-app.py", "scripts/check.sh")
-    assert_contains(check_sh, "scripts/check-layout-tree.mjs", "scripts/check.sh")
+    assert_contains(check_sh, "npm run check", "scripts/check.sh")
+    package_json = read("package.json")
+    assert_contains(package_json, "\"test:browser\"", "package.json")
+    assert_contains(package_json, "playwright test", "package.json")
+    assert_contains(package_json, "scripts/check-app.py", "package.json")
+    assert_contains(package_json, "scripts/check-layout-tree.mjs", "package.json")
+    assert_contains(package_json, "scripts/check-hover-drop-geometry.mjs", "package.json")
+
+    ci_workflow = read(".github/workflows/ci.yml")
+    assert_contains(ci_workflow, "node-version: \"24\"", ".github/workflows/ci.yml")
+    assert_contains(ci_workflow, "npm ci", ".github/workflows/ci.yml")
+    assert_contains(ci_workflow, "npx playwright install --with-deps chromium", ".github/workflows/ci.yml")
 
     return 0
 

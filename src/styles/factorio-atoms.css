@@ -913,19 +913,6 @@
   transition: opacity 140ms ease;
 }
 
-.fx-gui-flow-drop-preview-slot.is-start-edge::before {
-  right: calc(var(--fx-horizontal-flow-horizontal-spacing, 6px) * -1);
-}
-
-.fx-gui-flow-drop-preview-slot.is-end-edge::before {
-  left: calc(var(--fx-horizontal-flow-horizontal-spacing, 6px) * -1);
-}
-
-.fx-gui-flow-drop-preview-slot.is-middle::before {
-  left: calc(var(--fx-horizontal-flow-horizontal-spacing, 6px) * -1);
-  right: calc(var(--fx-horizontal-flow-horizontal-spacing, 6px) * -1);
-}
-
 .fx-gui-flow-drop-preview-slot.is-expanded {
   flex-grow: 1;
   flex-shrink: 1;
