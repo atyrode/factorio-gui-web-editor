@@ -23,9 +23,12 @@ http://127.0.0.1:5173/
 
 - React/Vite browser app with an empty canvas.
 - A minimal window creator with editable title text.
+- A structured seed GUI model shared by preview, inspector, and Lua output.
+- A `/style-atlas` route that renders reusable GUI atoms for visual review.
 - Header navigation with styled in-app pages rendered from the project
   Markdown docs, plus an Editor tab to return to the canvas.
-- Factorio-inspired local CSS token layer.
+- Factorio-inspired local CSS token layer split by base, layout, GUI atoms,
+  editor, docs, and atlas surfaces.
 - Stable anchors for the editor canvas and generated window shell.
 - Structural checks for required files, anchors, and forbidden copied Factorio
   asset payloads.
@@ -34,16 +37,39 @@ http://127.0.0.1:5173/
 
 ```text
 index.html                     Vite app entry point
-src/App.jsx                    Window editor React components
+src/App.jsx                    Route orchestration
+src/components/                Strictly scoped React components
 src/docs.js                    Markdown-backed document route registry
+src/factorioModel.js           Structured Factorio GUI seed model and inspector rows
+src/factorioExport.js          Lua export projection from the GUI model
 src/main.jsx                   React mount and stylesheet import
-src/styles.css                 Factorio-inspired local token/style layer
+src/styles.css                 Stylesheet entry point
+src/styles/                    Split Factorio-inspired local style layers
 docs/spec-factory.md           Workflow for writing agent-readable GUI specs
+docs/model-schema.md           Shared GUI model and inspector projection notes
 docs/roadmap.md                Builder/shared-renderer roadmap
 docs/factorio-style-sources.md Style/source research notes
 scripts/check.sh               Local validation
 scripts/copy-static-docs.mjs   Copies Markdown docs into production builds
 ```
+
+## Public Dev Mode
+
+The production compose file serves a static Caddy bundle. For development on
+`labtorio.tyrode.dev`, run the Vite override:
+
+```sh
+docker compose -f compose.yaml -f compose.dev.yaml up -d
+```
+
+The override keeps the same internal `labtorio:8080` target used by the edge
+proxy, but serves Vite with HMR configured for
+`wss://labtorio.tyrode.dev/@vite-hmr`.
+It stores container `node_modules` and Vite cache data in Docker named volumes
+so hot reload does not leave host checkout files owned by the container user.
+Public deployments require Basic Auth credentials in a local `.env`; see
+[docs/hosting.md](docs/hosting.md) for the hash generation and edge proxy
+boundary.
 
 ## Design Direction
 
@@ -63,6 +89,8 @@ Accepted future directions:
 - Lua skeleton export with stable anchors and TODO behavior hooks;
 - graphical Factorio style-dump imports for script-visible `LuaGuiElement` and
   `LuaStyle` fields;
+- style-atlas review against official site references and in-game `Ctrl+F6`
+  captures;
 - eventual shared model for browser preview, Lua structure, and read-only web
   demos where feasible.
 

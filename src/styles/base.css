@@ -1,0 +1,164 @@
+:root {
+  --fx-bg: #242324;
+  --fx-bg-docs: #111111;
+  --fx-bg-deep: #0f0d0c;
+  --fx-panel: #313031;
+  --fx-panel-even: #424142;
+  --fx-panel-odd: #3b3a3b;
+  --fx-panel-light: #414040;
+  --fx-panel-dark: #242324;
+  --fx-slot-bg: #1c1c1c;
+  --fx-edge: #0d0d0d;
+  --fx-edge-shadow: rgba(0, 0, 0, 0.70);
+  --fx-frame-shadow:
+    1px 0 0 rgba(0, 0, 0, 0.82),
+    0 1px 0 rgba(0, 0, 0, 0.90),
+    3px 3px 5px rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    inset -1px 0 0 rgba(0, 0, 0, 0.56),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.72);
+  --fx-window-shadow:
+    1px 0 0 rgba(0, 0, 0, 0.72),
+    0 1px 0 rgba(0, 0, 0, 0.82),
+    3px 3px 5px rgba(0, 0, 0, 0.58);
+  --fx-window-padding-top: 6px;
+  --fx-window-padding-x: 12px;
+  --fx-window-padding-bottom: 12px;
+  --fx-window-outer-border: 6px;
+  --fx-window-titlebar-height: 48px;
+  --fx-window-titlebar-content-height: 42px;
+  --fx-window-titlebar-bottom-padding: 6px;
+  --fx-window-titlebar-spacing: 12px;
+  --fx-window-drag-handle-height: 36px;
+  --fx-window-drag-handle-margin-x: 6px;
+  --fx-window-body-horizontal-spacing: 18px;
+  --fx-window-body-vertical-spacing: 0;
+  --fx-text: #ffffff;
+  --fx-text-soft: #d7d3ca;
+  --fx-muted: #a6a6a6;
+  --fx-disabled: #818181;
+  --fx-gold: #ffe6c0;
+  --fx-orange: #e39827;
+  --fx-orange-hot: #ffa900;
+  --fx-orange-pressed: #f1be64;
+  --fx-blue: #7dcaed;
+  --fx-blue-hover: #9ad1ea;
+  --fx-green: #5eb663;
+  --fx-green-hover: #92e897;
+  --fx-red: #fe5a5a;
+  --fx-red-hover: #ff9b9b;
+  --fx-success-panel: #364f30;
+  --fx-warning-panel: #554c27;
+  --fx-error-panel: #552929;
+  --fx-control: #8e8e8e;
+  --fx-control-focus: #f0dab4;
+  --fx-shadow: #000000;
+  --fx-font-ui: "Titillium Web", "Segoe UI", Tahoma, sans-serif;
+  --fx-font-mono: "Roboto Mono", "Cascadia Code", Consolas, monospace;
+  color: var(--fx-text);
+  font-family: var(--fx-font-ui);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--fx-bg);
+  color: var(--fx-text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: default;
+}
+
+a {
+  color: var(--fx-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--fx-blue-hover);
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+strong {
+  font-weight: 900;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--fx-gold);
+  line-height: 1.25;
+}
+
+ul,
+ol {
+  padding-left: 18px;
+  margin: 0;
+}
+
+li + li {
+  margin-top: 6px;
+}
+
+code,
+pre {
+  font-family: var(--fx-font-mono);
+}
+
+::-webkit-scrollbar,
+::-webkit-scrollbar-corner {
+  background-color: #333030;
+  box-shadow:
+    inset 0 2px 3px -1px #111111,
+    inset 0 -2px 2px -1px #4b4545;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #828282;
+  box-shadow:
+    inset 0 2px 3px -1px #ffffff,
+    inset 0 -2px 2px -1px #111111;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--fx-orange);
+}

@@ -8,7 +8,8 @@ screenshots against named anchors, and the team can revise the design without
 reverse-engineering code.
 
 No product-specific spec is bundled with the app right now. The current editor
-surface is only a bare window shell.
+surface is a constrained seed: create one top-level window shell, inspect its
+Factorio-style frame constraints, and preview the generated structural Lua.
 
 ## Purpose
 

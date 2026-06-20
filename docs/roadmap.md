@@ -17,6 +17,10 @@ The ideal is not just visual similarity. The ideal is that browser and in-game
 UI are generated from the same constrained model, with explicit places where
 Factorio and browser behavior cannot be perfectly identical.
 
+Per-atom reconstruction work follows [atom-specs.md](atom-specs.md). That
+document owns the evidence-to-model-to-renderer-to-Lua-export completion
+contract for each atom.
+
 ## Core Principle
 
 The builder must edit a Factorio GUI layout model, not arbitrary browser layout.
@@ -82,18 +86,64 @@ with a title bar, reserved drag handle, and empty body.
   "root": {
     "id": "gui_window",
     "primitive": "frame",
-    "caption": "Untitled window",
+    "className": "agui::Window",
+    "style": "inset_frame_container_frame",
+    "derivedFrom": "frame",
+    "direction": "vertical",
+    "location": null,
+    "referenceSize": {
+      "width": 680,
+      "height": 480,
+      "contentWidth": 644,
+      "contentHeight": 450
+    },
+    "styleReference": {
+      "topPadding": 6,
+      "rightPadding": 12,
+      "bottomPadding": 12,
+      "leftPadding": 12,
+      "graphicalBorder": 6,
+      "useHeaderFiller": true
+    },
     "children": [
       {
         "id": "gui_window_titlebar",
         "primitive": "flow",
+        "style": "frame_header_flow",
         "direction": "horizontal",
-        "children": ["gui_window_caption", "gui_window_drag_handle"]
+        "referenceSize": { "height": 48 },
+        "styleReference": {
+          "bottomPadding": 6,
+          "horizontalSpacing": 12,
+          "horizontallyStretchable": true,
+          "verticallyStretchable": false
+        },
+        "children": [
+          {
+            "id": "gui_window_title",
+            "primitive": "label",
+            "style": "frame_title",
+            "caption": "Untitled window"
+          },
+          {
+            "id": "gui_window_drag_handle",
+            "primitive": "empty-widget",
+            "style": "draggable_space_header",
+            "role": "header-filler"
+          }
+        ]
       },
       {
         "id": "gui_window_body",
         "primitive": "flow",
-        "direction": "vertical",
+        "style": "inset_frame_container_horizontal_flow",
+        "direction": "horizontal",
+        "styleReference": {
+          "horizontalSpacing": 18,
+          "inheritedHorizontalSpacing": 6,
+          "verticalSpacing": null,
+          "maximumVerticalSquashSize": 540
+        },
         "children": []
       }
     ]
@@ -101,14 +151,24 @@ with a title bar, reserved drag handle, and empty body.
   "constraints": [
     "no_absolute_positioning",
     "titlebar_has_drag_handle",
+    "header_filler_stretches",
+    "body_is_window_content_flow",
     "no_bundled_domain_example"
   ]
 }
 ```
 
+The initial `680 x 480` reference size is an authored editor default, not a
+vanilla GUI capture. The Window editor exposes width and height controls in the
+New Window section while keeping vanilla captures as internal evidence, not
+user-facing presets.
+
 The first model does not need to represent all Factorio style fields. It should
-represent enough structure that browser rendering, Lua skeleton generation, and
-agent-readable specs can stay in sync.
+represent the captured top-level `frame`, `frame_header_flow`,
+`draggable_space_header`, and `inset_frame_container_horizontal_flow`
+constraints well enough that
+browser rendering, Lua skeleton generation, and agent-readable specs can stay in
+sync.
 
 ## Constraint Catalog To Build
 
@@ -169,8 +229,14 @@ Status: current seed scope.
 - Render a title bar, drag-handle strip, and empty body.
 - Use Factorio-inspired local tokens without copying Wube assets.
 - Validate that no bundled domain example is required by the app.
+- Maintain a style atlas route for atom-by-atom visual review before expanding
+  editor features.
 
 ### Phase 1: Layout Model Export
+
+Status: started. The editor now builds a small browser-cached window model with
+anchors, primitives, captured frame constraints, style references, and optional
+top-level screen location from header dragging.
 
 - Serialize the current window shell into a JSON layout model.
 - Include anchors, primitives, component ownership, and constraints.
@@ -178,6 +244,9 @@ Status: current seed scope.
 - Add validation that required anchors exist in the model.
 
 ### Phase 2: Lua Skeleton Export
+
+Status: started. The editor shows a read-only generated `gui.lua` preview for
+the current window shell; it is not yet a persisted export artifact.
 
 - Generate structural Lua with named anchors.
 - Emit TODO action hooks instead of pretending behavior is complete.
@@ -229,10 +298,14 @@ Status: current seed scope.
       `ClaudeMetz/UntitledGuiGuide`, against current official API docs.
 - [ ] Capture graphical Factorio style-inspector notes for vanilla widgets that
       target GUIs want to mimic.
+- [x] Capture top-level frame, header filler, and inside-frame constraints from
+      graphical Factorio `Ctrl+F6` screenshots.
 - [ ] Add a graphical-client GUI style dump beside future screenshot artifacts
       for script-visible `LuaGuiElement` and `LuaStyle` fields.
-- [ ] Add layout model export.
-- [ ] Add Lua skeleton export.
+- [x] Add an in-memory layout model for the current top-level window shell.
+- [x] Add a read-only generated Lua skeleton preview for the current shell.
+- [ ] Add persisted layout model export.
+- [ ] Add reviewed Lua skeleton export.
 - [ ] Write the Factorio GUI constraint catalog.
 - [ ] Add constrained builder controls.
 - [ ] Add model-to-browser and model-to-Lua renderers.
