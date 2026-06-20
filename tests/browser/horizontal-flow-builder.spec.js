@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { inflateSync } from "node:zlib";
 
 const EDITOR_STORAGE_KEY = "labtorio.editorState.v1";
 const ONE_FRAME_STATE = {
@@ -42,6 +43,105 @@ function roundedRect(rect) {
     width: Math.round(rect.width),
     height: Math.round(rect.height)
   };
+}
+
+function paethPredictor(left, above, upperLeft) {
+  const estimate = left + above - upperLeft;
+  const leftDistance = Math.abs(estimate - left);
+  const aboveDistance = Math.abs(estimate - above);
+  const upperLeftDistance = Math.abs(estimate - upperLeft);
+
+  if (leftDistance <= aboveDistance && leftDistance <= upperLeftDistance) {
+    return left;
+  }
+  return aboveDistance <= upperLeftDistance ? above : upperLeft;
+}
+
+function readPng(buffer) {
+  const signature = "89504e470d0a1a0a";
+  expect(buffer.subarray(0, 8).toString("hex")).toBe(signature);
+
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let bitDepth = 0;
+  let colorType = 0;
+  const idatChunks = [];
+
+  while (offset < buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.subarray(offset + 4, offset + 8).toString("ascii");
+    const data = buffer.subarray(offset + 8, offset + 8 + length);
+    offset += length + 12;
+
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      bitDepth = data[8];
+      colorType = data[9];
+    } else if (type === "IDAT") {
+      idatChunks.push(data);
+    } else if (type === "IEND") {
+      break;
+    }
+  }
+
+  expect(bitDepth).toBe(8);
+  expect([2, 6]).toContain(colorType);
+
+  const bytesPerPixel = colorType === 6 ? 4 : 3;
+  const rowLength = width * bytesPerPixel;
+  const inflated = inflateSync(Buffer.concat(idatChunks));
+  const pixels = Buffer.alloc(width * height * bytesPerPixel);
+
+  let sourceOffset = 0;
+  for (let y = 0; y < height; y += 1) {
+    const filter = inflated[sourceOffset];
+    sourceOffset += 1;
+    const row = inflated.subarray(sourceOffset, sourceOffset + rowLength);
+    sourceOffset += rowLength;
+
+    for (let x = 0; x < rowLength; x += 1) {
+      const raw = row[x];
+      const left = x >= bytesPerPixel ? pixels[y * rowLength + x - bytesPerPixel] : 0;
+      const above = y > 0 ? pixels[(y - 1) * rowLength + x] : 0;
+      const upperLeft =
+        y > 0 && x >= bytesPerPixel
+          ? pixels[(y - 1) * rowLength + x - bytesPerPixel]
+          : 0;
+      let value = raw;
+
+      if (filter === 1) {
+        value = raw + left;
+      } else if (filter === 2) {
+        value = raw + above;
+      } else if (filter === 3) {
+        value = raw + Math.floor((left + above) / 2);
+      } else if (filter === 4) {
+        value = raw + paethPredictor(left, above, upperLeft);
+      } else {
+        expect(filter).toBe(0);
+      }
+      pixels[y * rowLength + x] = value & 0xff;
+    }
+  }
+
+  return {
+    getPixel(x, y) {
+      const safeX = Math.min(Math.max(0, Math.round(x)), width - 1);
+      const safeY = Math.min(Math.max(0, Math.round(y)), height - 1);
+      const pixelOffset = safeY * rowLength + safeX * bytesPerPixel;
+      return [
+        pixels[pixelOffset],
+        pixels[pixelOffset + 1],
+        pixels[pixelOffset + 2]
+      ];
+    }
+  };
+}
+
+function luminance([red, green, blue]) {
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
 async function seedOneFrameWindow(page) {
@@ -192,5 +292,25 @@ test.describe("Frame builder canvas preview", () => {
       "hover-shifted existing Frame should match final existing Frame"
     );
     expect(Math.round(hover.gap)).toBe(Math.round(finalGap));
+
+    const windowBox = await page.locator('[data-anchor="gui_window"]').boundingBox();
+    expect(windowBox).not.toBeNull();
+    const screenshot = readPng(await page.locator('[data-anchor="gui_window"]').screenshot());
+    const topY = finalFrames[0].top - windowBox.y;
+    const gapCenterX =
+      (finalFrames[0].left + finalFrames[0].width + finalFrames[1].left) / 2 -
+      windowBox.x;
+    const leftFrameTopX = finalFrames[0].left + finalFrames[0].width - 20 - windowBox.x;
+    const rightFrameTopX = finalFrames[1].left + 20 - windowBox.x;
+    const gapTop = luminance(screenshot.getPixel(gapCenterX, topY));
+    const frameTop = Math.max(
+      luminance(screenshot.getPixel(leftFrameTopX, topY)),
+      luminance(screenshot.getPixel(rightFrameTopX, topY))
+    );
+
+    expect(
+      gapTop - frameTop,
+      "the Window body must not draw a continuous dark top stroke over the split gap"
+    ).toBeGreaterThan(24);
   });
 });

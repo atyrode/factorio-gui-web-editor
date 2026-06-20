@@ -117,10 +117,15 @@ assert.equal(
   null,
   "Window body must not use a fake top rail or overlay above child flows"
 );
+assert.doesNotMatch(
+  declaration(bodyRule, "box-shadow"),
+  /(?:0 -1px 0|inset 0 [1-9])/,
+  "Window body must not draw a continuous top stroke over body child split gaps"
+);
 assert.match(
   declaration(bodyRule, "box-shadow"),
-  /inset 0 3px 4px/,
-  "Window body inset shadow must remain part of the real body flow surface"
+  /inset 0 -2px 2px/,
+  "Window body may keep bottom depth, but child Frame edges must own the top split rim"
 );
 
 for (const selector of [
