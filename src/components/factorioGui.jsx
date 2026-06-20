@@ -260,6 +260,25 @@ function BuilderGhostBlock() {
   );
 }
 
+function pixelStyleValue(value) {
+  return typeof value === "number" && Number.isFinite(value) ? `${value}px` : undefined;
+}
+
+function horizontalFlowStyleVariables(styleReference = {}) {
+  const reference = styleReference ?? {};
+
+  return {
+    "--fx-horizontal-flow-horizontal-spacing": pixelStyleValue(reference.horizontalSpacing),
+    "--fx-horizontal-flow-padding-top": pixelStyleValue(reference.topPadding),
+    "--fx-horizontal-flow-padding-right": pixelStyleValue(reference.rightPadding),
+    "--fx-horizontal-flow-padding-bottom": pixelStyleValue(reference.bottomPadding),
+    "--fx-horizontal-flow-padding-left": pixelStyleValue(reference.leftPadding),
+    "--fx-horizontal-flow-min-width": pixelStyleValue(reference.minimalWidth),
+    "--fx-horizontal-flow-min-height": pixelStyleValue(reference.minimalHeight),
+    "--fx-horizontal-flow-child-min-width": pixelStyleValue(reference.childMinimalWidth)
+  };
+}
+
 function CanvasDropSlot({
   active,
   dragActive,
@@ -379,6 +398,7 @@ export function GuiHorizontalFlow({
   const isDropParent = builderDropTarget?.surface === "canvas" &&
     builderDropTarget.parentId === node.id;
   const isDraggingSource = builderDraggingId === node.id;
+  const flowStyle = horizontalFlowStyleVariables(node.styleReference);
   const { ref: dropRef, isDropTarget } = useDroppable({
     id: `builder-canvas-parent-${node.id}`,
     type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
@@ -410,8 +430,17 @@ export function GuiHorizontalFlow({
       data-fx-derived-from={node.derivedFrom}
       data-fx-direction={node.direction}
       data-fx-horizontal-spacing={node.styleReference?.horizontalSpacing ?? undefined}
+      data-fx-minimal-width={node.styleReference?.minimalWidth ?? undefined}
+      data-fx-minimal-height={node.styleReference?.minimalHeight ?? undefined}
+      data-fx-top-padding={node.styleReference?.topPadding ?? undefined}
+      data-fx-right-padding={node.styleReference?.rightPadding ?? undefined}
+      data-fx-bottom-padding={node.styleReference?.bottomPadding ?? undefined}
+      data-fx-left-padding={node.styleReference?.leftPadding ?? undefined}
+      data-fx-horizontally-stretchable={node.styleReference?.horizontallyStretchable ?? undefined}
+      data-fx-vertically-stretchable={node.styleReference?.verticallyStretchable ?? undefined}
       data-fx-style-variant={node.styleReference?.variantId ?? undefined}
       data-fx-role={node.role ?? undefined}
+      style={flowStyle}
       tabIndex={flowInspector.tabIndex}
       onClick={flowInspector.onClick}
       onFocus={flowInspector.onFocus}
@@ -438,6 +467,7 @@ export function GuiWindow({
   title,
   children,
   bodyChildren = [],
+  bodyStyleReference = null,
   className = "",
   anchor = "gui_window",
   inspectorActive = false,
@@ -527,6 +557,7 @@ export function GuiWindow({
     builderDropTarget.parentId === bodyAnchor
     ? "is-builder-drop-parent"
     : "";
+  const bodyStyle = horizontalFlowStyleVariables(bodyStyleReference);
 
   return (
     <section
@@ -669,6 +700,7 @@ export function GuiWindow({
         data-fx-horizontal-spacing={styleReference.bodyHorizontalSpacing ?? undefined}
         data-fx-vertical-spacing={styleReference.bodyVerticalSpacing ?? undefined}
         data-fx-maximum-vertical-squash-size={styleReference.maximumVerticalSquashSize}
+        style={bodyStyle}
         tabIndex={bodyInspector.tabIndex}
         onMouseEnter={bodyInspector.onMouseEnter}
         onMouseMove={bodyInspector.onMouseMove}

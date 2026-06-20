@@ -602,7 +602,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: "frame_header_flow / inset_frame_container_horizontal_flow / generic-horizontal-flow / header-action-group role",
         source: "blueprint-library-horizontal-flow-captures"
       }),
-      field("generic editor-created variant", "implemented", "The no-code builder creates empty Horizontal Flow specs that hydrate to `style = horizontal_flow` with base spacing and no captured fixture dimensions.", {
+      field("generic editor-created variant", "implemented", "The no-code builder creates empty Horizontal Flow specs that hydrate to `style = horizontal_flow` with authored Settings panel values for spacing, minimal width/height, padding, and stretch flags. These are editor-owned assumptions until Factorio defaults are proven.", {
         type: styleName,
         example: "generic-horizontal-flow",
         source: "no-code-horizontal-flow-builder"
@@ -672,7 +672,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: "SearchBar 36x36, HorizontalFlow 72x36, CloseButton 36x36",
         source: "blueprint-library-header-flow"
       }),
-      field("Lua export", "implemented", "Current Horizontal Flow nodes export as `type = \"flow\"` with `direction = \"horizontal\"`, stable names, styles, and supported explicit style assignments.", {
+      field("Lua export", "implemented", "Current Horizontal Flow nodes export as `type = \"flow\"` with `direction = \"horizontal\"`, stable names, styles, and supported explicit style assignments. Generic builder flows export their authored spacing, minimal size, padding, and stretch settings.", {
         type: string,
         example: "parent.add{type=\"flow\", direction=\"horizontal\", style=\"frame_header_flow\"}",
         source: "editor-export"

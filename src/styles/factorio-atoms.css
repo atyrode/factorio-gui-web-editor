@@ -798,14 +798,18 @@
   box-sizing: border-box;
   position: relative;
   flex: 1 1 0;
-  min-width: 168px;
-  min-height: 100%;
-  padding: 8px;
+  min-width: var(--fx-horizontal-flow-min-width, 168px);
+  min-height: var(--fx-horizontal-flow-min-height, 72px);
+  padding:
+    var(--fx-horizontal-flow-padding-top, 8px)
+    var(--fx-horizontal-flow-padding-right, 8px)
+    var(--fx-horizontal-flow-padding-bottom, 8px)
+    var(--fx-horizontal-flow-padding-left, 8px);
   display: flex;
   flex-direction: row;
   align-items: stretch;
   align-self: stretch;
-  gap: 6px;
+  gap: var(--fx-horizontal-flow-horizontal-spacing, 6px);
   overflow: auto;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
@@ -822,8 +826,7 @@
 }
 
 .fx-gui-horizontal-flow .fx-gui-horizontal-flow {
-  min-width: 144px;
-  min-height: 100%;
+  min-width: var(--fx-horizontal-flow-min-width, 144px);
 }
 
 .fx-gui-window__body.is-builder-drop-parent,
@@ -856,7 +859,7 @@
 }
 
 .fx-gui-flow-drop-slot.is-active {
-  flex: 1 0 168px;
+  flex: 1 0 var(--fx-horizontal-flow-child-min-width, 168px);
 }
 
 .fx-gui-flow-drop-slot .fx-builder-ghost {

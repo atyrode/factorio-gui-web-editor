@@ -48,6 +48,11 @@ The editor rail contains three pinned sections:
   Ctrl+F6 style inspector toggle
   Lua output toggle
   selected node details
+
+[Settings]
+  collapsed by default
+  Horizontal Flow authored values
+  Reset defaults
 ```
 
 The canvas remains the visual preview. It accepts drops into the Window body
@@ -56,6 +61,11 @@ is not a builder drop target.
 
 The Builder tree is the only structure navigator. It has a bounded height and
 scrolls when nested flows would otherwise crowd the Inspector.
+
+The Settings panel is the last section in the editor rail and is collapsed by
+default. It owns authored Horizontal Flow assumptions until Factorio defaults
+are proven. It currently controls generic flow spacing, top-level minimum
+width, nested minimum width, minimum height, and padding.
 
 ## Data Contract
 
@@ -80,7 +90,13 @@ The persisted editor state stores only constrained specs:
 The model hydrates these specs into Factorio nodes only when rendering,
 inspecting, or exporting. The generic editor-created variant maps to
 `type = "flow"`, `direction = "horizontal"`, `style = "horizontal_flow"`, and
-`horizontal_spacing = 6`.
+the current Settings panel values for spacing, `minimal_width`,
+`minimal_height`, padding, and stretch behavior.
+
+Renderer CSS reads those hydrated style facts through custom properties. Lua
+export writes the same supported style assignments onto each editor-created
+Horizontal Flow, preserving current 1:1 editor-to-Lua compatibility for this
+slice without treating CSS as source of truth.
 
 ## Drop Rules
 
@@ -111,6 +127,8 @@ inspecting, or exporting. The generic editor-created variant maps to
 ## Stable Anchors
 
 - `builder_panel`
+- `layout_settings_panel`
+- `layout_settings_toggle`
 - `horizontal_flow_palette_item`
 - `builder_body_tree`
 - `builder_ghost_marker`

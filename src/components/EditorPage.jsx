@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
+import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import {
   FxActionButton,
   FxButton,
@@ -31,6 +32,12 @@ import {
   readBuilderDrag,
   readBuilderDropTarget
 } from "../factorioBuilderDnd.js";
+import {
+  DEFAULT_LAYOUT_SETTINGS,
+  LAYOUT_SETTING_LIMITS,
+  isDefaultLayoutSettings,
+  normalizeLayoutSettings
+} from "../factorioEditorSettings.js";
 import { BuilderPanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
@@ -49,6 +56,8 @@ const DEFAULT_EDITOR_STATE = {
   showLuaOutput: true,
   inspectorLocked: false,
   inspectedAnchor: null,
+  showLayoutSettings: false,
+  layoutSettings: DEFAULT_LAYOUT_SETTINGS,
   sidebarWidth: 280
 };
 
@@ -123,6 +132,8 @@ function readCachedEditorState() {
         Boolean(parsedValue.inspectorLocked) && typeof parsedValue.inspectedAnchor === "string"
           ? parsedValue.inspectedAnchor
           : null,
+      showLayoutSettings: Boolean(parsedValue.showLayoutSettings),
+      layoutSettings: normalizeLayoutSettings(parsedValue.layoutSettings),
       sidebarWidth: clampSidebarWidth(
         Number(parsedValue.sidebarWidth ?? DEFAULT_EDITOR_STATE.sidebarWidth)
       )
@@ -293,6 +304,7 @@ function EditorCanvas({
     .filter(Boolean)
     .join(" ");
   const bodyChildren = model?.root?.children?.[1]?.children ?? [];
+  const bodyStyleReference = model?.root?.children?.[1]?.styleReference ?? null;
 
   return (
     <div className="fx-editor-canvas" data-anchor="editor_canvas" ref={canvasRef}>
@@ -313,6 +325,7 @@ function EditorCanvas({
           onTitlebarPointerUp={endWindowDrag}
           onTitlebarPointerCancel={endWindowDrag}
           bodyChildren={bodyChildren}
+          bodyStyleReference={bodyStyleReference}
           builderDragActive={builderDragActive}
           builderDropTarget={builderDropTarget}
           builderDraggingId={builderDraggingId}
@@ -366,6 +379,91 @@ function BuilderDragPreview({ source }) {
       <span>Horizontal Flow</span>
       <code>{drag.kind === "node" ? drag.sourceId : "flow.horizontal"}</code>
     </div>
+  );
+}
+
+const LAYOUT_SETTING_FIELDS = Object.freeze([
+  {
+    key: "horizontalFlowSpacing",
+    label: "Flow spacing",
+    anchor: "layout_setting_horizontal_flow_spacing"
+  },
+  {
+    key: "horizontalFlowMinimumWidth",
+    label: "Min width",
+    anchor: "layout_setting_horizontal_flow_min_width"
+  },
+  {
+    key: "nestedHorizontalFlowMinimumWidth",
+    label: "Nested min width",
+    anchor: "layout_setting_nested_horizontal_flow_min_width"
+  },
+  {
+    key: "horizontalFlowMinimumHeight",
+    label: "Min height",
+    anchor: "layout_setting_horizontal_flow_min_height"
+  },
+  {
+    key: "horizontalFlowPadding",
+    label: "Padding",
+    anchor: "layout_setting_horizontal_flow_padding"
+  }
+]);
+
+function LayoutSettingsPanel({
+  expanded,
+  onToggle,
+  settings,
+  onChange,
+  onReset
+}) {
+  const normalizedSettings = normalizeLayoutSettings(settings);
+  const ToggleIcon = expanded ? ChevronDown : ChevronRight;
+
+  return (
+    <FxFrame className="fx-editor-panel fx-layout-settings" data-anchor="layout_settings_panel">
+      <button
+        aria-expanded={expanded}
+        className="fx-layout-settings__toggle"
+        data-anchor="layout_settings_toggle"
+        onClick={onToggle}
+        type="button"
+      >
+        <SlidersHorizontal aria-hidden="true" />
+        <span>Settings</span>
+        <ToggleIcon aria-hidden="true" />
+      </button>
+      {expanded ? (
+        <>
+          <div className="fx-layout-settings__grid">
+            {LAYOUT_SETTING_FIELDS.map((field) => {
+              const limits = LAYOUT_SETTING_LIMITS[field.key];
+              return (
+                <label className="fx-field" data-anchor={field.anchor} key={field.key}>
+                  <span>{field.label}</span>
+                  <FxTextInput
+                    max={limits.max}
+                    min={limits.min}
+                    onChange={(event) => onChange(field.key, event.target.value)}
+                    step="1"
+                    type="number"
+                    value={normalizedSettings[field.key]}
+                  />
+                </label>
+              );
+            })}
+          </div>
+          <div className="fx-actions">
+            <FxButton
+              disabled={isDefaultLayoutSettings(normalizedSettings)}
+              onClick={onReset}
+            >
+              Reset defaults
+            </FxButton>
+          </div>
+        </>
+      ) : null}
+    </FxFrame>
   );
 }
 
@@ -784,9 +882,17 @@ export function EditorPage() {
     showLuaOutput,
     inspectorLocked,
     inspectedAnchor,
+    showLayoutSettings,
+    layoutSettings,
     sidebarWidth
   } = editorState;
-  const currentModel = currentWindow ? createWindowModel(currentWindow) : null;
+  const normalizedLayoutSettings = normalizeLayoutSettings(layoutSettings);
+  const currentModel = currentWindow
+    ? createWindowModel({
+        ...currentWindow,
+        layoutSettings: normalizedLayoutSettings
+      })
+    : null;
 
   useEffect(() => {
     writeCachedEditorState(editorState);
@@ -872,6 +978,30 @@ export function EditorPage() {
     setEditorState((state) => ({
       ...state,
       showLuaOutput: event.target.checked
+    }));
+  }
+
+  function updateLayoutSetting(key, value) {
+    setEditorState((state) => ({
+      ...state,
+      layoutSettings: normalizeLayoutSettings({
+        ...state.layoutSettings,
+        [key]: value
+      })
+    }));
+  }
+
+  function resetLayoutSettings() {
+    setEditorState((state) => ({
+      ...state,
+      layoutSettings: DEFAULT_LAYOUT_SETTINGS
+    }));
+  }
+
+  function toggleLayoutSettings() {
+    setEditorState((state) => ({
+      ...state,
+      showLayoutSettings: !state.showLayoutSettings
     }));
   }
 
@@ -1392,6 +1522,13 @@ export function EditorPage() {
             onPointerUp={endSidebarResize}
             role="separator"
             tabIndex={0}
+          />
+          <LayoutSettingsPanel
+            expanded={showLayoutSettings}
+            onChange={updateLayoutSetting}
+            onReset={resetLayoutSettings}
+            onToggle={toggleLayoutSettings}
+            settings={normalizedLayoutSettings}
           />
         </aside>
 

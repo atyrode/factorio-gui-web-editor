@@ -14,7 +14,8 @@ import {
 } from "../src/factorioLayoutTree.js";
 import {
   createWindowModel,
-  getWindowInspectorRows
+  getWindowInspectorRows,
+  normalizeLayoutSettings
 } from "../src/factorioModel.js";
 import { renderWindowLua } from "../src/factorioExport.js";
 
@@ -107,6 +108,13 @@ assert.deepEqual(ids(removal.layoutChildren), ["gui_horizontal_flow_2"]);
 
 const model = createWindowModel({
   title: "Builder test",
+  layoutSettings: {
+    horizontalFlowSpacing: 10,
+    horizontalFlowMinimumWidth: 220,
+    nestedHorizontalFlowMinimumWidth: 120,
+    horizontalFlowMinimumHeight: 80,
+    horizontalFlowPadding: 12
+  },
   layoutChildren: [
     {
       id: "gui_horizontal_flow_1",
@@ -126,6 +134,25 @@ const model = createWindowModel({
 const body = model.root.children[1];
 assert.equal(body.children[0].id, "gui_horizontal_flow_1");
 assert.equal(body.children[0].children[0].id, "gui_horizontal_flow_2");
+assert.equal(body.styleReference.childMinimalWidth, 220);
+assert.equal(body.children[0].styleReference.horizontalSpacing, 10);
+assert.equal(body.children[0].styleReference.minimalWidth, 220);
+assert.equal(body.children[0].styleReference.minimalHeight, 80);
+assert.equal(body.children[0].styleReference.leftPadding, 12);
+assert.equal(body.children[0].children[0].styleReference.minimalWidth, 120);
+
+const normalizedSettings = normalizeLayoutSettings({
+  horizontalFlowSpacing: -1,
+  horizontalFlowMinimumWidth: 1000,
+  nestedHorizontalFlowMinimumWidth: 24,
+  horizontalFlowMinimumHeight: "not a number",
+  horizontalFlowPadding: 100
+});
+assert.equal(normalizedSettings.horizontalFlowSpacing, 0);
+assert.equal(normalizedSettings.horizontalFlowMinimumWidth, 800);
+assert.equal(normalizedSettings.nestedHorizontalFlowMinimumWidth, 48);
+assert.equal(normalizedSettings.horizontalFlowMinimumHeight, 72);
+assert.equal(normalizedSettings.horizontalFlowPadding, 64);
 
 const inspectorRows = getWindowInspectorRows(model);
 assert.ok(inspectorRows.some((row) => row.id === "gui_horizontal_flow_1"));
@@ -134,10 +161,15 @@ assert.ok(inspectorRows.some((row) => row.id === "gui_horizontal_flow_2"));
 const lua = renderWindowLua(model);
 assert.ok(lua.includes('name = "gui_horizontal_flow_1"'));
 assert.ok(lua.includes('name = "gui_horizontal_flow_2"'));
+assert.ok(lua.includes("gui_horizontal_flow_1.style.horizontal_spacing = 10"));
+assert.ok(lua.includes("gui_horizontal_flow_1.style.minimal_width = 220"));
+assert.ok(lua.includes("gui_horizontal_flow_1.style.minimal_height = 80"));
+assert.ok(lua.includes("gui_horizontal_flow_1.style.left_padding = 12"));
+assert.ok(lua.includes("gui_horizontal_flow_1.style.horizontally_stretchable = true"));
+assert.ok(lua.includes("gui_horizontal_flow_2.style.minimal_width = 120"));
 assert.ok(
   lua.indexOf('name = "gui_horizontal_flow_1"') <
     lua.indexOf('name = "gui_horizontal_flow_2"')
 );
 
 console.log("Layout tree checks passed.");
-

@@ -28,6 +28,7 @@ REQUIRED_FILES = [
     "src/styles/layout.css",
     "src/styles/style-atlas.css",
     "src/docs.js",
+    "src/factorioEditorSettings.js",
     "src/factorioLayoutTree.js",
     "src/main.jsx",
     "package.json",
@@ -60,6 +61,9 @@ REQUIRED_ANCHORS = [
     "gui_window_drag_handle",
     "gui_window_body",
     "builder_panel",
+    "layout_settings_panel",
+    "layout_settings_toggle",
+    "layout_setting_horizontal_flow_min_width",
     "horizontal_flow_palette_item",
     "builder_ghost_marker",
 ]

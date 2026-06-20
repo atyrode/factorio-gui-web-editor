@@ -19,6 +19,18 @@ function flowStyleAssignmentLines(variableName, node) {
   const styleReference = node?.styleReference ?? {};
   const lines = [];
 
+  for (const [field, luaField] of [
+    ["topPadding", "top_padding"],
+    ["rightPadding", "right_padding"],
+    ["leftPadding", "left_padding"],
+    ["minimalWidth", "minimal_width"],
+    ["minimalHeight", "minimal_height"]
+  ]) {
+    if (styleReference[field] != null) {
+      lines.push(`  ${variableName}.style.${luaField} = ${styleReference[field]}`);
+    }
+  }
+
   if (styleReference.bottomPadding != null) {
     lines.push(
       `  ${variableName}.style.bottom_padding = ${styleReference.bottomPadding}`
@@ -40,6 +52,12 @@ function flowStyleAssignmentLines(variableName, node) {
   if (styleReference.horizontallyStretchable != null) {
     lines.push(
       `  ${variableName}.style.horizontally_stretchable = ${styleReference.horizontallyStretchable}`
+    );
+  }
+
+  if (styleReference.verticallyStretchable != null) {
+    lines.push(
+      `  ${variableName}.style.vertically_stretchable = ${styleReference.verticallyStretchable}`
     );
   }
 

@@ -110,10 +110,38 @@ currentWindow.nextLayoutNodeNumber:
   next positive integer used to allocate stable flow ids
 ```
 
+The editor also persists authored layout settings at the editor-state level.
+These settings are project/editor assumptions, not captured Factorio defaults,
+until official docs or in-game captures prove otherwise:
+
+```text
+layoutSettings.horizontalFlowSpacing:
+  exported `horizontal_spacing` for editor-created Horizontal Flows
+
+layoutSettings.horizontalFlowMinimumWidth:
+  exported `minimal_width` for top-level editor-created Horizontal Flows
+
+layoutSettings.nestedHorizontalFlowMinimumWidth:
+  exported `minimal_width` for nested editor-created Horizontal Flows
+
+layoutSettings.horizontalFlowMinimumHeight:
+  exported `minimal_height` for editor-created Horizontal Flows
+
+layoutSettings.horizontalFlowPadding:
+  exported top/right/bottom/left padding for editor-created Horizontal Flows
+```
+
+The Settings panel lets those values be edited and reset to authored defaults.
+Renderer CSS reads the hydrated model style facts through custom properties; it
+does not store separate layout truth. Lua export writes the same supported
+`LuaStyle` assignments so the current Horizontal Flow builder slice remains
+structurally compatible with the generated Lua skeleton.
+
 Legacy cached windows normalize to an empty `layoutChildren` array with
 `nextLayoutNodeNumber: 1`. The editor-created `generic-horizontal-flow` variant
 hydrates to `primitive: flow`, `direction: horizontal`, `style:
-horizontal_flow`, and `horizontalSpacing: 6`. The Window body and user-created
+horizontal_flow`, the current `layoutSettings` values, and stretch flags that
+make sibling flows fill/split available space. The Window body and user-created
 Horizontal Flow nodes are legal parents. The Window root, titlebar, title
 label, drag filler, a moved node itself, and descendants of the moved node are
 not legal drop parents.

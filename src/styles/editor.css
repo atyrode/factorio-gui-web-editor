@@ -139,6 +139,83 @@
   font-size: 11px;
 }
 
+.fx-layout-settings {
+  flex: 0 0 auto;
+}
+
+.fx-layout-settings__toggle {
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 6px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 6px;
+  color: var(--fx-gold);
+  background: #302f30;
+  border: 1px solid #0a0a0a;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.55);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.fx-layout-settings__toggle:hover,
+.fx-layout-settings__toggle:focus-visible {
+  outline: 0;
+  background: #393839;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.10),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(227, 152, 39, 0.62);
+}
+
+.fx-layout-settings__toggle svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 3;
+}
+
+.fx-layout-settings__toggle span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-layout-settings__grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fx-layout-settings__grid .fx-field {
+  min-width: 0;
+}
+
+.fx-layout-settings__grid .fx-field:last-child {
+  grid-column: 1 / -1;
+}
+
+.fx-layout-settings__grid .fx-text-input {
+  height: 32px;
+  font-size: 15px;
+}
+
+.fx-layout-settings .fx-actions {
+  margin-top: 10px;
+}
+
+.fx-layout-settings .fx-button {
+  min-width: 0;
+  width: 100%;
+}
+
 .fx-builder-body {
   min-width: 0;
   min-height: 74px;

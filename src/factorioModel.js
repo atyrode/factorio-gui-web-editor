@@ -2,6 +2,10 @@ import {
   GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
   normalizeLayoutState
 } from "./factorioLayoutTree.js";
+import {
+  DEFAULT_LAYOUT_SETTINGS,
+  normalizeLayoutSettings
+} from "./factorioEditorSettings.js";
 
 export const FACTORIO_GUI_MODEL_SCHEMA = "factorio-gui-layout.v0";
 export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
@@ -17,6 +21,7 @@ export const WINDOW_SIZE_LIMITS = Object.freeze({
   minHeight: 180,
   maxHeight: 1200
 });
+export { DEFAULT_LAYOUT_SETTINGS, normalizeLayoutSettings };
 
 function freezeSize(size) {
   return Object.freeze({ width: size.width, height: size.height });
@@ -136,10 +141,17 @@ function freezeHorizontalFlowStyleReference(styleReference = {}) {
     inheritedHorizontalSpacing: styleReference.inheritedHorizontalSpacing ?? null,
     verticalSpacing: styleReference.verticalSpacing ?? null,
     inheritedVerticalSpacing: styleReference.inheritedVerticalSpacing ?? null,
+    topPadding: styleReference.topPadding ?? null,
+    rightPadding: styleReference.rightPadding ?? null,
     bottomPadding: styleReference.bottomPadding ?? null,
+    leftPadding: styleReference.leftPadding ?? null,
+    minimalWidth: styleReference.minimalWidth ?? null,
+    minimalHeight: styleReference.minimalHeight ?? null,
+    childMinimalWidth: styleReference.childMinimalWidth ?? null,
     horizontallyStretchable: styleReference.horizontallyStretchable ?? null,
     verticallyStretchable: styleReference.verticallyStretchable ?? null,
     ignoredBySearch: styleReference.ignoredBySearch ?? null,
+    editorOwned: Boolean(styleReference.editorOwned),
     maximumVerticalSquashSize: styleReference.maximumVerticalSquashSize ?? null
   });
 }
@@ -886,8 +898,36 @@ function getFrameDragHandleRelative(style, titleLabelWidth, caption) {
   };
 }
 
-function getFlowSpacingProperties(flowStyleReference) {
+function getFlowStyleProperties(flowStyleReference) {
   const properties = [];
+
+  if (flowStyleReference.minimalWidth != null) {
+    properties.push({
+      label: "minimal_width",
+      value: flowStyleReference.minimalWidth
+    });
+  }
+
+  if (flowStyleReference.minimalHeight != null) {
+    properties.push({
+      label: "minimal_height",
+      value: flowStyleReference.minimalHeight
+    });
+  }
+
+  if (flowStyleReference.horizontallyStretchable != null) {
+    properties.push({
+      label: "horizontally_stretchable",
+      value: onOff(flowStyleReference.horizontallyStretchable)
+    });
+  }
+
+  if (flowStyleReference.verticallyStretchable != null) {
+    properties.push({
+      label: "vertically_stretchable",
+      value: onOff(flowStyleReference.verticallyStretchable)
+    });
+  }
 
   if (flowStyleReference.horizontalSpacing != null) {
     properties.push({
@@ -917,6 +957,21 @@ function getFlowSpacingProperties(flowStyleReference) {
       value: flowStyleReference.inheritedVerticalSpacing,
       indent: 1
     });
+  }
+
+  for (const [label, value] of [
+    ["top_padding", flowStyleReference.topPadding],
+    ["right_padding", flowStyleReference.rightPadding],
+    ["bottom_padding", flowStyleReference.bottomPadding],
+    ["left_padding", flowStyleReference.leftPadding]
+  ]) {
+    if (value != null) {
+      properties.push({
+        label,
+        value,
+        indent: 1
+      });
+    }
   }
 
   return properties;
@@ -980,8 +1035,12 @@ function modelNodeChildRows(children = []) {
   ];
 }
 
-function createLayoutHorizontalFlowNode(spec) {
+function createLayoutHorizontalFlowNode(spec, layoutSettings, depth = 0) {
   const variant = horizontalFlowStyleVariants.generic;
+  const minimalWidth =
+    depth === 0
+      ? layoutSettings.horizontalFlowMinimumWidth
+      : layoutSettings.nestedHorizontalFlowMinimumWidth;
 
   return createHorizontalFlowNode({
     id: spec.id,
@@ -992,13 +1051,22 @@ function createLayoutHorizontalFlowNode(spec) {
     role: variant.role,
     styleReference: {
       variantId: variant.id,
-      horizontalSpacing: variant.horizontalSpacing,
+      horizontalSpacing: layoutSettings.horizontalFlowSpacing,
       inheritedHorizontalSpacing: null,
-      horizontallyStretchable: null,
-      verticallyStretchable: null,
+      topPadding: layoutSettings.horizontalFlowPadding,
+      rightPadding: layoutSettings.horizontalFlowPadding,
+      bottomPadding: layoutSettings.horizontalFlowPadding,
+      leftPadding: layoutSettings.horizontalFlowPadding,
+      minimalWidth,
+      minimalHeight: layoutSettings.horizontalFlowMinimumHeight,
+      childMinimalWidth: layoutSettings.nestedHorizontalFlowMinimumWidth,
+      horizontallyStretchable: true,
+      verticallyStretchable: true,
       ignoredBySearch: false
     },
-    children: spec.children.map(createLayoutHorizontalFlowNode)
+    children: spec.children.map((child) =>
+      createLayoutHorizontalFlowNode(child, layoutSettings, depth + 1)
+    )
   });
 }
 
@@ -1018,7 +1086,7 @@ function createLayoutHorizontalFlowInspectorRows(node) {
       sizeBeforeStretching: FACTORIO_NOT_IMPLEMENTED,
       maximumHorizontalSquashSize: FACTORIO_NOT_IMPLEMENTED,
       maximumVerticalSquashSize: FACTORIO_NOT_IMPLEMENTED,
-      properties: getFlowSpacingProperties(node.styleReference),
+      properties: getFlowStyleProperties(node.styleReference),
       childRows: childRows.length ? childRows : [{ label: "children", value: "" }]
     },
     ...node.children.flatMap(createLayoutHorizontalFlowInspectorRows)
@@ -1055,7 +1123,8 @@ export function createWindowModel({
   location: sourceLocation = null,
   referenceId = DEFAULT_WINDOW_REFERENCE_ID,
   size = null,
-  layoutChildren = []
+  layoutChildren = [],
+  layoutSettings: sourceLayoutSettings = DEFAULT_LAYOUT_SETTINGS
 } = {}) {
   const caption = title.trim() || "Untitled window";
   const location = normalizeModelLocation(sourceLocation);
@@ -1073,9 +1142,12 @@ export function createWindowModel({
     caption
   );
   const normalizedLayout = normalizeLayoutState({ layoutChildren });
+  const layoutSettings = normalizeLayoutSettings(sourceLayoutSettings);
   const hydratedLayoutChildren =
     styleReference.bodyDirection === HORIZONTAL_FLOW_DIRECTION
-      ? normalizedLayout.layoutChildren.map(createLayoutHorizontalFlowNode)
+      ? normalizedLayout.layoutChildren.map((node) =>
+          createLayoutHorizontalFlowNode(node, layoutSettings, 0)
+        )
       : [];
   const bodyStyleReference = {
     variantId:
@@ -1086,6 +1158,7 @@ export function createWindowModel({
     inheritedHorizontalSpacing: styleReference.bodyInheritedHorizontalSpacing,
     verticalSpacing: styleReference.bodyVerticalSpacing,
     inheritedVerticalSpacing: styleReference.bodyInheritedVerticalSpacing,
+    childMinimalWidth: layoutSettings.horizontalFlowMinimumWidth,
     horizontallyStretchable: true,
     maximumVerticalSquashSize: styleReference.maximumVerticalSquashSize
   };
@@ -1426,7 +1499,7 @@ export function getWindowInspectorRows(model) {
       sizeBeforeStretching: sizePair(bodySizeBeforeStretching),
       maximumHorizontalSquashSize: 0,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
-      properties: getFlowSpacingProperties(body.styleReference),
+      properties: getFlowStyleProperties(body.styleReference),
       childRows: bodyChildRows
     },
     ...body.children.flatMap(createLayoutHorizontalFlowInspectorRows)
