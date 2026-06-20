@@ -1034,11 +1034,27 @@ function modelNodeChildRows(children = []) {
     { label: "children", value: "" },
     ...children.map((child) => ({
       label: `class ${child.className ?? "agui::Element"}`,
-      value: FACTORIO_NOT_IMPLEMENTED,
+      value: modelNodeChildSummary(child),
       indent: 1,
       targetId: child.id
     }))
   ];
+}
+
+function modelNodeChildSummary(child) {
+  if (child?.primitive === "flow" && child.direction === HORIZONTAL_FLOW_DIRECTION) {
+    return "flow.horizontal";
+  }
+
+  if (child?.primitive && child.direction) {
+    return `${child.primitive}.${child.direction}`;
+  }
+
+  if (child?.primitive) {
+    return child.primitive;
+  }
+
+  return FACTORIO_NOT_IMPLEMENTED;
 }
 
 function createLayoutHorizontalFlowNode(spec, layoutSettings, depth = 0) {

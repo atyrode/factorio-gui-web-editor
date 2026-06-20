@@ -764,7 +764,7 @@ export const factorioAtomRegistry = Object.freeze([
         dimension: "renderer",
         state: "done",
         label: "Inspector rows are structured projections",
-        note: "Header/body flow rows, spacing, geometry, squash fields, and child rows come from model reference data, not parsed DOM text."
+        note: "Header/body flow rows, spacing, geometry, squash fields, and child rows come from model reference data, not parsed DOM text. Implemented child flows navigate as `flow.horizontal`; unknown runtime geometry remains explicit."
       }),
       progressCheck({
         dimension: "renderer",
@@ -879,7 +879,7 @@ export const factorioAtomRegistry = Object.freeze([
         "Official Factorio primitive mapping uses `flow` with fixed `direction = \"horizontal\"` for this atom.",
         "Header/body/action-group roles and the generic builder flow are style variants of one Horizontal Flow atom.",
         "Model nodes carry stable ids, class/style, fixed direction, style-reference spacing/padding/stretch/search fields, and ordered children.",
-        "Renderer and inspector expose titlebar/body Horizontal Flow facts from structured model data.",
+        "Renderer and inspector expose titlebar/body Horizontal Flow facts from structured model data, with implemented nested child flows shown as navigable atom references.",
         "Lua export emits valid Factorio `flow` nodes with stable names, styles, horizontal direction, and supported explicit style assignments.",
         "The no-code builder can add, nest, reorder, inspect, render, and export empty generic Horizontal Flow nodes.",
         "Window remains complete for current shell scope and is not reopened by this pass."

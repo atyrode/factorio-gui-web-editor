@@ -163,6 +163,16 @@ assert.equal(normalizedSettings.horizontalFlowPadding, 64);
 const inspectorRows = getWindowInspectorRows(model);
 assert.ok(inspectorRows.some((row) => row.id === "gui_horizontal_flow_1"));
 assert.ok(inspectorRows.some((row) => row.id === "gui_horizontal_flow_2"));
+const bodyInspectorRow = inspectorRows.find((row) => row.id === "gui_window_body");
+const rootFlowChildRow = bodyInspectorRow.childRows.find(
+  (row) => row.targetId === "gui_horizontal_flow_1"
+);
+assert.equal(rootFlowChildRow.value, "flow.horizontal");
+const rootFlowInspectorRow = inspectorRows.find((row) => row.id === "gui_horizontal_flow_1");
+const nestedFlowChildRow = rootFlowInspectorRow.childRows.find(
+  (row) => row.targetId === "gui_horizontal_flow_2"
+);
+assert.equal(nestedFlowChildRow.value, "flow.horizontal");
 
 const lua = renderWindowLua(model);
 assert.ok(lua.includes('name = "gui_horizontal_flow_1"'));

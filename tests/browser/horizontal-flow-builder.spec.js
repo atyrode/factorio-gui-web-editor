@@ -140,17 +140,35 @@ function expectRectClose(actual, expected, label) {
   expect(roundedRect(actual), label).toEqual(roundedRect(expected));
 }
 
+function expectSharedFlowSize(actual, expected, label) {
+  const actualRect = roundedRect(actual);
+  const expectedRect = roundedRect(expected);
+  expect(
+    {
+      top: actualRect.top,
+      width: actualRect.width,
+      height: actualRect.height
+    },
+    label
+  ).toEqual({
+    top: expectedRect.top,
+    width: expectedRect.width,
+    height: expectedRect.height
+  });
+}
+
 test.describe("Horizontal Flow builder canvas preview", () => {
   test("matches final geometry when inserting left of one existing flow", async ({ page }) => {
     await seedOneFlowWindow(page);
     await dragPaletteToBodyStart(page);
 
     const hover = await measureHover(page);
-    expectRectClose(
+    expectSharedFlowSize(
       hover.preview,
       hover.existing,
-      "hover preview and shifted existing flow should split the body equally"
+      "hover preview and shifted existing flow should split the body into equal-sized siblings"
     );
+    expect(hover.preview.left).toBeLessThan(hover.existing.left);
     expect(hover.previewPaddingLeft).toBe(hover.existingPaddingLeft);
     expect(hover.previewPaddingRight).toBe(hover.existingPaddingRight);
     expect(hover.previewMinHeight).toBe(hover.existingMinHeight);

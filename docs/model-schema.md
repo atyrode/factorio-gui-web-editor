@@ -254,7 +254,10 @@ editable: optional mutation target for values the editor owns
 ```
 
 Missing known fields should still render as `not implemented` instead of being
-omitted. This keeps gaps visible while the model is incomplete.
+omitted. This keeps gaps visible while the model is incomplete. Child rows are
+not missing when they reference an implemented atom: they should keep `targetId`
+navigation and show the child atom identity, such as `flow.horizontal`, instead
+of a missing-value placeholder.
 
 Inspector navigation uses `targetId` references. Hovering a child reference
 temporarily highlights the target node in the preview; clicking it locks the

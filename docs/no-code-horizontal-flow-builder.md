@@ -29,6 +29,9 @@ layout.
 - Remove a Horizontal Flow subtree.
 - Select a builder row and inspect the same model node in the inspector,
   Builder tree, canvas, and Lua output.
+- Navigate implemented Horizontal Flow children from the Inspector. Child rows
+  display `flow.horizontal` and target the child node instead of using a missing
+  placeholder.
 
 ## Information Architecture
 
