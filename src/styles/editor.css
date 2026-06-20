@@ -49,6 +49,14 @@
   margin-bottom: 12px;
 }
 
+.fx-editor-panel .fx-field-grid {
+  margin-bottom: 12px;
+}
+
+.fx-editor-panel .fx-field-grid .fx-field {
+  margin-bottom: 0;
+}
+
 .fx-editor-panel--inspector {
   flex: 1 1 auto;
   min-height: 0;

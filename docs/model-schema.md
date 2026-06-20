@@ -73,8 +73,8 @@ root agui::Window frame
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new
 Window fits the canvas instead of copying one arbitrary in-game GUI instance.
-Future New Window controls should let the user adjust authored width and height
-from that sensible default.
+New Window controls let the user adjust authored width and height from that
+sensible default.
 The model also carries in-game capture fixtures: the Blueprint Library capture
 has outer size `1476 x 870`, content size `1440 x 840`, and clip size
 `{{0, -4}, {1476, 874}}`; Factoriopedia and filter-selection references cover

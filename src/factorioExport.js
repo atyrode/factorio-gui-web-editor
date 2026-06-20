@@ -1,7 +1,10 @@
 export {
   createWindowModel,
+  DEFAULT_WINDOW_SIZE,
   frameStyleReference,
-  getWindowInspectorRows
+  getWindowInspectorRows,
+  normalizeWindowSize,
+  WINDOW_SIZE_LIMITS
 } from "./factorioModel.js";
 
 function luaString(value) {
@@ -68,6 +71,8 @@ ${locationLua}
   ${frame}.style.bottom_padding = ${style.bottomPadding}
   ${frame}.style.left_padding = ${style.leftPadding}
   ${frame}.style.use_header_filler = ${style.useHeaderFiller}
+  ${frame}.style.width = ${style.capturedSize.width}
+  ${frame}.style.height = ${style.capturedSize.height}
 
   local ${titlebar} = ${frame}.add{
     type = "flow",

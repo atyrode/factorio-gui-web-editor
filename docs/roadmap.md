@@ -159,9 +159,9 @@ with a title bar, reserved drag handle, and empty body.
 ```
 
 The initial `680 x 480` reference size is an authored editor default, not a
-vanilla GUI capture. A near-term Window editor improvement is to expose width
-and height controls in the New Window section while keeping vanilla captures as
-internal evidence, not user-facing presets.
+vanilla GUI capture. The Window editor exposes width and height controls in the
+New Window section while keeping vanilla captures as internal evidence, not
+user-facing presets.
 
 The first model does not need to represent all Factorio style fields. It should
 represent the captured top-level `frame`, `frame_header_flow`,

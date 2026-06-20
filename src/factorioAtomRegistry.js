@@ -72,9 +72,9 @@ export const factorioAtomRegistry = Object.freeze([
         example: "Blueprint root [0, 0], Factoriopedia samples [388, 106] / [382, 220] / [1142, 315]",
         source: "blueprint-library-window"
       }),
-      field("size", "implemented", "Editor-created Windows use an authored default size that fits the preview; captured in-game sizes remain reference fixtures.", {
+      field("size", "implemented", "Editor-created Windows use adjustable authored width/height with a preview-friendly default; captured in-game sizes remain reference fixtures.", {
         type: size2i,
-        example: "editor default {680, 480}; Blueprint capture {1476, 870}",
+        example: "editor default {680, 480}; adjustable; Blueprint capture {1476, 870}",
         source: "window-reference-captures"
       }),
       field("content_size", "captured", "Renderer-computed content box. For ordinary frame-derived roots, it equals outer size minus the 6 px graphical frame band on each side and inspected padding.", {
@@ -137,9 +137,9 @@ export const factorioAtomRegistry = Object.freeze([
         example: "editor-default-window / blueprint-library-window / factoriopedia-root-window / filter-select-root-window",
         source: "window-reference-captures"
       }),
-      field("size controls", "planned", "New Window creation should expose authored width/height controls using sensible defaults, rather than copying a vanilla GUI capture size.", {
+      field("size controls", "implemented", "New Window creation exposes authored width/height controls using sensible defaults, rather than copying a vanilla GUI capture size.", {
         type: size2i,
-        example: "default 680 x 480; user adjustable later",
+        example: "default 680 x 480; width/height inputs",
         source: "operator-decision"
       }),
       field("variant layout solver", "planned", "Future variants still need rules for width, side-frame edge removal, pre-stretch height, and squash-size calculation. These are deferred until the editor needs those GUI families."),
@@ -543,6 +543,7 @@ export const factorioAtomRegistry = Object.freeze([
       implemented: [
         "Editor creates a top-level frame with a titlebar, draggable filler, title label, and body flow.",
         "Editor-created Windows use an authored default reference size instead of a copied in-game capture size.",
+        "New Window controls allow authored width and height adjustments from the default size.",
         "Inspector rows expose Window class/style/padding/sizing fields from structured data.",
         "Reference Window geometry derives content, clip, titlebar, and body sizes from named Window reference captures.",
         "Reference captures carry UI-scale context and moved-root relative samples where known.",
@@ -558,18 +559,16 @@ export const factorioAtomRegistry = Object.freeze([
         "`maximum_vertical_squash_size` appears content- and variant-dependent, possibly related to maximal height, so capture values are carried without generalizing them to authored Windows."
       ],
       hardcoded: [
-        "The editor-authored default Window size is fixed at 680 x 480 until size controls exist.",
+        "The editor-authored default Window size starts at 680 x 480.",
         "Browser CSS paints the frame bevel manually from captured visuals."
       ],
-      missing: [
-        "Adjustable width/height controls in the New Window creation section.",
-        "UI for inserting child atoms into the Window body once those child atoms are implemented.",
-        "Lua-in-Factorio validation after enough atoms exist to build a meaningful test GUI."
-      ],
+      missing: [],
       deferred: [
         "No vanilla capture preset selector is planned for the current editor; captures stay internal evidence.",
         "`maximal_height` and `maximum_vertical_squash_size` derivation waits for GUI-scale/viewport emulation.",
-        "Side-frame variants remain captured evidence until the editor intentionally supports side-pane GUI families."
+        "Side-frame variants remain captured evidence until the editor intentionally supports side-pane GUI families.",
+        "Child insertion waits until child atoms are implemented.",
+        "Lua-in-Factorio validation waits until enough atoms exist to build a meaningful test GUI."
       ]
     }
   }),

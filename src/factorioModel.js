@@ -4,9 +4,39 @@ export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
 const FRAME_GRAPHICAL_BORDER = 6;
 const FRAME_CLIP_TOP_OVERFLOW = 4;
 export const DEFAULT_WINDOW_REFERENCE_ID = "editor-default-window";
+export const DEFAULT_WINDOW_SIZE = Object.freeze({ width: 680, height: 480 });
+export const WINDOW_SIZE_LIMITS = Object.freeze({
+  minWidth: 320,
+  maxWidth: 1600,
+  minHeight: 180,
+  maxHeight: 1200
+});
 
 function freezeSize(size) {
   return Object.freeze({ width: size.width, height: size.height });
+}
+
+function clampInteger(value, min, max, fallback) {
+  const numberValue = Number(value);
+  const safeValue = Number.isFinite(numberValue) ? numberValue : fallback;
+  return Math.min(max, Math.max(min, Math.round(safeValue)));
+}
+
+export function normalizeWindowSize(size = DEFAULT_WINDOW_SIZE) {
+  return freezeSize({
+    width: clampInteger(
+      size?.width,
+      WINDOW_SIZE_LIMITS.minWidth,
+      WINDOW_SIZE_LIMITS.maxWidth,
+      DEFAULT_WINDOW_SIZE.width
+    ),
+    height: clampInteger(
+      size?.height,
+      WINDOW_SIZE_LIMITS.minHeight,
+      WINDOW_SIZE_LIMITS.maxHeight,
+      DEFAULT_WINDOW_SIZE.height
+    )
+  });
 }
 
 function freezeOptionalSize(size) {
@@ -95,6 +125,85 @@ function frameContentSize({
   return freezeSize({
     width: outerSize.width - graphicalBorder * 2 - leftPadding - rightPadding,
     height: outerSize.height - graphicalBorder * 2 - topPadding - bottomPadding
+  });
+}
+
+function windowReferenceWithAuthoredSize(reference, size) {
+  if (!size) {
+    return reference;
+  }
+
+  const capturedSize = normalizeWindowSize(size);
+  const capturedContentSize = frameContentSize({
+    outerSize: capturedSize,
+    graphicalBorder: FRAME_GRAPHICAL_BORDER,
+    topPadding: reference.padding.top,
+    rightPadding: reference.padding.right,
+    bottomPadding: reference.padding.bottom,
+    leftPadding: reference.padding.left
+  });
+  const capturedClipSize = frameClipSize({ outerSize: capturedSize });
+  const titlebarHeight = reference.header.capturedSize?.height ?? 48;
+  const bodySize = freezeSize({
+    width: capturedContentSize.width,
+    height: Math.max(0, capturedContentSize.height - titlebarHeight)
+  });
+
+  return Object.freeze({
+    ...reference,
+    referenceTitle: null,
+    captureContext: Object.freeze({
+      ...(reference.captureContext ?? {}),
+      source: "editor-authored size"
+    }),
+    capturedSize,
+    capturedContentSize,
+    capturedClipSize,
+    capturedSizeBeforeStretching: capturedSize,
+    capturedMaximalHeight: null,
+    maximumHorizontalSquashSize: 0,
+    maximumVerticalSquashSize: 0,
+    header: freezeHeaderCapture({
+      className: reference.header.className,
+      style: reference.header.style,
+      styleDescription: reference.header.styleDescription,
+      derivedFrom: reference.header.derivedFrom,
+      relative: reference.header.relative,
+      capturedSize: { width: capturedContentSize.width, height: titlebarHeight },
+      capturedContentSize: {
+        width: capturedContentSize.width,
+        height: reference.header.capturedContentSize?.height ?? 42
+      },
+      capturedClipSize: {
+        offset: { x: 0, y: -FRAME_CLIP_TOP_OVERFLOW },
+        size: {
+          width: capturedContentSize.width,
+          height: titlebarHeight + FRAME_CLIP_TOP_OVERFLOW
+        }
+      },
+      capturedSizeBeforeStretching: null,
+      maximumHorizontalSquashSize: null,
+      maximumVerticalSquashSize: 0,
+      horizontalSpacing: reference.header.horizontalSpacing,
+      inheritedHorizontalSpacing: reference.header.inheritedHorizontalSpacing,
+      bottomPadding: reference.header.bottomPadding,
+      horizontallyStretchable: reference.header.horizontallyStretchable,
+      verticallyStretchable: reference.header.verticallyStretchable,
+      ignoredBySearch: reference.header.ignoredBySearch
+    }),
+    body: Object.freeze({
+      ...reference.body,
+      capturedSize: bodySize,
+      capturedContentSize: bodySize,
+      capturedClipSize: freezeRectangle({
+        offset: { x: 0, y: 0 },
+        size: bodySize
+      }),
+      capturedSizeBeforeStretching: bodySize,
+      maximumHorizontalSquashSize: 0,
+      maximumVerticalSquashSize: 0,
+      childRows: Object.freeze([...(reference.body.childRows ?? [])])
+    })
   });
 }
 
@@ -776,11 +885,18 @@ function normalizeModelLocation(location) {
 export function createWindowModel({
   title = "Untitled window",
   location: sourceLocation = null,
-  referenceId = DEFAULT_WINDOW_REFERENCE_ID
+  referenceId = DEFAULT_WINDOW_REFERENCE_ID,
+  size = null
 } = {}) {
   const caption = title.trim() || "Untitled window";
   const location = normalizeModelLocation(sourceLocation);
-  const styleReference = createFrameStyleReference(getWindowReferenceCapture(referenceId));
+  const authoredSize =
+    size ?? (referenceId === DEFAULT_WINDOW_REFERENCE_ID ? DEFAULT_WINDOW_SIZE : null);
+  const reference = windowReferenceWithAuthoredSize(
+    getWindowReferenceCapture(referenceId),
+    authoredSize ? normalizeWindowSize(authoredSize) : null
+  );
+  const styleReference = createFrameStyleReference(reference);
   const titleLabelWidth = getFrameTitleLabelWidth(styleReference, caption);
   const dragHandleWidth = getFrameDragHandleWidth(
     styleReference,

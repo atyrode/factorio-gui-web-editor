@@ -9,8 +9,11 @@ import {
 } from "./factorioGui.jsx";
 import {
   createWindowModel,
+  DEFAULT_WINDOW_SIZE,
   getWindowInspectorRows,
-  renderWindowLua
+  normalizeWindowSize,
+  renderWindowLua,
+  WINDOW_SIZE_LIMITS
 } from "../factorioExport.js";
 
 function windowTitle(value) {
@@ -23,6 +26,7 @@ const SIDEBAR_MAX_WIDTH = 640;
 const SIDEBAR_STAGE_MIN_WIDTH = 420;
 const DEFAULT_EDITOR_STATE = {
   title: "Untitled window",
+  windowSize: DEFAULT_WINDOW_SIZE,
   currentWindow: null,
   showInspector: false,
   showLuaOutput: true,
@@ -53,9 +57,12 @@ function normalizeWindow(value) {
     return null;
   }
 
+  const size = normalizeWindowSize(value.size);
+
   return {
     title: windowTitle(String(value.title ?? DEFAULT_EDITOR_STATE.title)),
-    location: normalizeLocation(value.location)
+    location: normalizeLocation(value.location),
+    size
   };
 }
 
@@ -81,9 +88,11 @@ function readCachedEditorState() {
     }
 
     const parsedValue = JSON.parse(rawValue);
+    const currentWindow = normalizeWindow(parsedValue.currentWindow);
     return {
       title: String(parsedValue.title ?? DEFAULT_EDITOR_STATE.title),
-      currentWindow: normalizeWindow(parsedValue.currentWindow),
+      windowSize: normalizeWindowSize(parsedValue.windowSize ?? currentWindow?.size),
+      currentWindow,
       showInspector: Boolean(parsedValue.showInspector),
       showLuaOutput:
         typeof parsedValue.showLuaOutput === "boolean"
@@ -113,6 +122,7 @@ function writeCachedEditorState(editorState) {
 
 function EditorCanvas({
   currentWindow,
+  model,
   inspectorActive,
   inspectorLocked,
   inspectedAnchor,
@@ -251,6 +261,7 @@ function EditorCanvas({
 
   const location = currentWindow?.location;
   const windowStyle = location ? { left: `${location.x}px`, top: `${location.y}px` } : undefined;
+  const styleReference = model?.root?.styleReference;
   const previewAnchor = inspectorPreview?.anchor ?? inspectedAnchor;
   const windowClassName = [
     "fx-editor-preview-window",
@@ -265,6 +276,7 @@ function EditorCanvas({
         <GuiWindow
           title={currentWindow.title}
           className={windowClassName}
+          styleReference={styleReference}
           inspectorActive={inspectorActive}
           inspectorLocked={inspectorLocked}
           inspectedAnchor={previewAnchor}
@@ -828,6 +840,7 @@ export function EditorPage() {
   const sidebarResizeRef = useRef(null);
   const {
     title,
+    windowSize,
     currentWindow,
     showInspector,
     showLuaOutput,
@@ -848,7 +861,8 @@ export function EditorPage() {
       ...state,
       currentWindow: {
         title: windowTitle(state.title),
-        location: state.currentWindow?.location ?? null
+        location: state.currentWindow?.location ?? null,
+        size: normalizeWindowSize(state.windowSize)
       },
       inspectorLocked: false,
       inspectedAnchor: null
@@ -875,6 +889,34 @@ export function EditorPage() {
         ? { ...state.currentWindow, title: windowTitle(nextTitle) }
         : null
     }));
+  }
+
+  function updateWindowSize(dimension, value) {
+    setEditorState((state) => {
+      const nextSize = normalizeWindowSize({
+        ...state.windowSize,
+        [dimension]: value
+      });
+
+      return {
+        ...state,
+        windowSize: nextSize,
+        currentWindow: state.currentWindow
+          ? {
+              ...state.currentWindow,
+              size: nextSize
+            }
+          : null
+      };
+    });
+  }
+
+  function updateWindowWidth(event) {
+    updateWindowSize("width", event.target.value);
+  }
+
+  function updateWindowHeight(event) {
+    updateWindowSize("height", event.target.value);
   }
 
   function updateInspectorEnabled(event) {
@@ -1121,10 +1163,35 @@ export function EditorPage() {
               type="text"
               value={title}
               autoComplete="off"
-              disabled={!currentWindow}
               onChange={updateTitle}
             />
           </label>
+          <div className="fx-field-grid fx-field-grid--two">
+            <label className="fx-field">
+              <span>Width</span>
+              <FxTextInput
+                id="window-width"
+                type="number"
+                min={WINDOW_SIZE_LIMITS.minWidth}
+                max={WINDOW_SIZE_LIMITS.maxWidth}
+                step="10"
+                value={windowSize.width}
+                onChange={updateWindowWidth}
+              />
+            </label>
+            <label className="fx-field">
+              <span>Height</span>
+              <FxTextInput
+                id="window-height"
+                type="number"
+                min={WINDOW_SIZE_LIMITS.minHeight}
+                max={WINDOW_SIZE_LIMITS.maxHeight}
+                step="10"
+                value={windowSize.height}
+                onChange={updateWindowHeight}
+              />
+            </label>
+          </div>
           <div className="fx-actions">
             <FxButton id="create-window" onClick={createWindow}>
               {currentWindow ? "Recreate window" : "Create window"}
@@ -1190,6 +1257,7 @@ export function EditorPage() {
         <div id="editor-root">
           <EditorCanvas
             currentWindow={currentWindow}
+            model={currentModel}
             inspectorActive={showInspector}
             inspectorLocked={inspectorLocked}
             inspectedAnchor={inspectedAnchor}

@@ -392,6 +392,15 @@
   color: var(--fx-muted);
 }
 
+.fx-field-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.fx-field-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .fx-actions,
 .fx-atlas-flow {
   display: flex;
