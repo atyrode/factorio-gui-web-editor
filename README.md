@@ -25,6 +25,7 @@ http://127.0.0.1:5173/
 - React/Vite browser app with an empty canvas.
 - A minimal window creator with editable title text.
 - A structured seed GUI model shared by preview, inspector, and Lua output.
+- A one-click local Factorio preview mod export from the same Lua output.
 - A `/style-atlas` route that renders reusable GUI atoms for visual review.
 - Header navigation with styled in-app pages rendered from the project
   Markdown docs, plus an Editor tab to return to the canvas.
@@ -43,11 +44,13 @@ src/components/                Strictly scoped React components
 src/docs.js                    Markdown-backed document route registry
 src/factorioModel.js           Structured Factorio GUI seed model and inspector rows
 src/factorioExport.js          Lua export projection from the GUI model
+src/factorioModExport.js       Factorio preview mod zip projection from the Lua export
 src/main.jsx                   React mount and stylesheet import
 src/styles.css                 Stylesheet entry point
 src/styles/                    Split Factorio-inspired local style layers
 docs/spec-factory.md           Workflow for writing agent-readable GUI specs
 docs/model-schema.md           Shared GUI model and inspector projection notes
+docs/factorio-mod-export.md    Local Factorio preview mod export workflow
 docs/roadmap.md                Builder/shared-renderer roadmap
 docs/factorio-style-sources.md Style/source research notes
 scripts/check.sh               Local validation
@@ -89,6 +92,7 @@ Accepted future directions:
 - JSON layout-model export;
 - Markdown spec diff export;
 - Lua skeleton export with stable anchors and TODO behavior hooks;
+- local Factorio preview mod export for GUI parity checks;
 - graphical Factorio style-dump imports for script-visible `LuaGuiElement` and
   `LuaStyle` fields;
 - style-atlas review against official site references and in-game `Ctrl+F6`
@@ -135,6 +139,13 @@ scripts/check.sh
 The check builds the app, runs browser geometry regressions, verifies layout
 tree behavior, and runs structural source/anchor checks. Browser tests protect
 objective layout contracts; they do not replace human visual review.
+
+## Factorio Preview Mod
+
+After creating a Window, use `Download mod` in the Lua Output panel to download
+a local `labtorio_gui_preview_0.1.0.zip`. Copy it to the Factorio mods
+directory and enable it to compare the current browser layout against the
+in-game GUI. See [docs/factorio-mod-export.md](docs/factorio-mod-export.md).
 
 ## Hosting
 

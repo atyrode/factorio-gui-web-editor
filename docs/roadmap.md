@@ -10,7 +10,8 @@ The strongest long-term target is one shared Factorio GUI layout model that can
 drive three surfaces:
 
 1. a browser design and review tool for fast iteration;
-2. a Factorio Lua GUI skeleton or implementation for a selected layout;
+2. a Factorio Lua GUI skeleton or implementation for a selected layout,
+   including a quick local preview mod wrapper for in-game comparison;
 3. a read-only or lightly interactive web demo for a selected layout.
 
 The ideal is not just visual similarity. The ideal is that browser and in-game
@@ -257,11 +258,13 @@ top-level screen location from header dragging.
 ### Phase 2: Lua Skeleton Export
 
 Status: started. The editor shows a read-only generated `gui.lua` preview for
-the current window shell; it is not yet a persisted export artifact.
+the current window shell and can download a local Factorio preview mod zip that
+wraps that exact Lua output for manual in-game comparison. This is a quick
+parity loop, not an automated screenshot harness.
 
 - Generate structural Lua with named anchors.
 - Emit TODO action hooks instead of pretending behavior is complete.
-- Keep generated Lua in a scratch/export surface until reviewed.
+- Keep generated Lua and preview mods in scratch/export surfaces until reviewed.
 - Document which parts are generated and which must be hand-authored.
 
 ### Phase 3: Constrained Builder UI
@@ -315,6 +318,7 @@ the current window shell; it is not yet a persisted export artifact.
       for script-visible `LuaGuiElement` and `LuaStyle` fields.
 - [x] Add an in-memory layout model for the current top-level window shell.
 - [x] Add a read-only generated Lua skeleton preview for the current shell.
+- [x] Add a quick local Factorio preview mod export for the current Lua output.
 - [ ] Add persisted layout model export.
 - [ ] Add reviewed Lua skeleton export.
 - [ ] Write the Factorio GUI constraint catalog.

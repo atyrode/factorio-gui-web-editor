@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { strFromU8, unzipSync } from "fflate";
 
 import {
   BODY_LAYOUT_ROOT_ID,
@@ -30,6 +31,14 @@ import {
   normalizeLuaVariableNames,
   validateLuaVariableNameEdit
 } from "../src/factorioLuaNames.js";
+import {
+  FACTORIO_PREVIEW_MOD_FOLDER,
+  FACTORIO_PREVIEW_MOD_NAME,
+  FACTORIO_PREVIEW_MOD_VERSION,
+  FACTORIO_PREVIEW_MOD_ZIP_FILENAME,
+  createFactorioModZipData,
+  renderFactorioModFiles
+} from "../src/factorioModExport.js";
 
 function ids(nodes) {
   return nodes.map((node) => node.id);
@@ -353,6 +362,41 @@ assert.ok(lua.includes("nested_frame.style.minimal_height = 99"));
 assert.ok(
   lua.indexOf('name = "gui_frame_1"') <
     lua.indexOf('name = "gui_horizontal_flow_2"')
+);
+
+const modFiles = renderFactorioModFiles(model);
+assert.deepEqual(Object.keys(modFiles), ["info.json", "control.lua", "gui.lua"]);
+assert.equal(modFiles["gui.lua"], lua);
+const modInfo = JSON.parse(modFiles["info.json"]);
+assert.equal(modInfo.name, FACTORIO_PREVIEW_MOD_NAME);
+assert.equal(modInfo.version, FACTORIO_PREVIEW_MOD_VERSION);
+assert.equal(modInfo.factorio_version, "2.0");
+assert.deepEqual(modInfo.dependencies, ["base"]);
+assert.ok(modFiles["control.lua"].includes('local build_gui = require("gui")'));
+assert.ok(modFiles["control.lua"].includes("script.on_init(rebuild_all_players)"));
+assert.ok(
+  modFiles["control.lua"].includes("script.on_configuration_changed(rebuild_all_players)")
+);
+assert.ok(modFiles["control.lua"].includes("defines.events.on_player_created"));
+assert.ok(modFiles["control.lua"].includes("defines.events.on_player_joined_game"));
+
+const modZip = createFactorioModZipData(model);
+assert.deepEqual(modZip, createFactorioModZipData(model));
+assert.equal(FACTORIO_PREVIEW_MOD_ZIP_FILENAME, `${FACTORIO_PREVIEW_MOD_FOLDER}.zip`);
+const modZipEntries = unzipSync(modZip);
+assert.deepEqual(Object.keys(modZipEntries).sort(), [
+  `${FACTORIO_PREVIEW_MOD_FOLDER}/control.lua`,
+  `${FACTORIO_PREVIEW_MOD_FOLDER}/gui.lua`,
+  `${FACTORIO_PREVIEW_MOD_FOLDER}/info.json`
+]);
+assert.equal(strFromU8(modZipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/gui.lua`]), lua);
+assert.equal(
+  strFromU8(modZipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/control.lua`]),
+  modFiles["control.lua"]
+);
+assert.equal(
+  strFromU8(modZipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/info.json`]),
+  modFiles["info.json"]
 );
 
 const movedVariableNames = normalizeLuaVariableNames(

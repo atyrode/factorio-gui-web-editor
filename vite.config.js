@@ -11,6 +11,9 @@ const cacheDir =
 
 export default defineConfig({
   cacheDir,
+  optimizeDeps: {
+    exclude: ["fflate"]
+  },
   plugins: [react()],
   server: {
     hmr: hmrHost

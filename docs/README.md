@@ -15,6 +15,8 @@ remain the source of truth.
   behavior, validation, and tracking.
 - [model-schema.md](model-schema.md): structured GUI model shared by preview,
   inspector, and Lua export.
+- [factorio-mod-export.md](factorio-mod-export.md): local Factorio preview mod
+  export loop for comparing the current editor model in-game.
 - [factorio-style-sources.md](factorio-style-sources.md): source notes for
   Factorio-like styling, public references, and inspection workflows.
 - [hosting.md](hosting.md): Docker and Caddy deployment boundary for hosting

@@ -1,5 +1,6 @@
 import styleSourcesMarkdown from "../docs/factorio-style-sources.md?raw";
 import atomSpecsMarkdown from "../docs/atom-specs.md?raw";
+import factorioModExportMarkdown from "../docs/factorio-mod-export.md?raw";
 import modelSchemaMarkdown from "../docs/model-schema.md?raw";
 import noCodeLayoutBuilderMarkdown from "../docs/no-code-layout-builder.md?raw";
 import roadmapMarkdown from "../docs/roadmap.md?raw";
@@ -35,6 +36,12 @@ export const docPages = [
     title: "Model Schema",
     summary: "Structured GUI model used by preview, inspector, and Lua export.",
     markdown: modelSchemaMarkdown
+  },
+  {
+    path: "/factorio-mod-export",
+    title: "Mod Export",
+    summary: "Local Factorio preview mod export for parity testing.",
+    markdown: factorioModExportMarkdown
   },
   {
     path: "/style-sources",
