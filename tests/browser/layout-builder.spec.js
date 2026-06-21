@@ -585,8 +585,28 @@ test.describe("Layout builder canvas preview", () => {
     await expect(luaOutput).toContainText("local gui_frame_1 = gui_window_body.add{");
   });
 
-  test("component tree shows the generated Window shell and authored body children", async ({ page }) => {
+  test("component tree defaults to the Window body flow", async ({ page }) => {
     await seedOneFrameWindow(page);
+
+    const tree = page.locator('[data-anchor="builder_body_tree"]');
+    await expect(tree.getByText("Window Frame")).toHaveCount(0);
+    await expect(tree.getByText("Titlebar Horizontal Flow")).toHaveCount(0);
+    await expect(tree.getByText("Title Label")).toHaveCount(0);
+    await expect(tree.getByText("Header Filler")).toHaveCount(0);
+    await expect(tree.getByText("Window body Horizontal Flow")).toBeVisible();
+    await expect(tree.getByText("gui_window_body", { exact: true })).toBeVisible();
+    await expect(tree.getByRole("button", { name: "Frame", exact: true }))
+      .toBeVisible();
+    await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
+      .toBeVisible();
+    await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
+  });
+
+  test("component tree can show the generated Window shell", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showComponentTreeShell: true
+    });
 
     const tree = page.locator('[data-anchor="builder_body_tree"]');
     await expect(tree.getByText("Window Frame")).toBeVisible();
@@ -604,6 +624,51 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
       .toBeVisible();
     await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
+  });
+
+  test("settings toggle switches component tree between body flow and generated shell", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    const tree = page.locator('[data-anchor="builder_body_tree"]');
+    await expect(tree.getByText("Window Frame")).toHaveCount(0);
+
+    await page.locator('[data-anchor="layout_settings_toggle"]').click();
+    const shellToggle = page.locator('[data-anchor="component_tree_shell_toggle"] input');
+    await expect(shellToggle).not.toBeChecked();
+    await shellToggle.click({ force: true });
+
+    await expect(tree.getByText("Window Frame")).toBeVisible();
+    await expect(tree.getByText("Titlebar Horizontal Flow")).toBeVisible();
+    await expect(tree.getByText("Header Filler")).toBeVisible();
+  });
+
+  test("nested Horizontal Flow keeps horizontal direction in DOM and Lua", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showLuaOutput: true
+    });
+
+    const flow = page.locator('[data-anchor="gui_horizontal_flow_2"]');
+    await expect(flow).toBeVisible();
+    await expect(flow).toHaveAttribute("data-fx-direction", "horizontal");
+    await expect(flow).toHaveCSS("flex-direction", "row");
+
+    const childGeometry = await flow.locator(':scope > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          id: element.dataset.anchor,
+          left: rect.left,
+          top: rect.top
+        };
+      }));
+    expect(childGeometry.map((child) => child.id)).toEqual(["gui_frame_3", "gui_frame_4"]);
+    expect(childGeometry[1].left).toBeGreaterThan(childGeometry[0].left);
+    expect(Math.abs(childGeometry[1].top - childGeometry[0].top)).toBeLessThan(2);
+
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText('local gui_horizontal_flow_2 = gui_frame_1.add{');
+    await expect(luaOutput).toContainText('direction = "horizontal"');
   });
 
   test("component tree moves nested nodes through Headless Tree and keeps outputs synchronized", async ({ page }) => {
@@ -635,7 +700,8 @@ test.describe("Layout builder canvas preview", () => {
   test("component tree keeps generated shell rows locked while still selectable", async ({ page }) => {
     await seedEditorState(page, {
       ...ONE_FRAME_STATE,
-      showInspector: true
+      showInspector: true,
+      showComponentTreeShell: true
     });
 
     const windowRow = page.locator('[data-anchor="builder_tree_item_gui_window"]');
@@ -698,6 +764,7 @@ test.describe("Layout builder canvas preview", () => {
 
     const targetHitBox = page.locator('[data-tree-hit-anchor="builder_tree_hit_gui_frame_1"]');
     const targetRow = page.locator('[data-anchor="builder_tree_item_gui_frame_1"]');
+    const targetVisual = targetHitBox.locator(".fx-builder-tree__visual");
     const beforeHitBox = await targetHitBox.boundingBox();
     const beforeRowBox = await targetRow.boundingBox();
     expect(beforeHitBox).not.toBeNull();
@@ -705,7 +772,7 @@ test.describe("Layout builder canvas preview", () => {
 
     await previewTreeNodeOverRow(page, "gui_frame_2", "gui_frame_1");
 
-    await expect(targetRow).toHaveClass(/is-visual-shifted/);
+    await expect(targetVisual).toHaveClass(/is-visual-shifted/);
     await expect.poll(async () => {
       const afterHitBox = await targetHitBox.boundingBox();
       expect(afterHitBox).not.toBeNull();
@@ -735,6 +802,40 @@ test.describe("Layout builder canvas preview", () => {
       "gui_horizontal_flow_2",
       { exact: true }
     )).toBeVisible();
+  });
+
+  test("drag-created Horizontal Flow keeps horizontal child layout", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await dragHorizontalFlowPaletteToFrame(page);
+    await page.locator('[data-anchor="frame_palette_item"]').dragTo(
+      page.locator('[data-anchor="gui_horizontal_flow_2"]'),
+      { targetPosition: { x: 20, y: 24 } }
+    );
+    await page.locator('[data-anchor="frame_palette_item"]').dragTo(
+      page.locator('[data-anchor="gui_horizontal_flow_2"]'),
+      { targetPosition: { x: 120, y: 24 } }
+    );
+
+    const flow = page.locator('[data-anchor="gui_horizontal_flow_2"]');
+    await expect(flow).toHaveAttribute("data-fx-direction", "horizontal");
+    await expect(flow).toHaveCSS("flex-direction", "row");
+
+    const childGeometry = await flow.locator(':scope > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          id: element.dataset.anchor,
+          left: rect.left,
+          top: rect.top
+        };
+      }));
+    expect(new Set(childGeometry.map((child) => child.id))).toEqual(
+      new Set(["gui_frame_3", "gui_frame_4"])
+    );
+    const byLeft = [...childGeometry].sort((left, right) => left.left - right.left);
+    expect(byLeft[1].left).toBeGreaterThan(byLeft[0].left);
+    expect(Math.abs(byLeft[1].top - byLeft[0].top)).toBeLessThan(2);
   });
 
   test("GUI shadow toggle disables only the Window cast shadow", async ({ page }) => {

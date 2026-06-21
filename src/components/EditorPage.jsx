@@ -69,6 +69,7 @@ const DEFAULT_EDITOR_STATE = {
   inspectorLocked: false,
   inspectedAnchor: null,
   showLayoutSettings: false,
+  showComponentTreeShell: false,
   layoutSettings: DEFAULT_LAYOUT_SETTINGS,
   sidebarWidth: 280
 };
@@ -165,6 +166,10 @@ function readCachedEditorState() {
           ? parsedValue.inspectedAnchor
           : null,
       showLayoutSettings: Boolean(parsedValue.showLayoutSettings),
+      showComponentTreeShell:
+        typeof parsedValue.showComponentTreeShell === "boolean"
+          ? parsedValue.showComponentTreeShell
+          : DEFAULT_EDITOR_STATE.showComponentTreeShell,
       layoutSettings: normalizeLayoutSettings(parsedValue.layoutSettings),
       sidebarWidth: clampSidebarWidth(
         Number(parsedValue.sidebarWidth ?? DEFAULT_EDITOR_STATE.sidebarWidth)
@@ -466,7 +471,9 @@ function LayoutSettingsPanel({
   onToggle,
   settings,
   onChange,
-  onReset
+  onReset,
+  showComponentTreeShell,
+  onShowComponentTreeShellChange
 }) {
   const normalizedSettings = normalizeLayoutSettings(settings);
   const ToggleIcon = expanded ? ChevronDown : ChevronRight;
@@ -486,6 +493,14 @@ function LayoutSettingsPanel({
       </button>
       {expanded ? (
         <>
+          <FxCheckbox
+            checked={showComponentTreeShell}
+            data-anchor="component_tree_shell_toggle"
+            readOnly={false}
+            onChange={onShowComponentTreeShellChange}
+          >
+            Show generated Window shell
+          </FxCheckbox>
           <div className="fx-layout-settings__grid">
             {LAYOUT_SETTING_FIELDS.map((field) => {
               const limits = LAYOUT_SETTING_LIMITS[field.key];
@@ -958,6 +973,7 @@ export function EditorPage() {
     inspectorLocked,
     inspectedAnchor,
     showLayoutSettings,
+    showComponentTreeShell,
     layoutSettings,
     sidebarWidth
   } = editorState;
@@ -1094,6 +1110,13 @@ export function EditorPage() {
     setEditorState((state) => ({
       ...state,
       showGuiShadows: event.target.checked
+    }));
+  }
+
+  function updateComponentTreeShellVisible(event) {
+    setEditorState((state) => ({
+      ...state,
+      showComponentTreeShell: event.target.checked
     }));
   }
 
@@ -1667,6 +1690,7 @@ export function EditorPage() {
             paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
             onSelect={selectBuilderNode}
             model={currentModel}
+            showGeneratedShell={showComponentTreeShell}
           />
 
           <FxFrame title="Inspector" className="fx-editor-panel fx-editor-panel--inspector">
@@ -1728,8 +1752,10 @@ export function EditorPage() {
             expanded={showLayoutSettings}
             onChange={updateLayoutSetting}
             onReset={resetLayoutSettings}
+            onShowComponentTreeShellChange={updateComponentTreeShellVisible}
             onToggle={toggleLayoutSettings}
             settings={normalizedLayoutSettings}
+            showComponentTreeShell={showComponentTreeShell}
           />
         </aside>
 

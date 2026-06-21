@@ -57,9 +57,9 @@ The editor rail contains three pinned sections:
 
 [Builder]
   [Palette: drag-only Frame, Horizontal Flow]
-  [Scroll: full generated component tree]
-    [Non-deletable Window frame root]
-    [Non-deletable titlebar flow, title label, header filler]
+  [Scroll: component tree, starting at Window body flow by default]
+    [Optional non-deletable Window frame root]
+    [Optional non-deletable titlebar flow, title label, header filler]
     [Non-deletable Window body flow root]
     [Headless Tree drag line for ordered placement]
     [Child rows with add child, add after, remove]
@@ -77,13 +77,16 @@ The editor rail contains three pinned sections:
 
 The canvas remains the visual preview. It accepts legal drops into the Window
 body, user-created Frames, and user-created Horizontal Flows. The Window
-root/header/titlebar shell is visible in the component tree but locked.
+root/header/titlebar shell can be shown in the component tree when the Settings
+toggle is enabled; those generated shell rows are locked.
 
 The Builder tree is the structure navigator for the generated Lua hierarchy. It
-shows locked shell nodes such as `gui_window`, `gui_window_titlebar`,
-`gui_window_title`, `gui_window_drag_handle`, and `gui_window_body`, followed by
-editable authored layout specs under the body flow. It has a bounded height and
-scrolls when nested layout would otherwise crowd the Inspector.
+starts at the locked `gui_window_body` flow by default, followed by editable
+authored layout specs under the body flow. A Settings toggle can expose the full
+generated shell, including locked nodes such as `gui_window`,
+`gui_window_titlebar`, `gui_window_title`, and `gui_window_drag_handle`. It has
+a bounded height and scrolls when nested layout would otherwise crowd the
+Inspector.
 
 Tree row rendering remains Factorio-styled local UI, but tree interaction logic
 is not custom. Headless Tree supplies flat visible items, ARIA tree props,
@@ -95,6 +98,8 @@ The Settings panel is the last section in the editor rail and is collapsed by
 default. It owns authored Horizontal Flow assumptions until Factorio defaults
 are proven. It currently controls generic flow spacing, top-level minimum
 width, nested minimum width, minimum height, and padding.
+It also owns the presentation toggle for showing or hiding the generated Window
+shell rows in the Builder tree.
 
 ## Data Contract
 
@@ -159,12 +164,16 @@ Inspector.
   Flows.
 - Illegal parents include the Window root, titlebar, title label, drag filler,
   self, and descendants of the moved source.
-- The Builder tree shows the generated Window shell. Shell nodes can be
-  selected for inspection but cannot be dragged, deleted, or reordered.
-  `gui_window_body` is the one locked shell node that can receive authored
-  children, because the Window shell owns that Factorio body flow.
+- The Builder tree starts from `gui_window_body` by default. When the generated
+  Window shell setting is enabled, shell nodes can be selected for inspection
+  but cannot be dragged, deleted, or reordered. `gui_window_body` is the one
+  locked shell node that can receive authored children, because the Window
+  shell owns that Factorio body flow.
 - `gui_window_body` is horizontal or vertical based on the Window creation
   action. Editor-created body children are Frames in this slice.
+- Frames are vertical containers in this model. Multiple Horizontal Flow
+  children inside the same Frame stack vertically; each Horizontal Flow lays out
+  its own children left-to-right.
 - Tree drop placement is an ordered index in the parent represented by the
   Headless Tree drag line. Tree hover feedback must not insert flow-affecting
   placeholders under the pointer, because that can cause drop-target
@@ -204,6 +213,7 @@ Inspector.
 - `builder_panel`
 - `layout_settings_panel`
 - `layout_settings_toggle`
+- `component_tree_shell_toggle`
 - `frame_palette_item`
 - `horizontal_flow_palette_item`
 - `builder_body_tree`

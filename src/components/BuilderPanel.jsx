@@ -117,7 +117,7 @@ function createTreePayload({
   };
 }
 
-function buildBuilderTreeData({ currentWindow, layoutChildren, model }) {
+function buildBuilderTreeData({ currentWindow, layoutChildren, model, showGeneratedShell = false }) {
   const root = model?.root;
   const modelNodeById = collectModelNodes(model);
   const items = new Map();
@@ -151,18 +151,21 @@ function buildBuilderTreeData({ currentWindow, layoutChildren, model }) {
     id: BUILDER_TREE_ROOT_ID,
     label: "Component tree",
     locked: true,
-    childrenIds: [root.id]
-  }));
-  addItem(createTreePayload({
-    id: root.id,
-    node: root,
-    label: shellNodeLabel(root),
-    locked: true,
-    childrenIds: rootChildrenIds,
-    luaVariableName: root.luaVariableName ?? root.id
+    childrenIds: showGeneratedShell ? [root.id] : [body?.id].filter(Boolean)
   }));
 
-  if (titlebar) {
+  if (showGeneratedShell) {
+    addItem(createTreePayload({
+      id: root.id,
+      node: root,
+      label: shellNodeLabel(root),
+      locked: true,
+      childrenIds: rootChildrenIds,
+      luaVariableName: root.luaVariableName ?? root.id
+    }));
+  }
+
+  if (showGeneratedShell && titlebar) {
     addItem(createTreePayload({
       id: titlebar.id,
       node: titlebar,
@@ -173,14 +176,16 @@ function buildBuilderTreeData({ currentWindow, layoutChildren, model }) {
     }));
   }
 
-  for (const node of [titleLabel, dragHandle].filter(Boolean)) {
-    addItem(createTreePayload({
-      id: node.id,
-      node,
-      label: shellNodeLabel(node),
-      locked: true,
-      luaVariableName: node.luaVariableName ?? node.id
-    }));
+  if (showGeneratedShell) {
+    for (const node of [titleLabel, dragHandle].filter(Boolean)) {
+      addItem(createTreePayload({
+        id: node.id,
+        node,
+        label: shellNodeLabel(node),
+        locked: true,
+        luaVariableName: node.luaVariableName ?? node.id
+      }));
+    }
   }
 
   if (body) {
@@ -364,7 +369,6 @@ function BuilderNodeRow({
   dragging = false,
   dropTarget = false,
   invalidDropTarget = false,
-  visualShifted = false,
   onAddAfter,
   onAddChild,
   onEditLuaVariableName,
@@ -390,7 +394,6 @@ function BuilderNodeRow({
         dragging ? "is-dragging" : "",
         dropTarget ? "is-drop-target" : "",
         invalidDropTarget ? "is-invalid-drop-target" : "",
-        visualShifted ? "is-visual-shifted" : "",
         inspectedAnchor === node.id ? "is-selected" : "",
         rowPropClassName
       ]
@@ -520,11 +523,12 @@ function BuilderHeadlessTree({
   onInsertPalette,
   onMoveNode,
   onRemove,
-  onSelect
+  onSelect,
+  showGeneratedShell = false
 }) {
   const { items, expandedIds } = useMemo(
-    () => buildBuilderTreeData({ currentWindow, layoutChildren, model }),
-    [currentWindow, layoutChildren, model]
+    () => buildBuilderTreeData({ currentWindow, layoutChildren, model, showGeneratedShell }),
+    [currentWindow, layoutChildren, model, showGeneratedShell]
   );
   const selectedItems = inspectedAnchor && items.has(inspectedAnchor)
     ? [inspectedAnchor]
@@ -662,33 +666,39 @@ function BuilderHeadlessTree({
               .filter(Boolean)
               .join(" ")}
             data-tree-hit-anchor={`builder_tree_hit_${itemData.id}`}
-            data-tree-level={itemMeta.level}
             key={item.getKey()}
-            style={{
-              ...itemPropStyle,
-              "--fx-builder-tree-level": itemMeta.level
-            }}
+            style={itemPropStyle}
           >
-            <BuilderNodeRow
-              code={itemData.code}
-              draggable={draggable}
-              dragHandleProps={draggable ? item.getDragHandleProps() : null}
-              dragging={dragging}
-              dropTarget={item.isDragTarget()}
-              inspectedAnchor={inspectedAnchor}
-              invalidDropTarget={invalidDropTarget}
-              label={itemData.label}
-              locked={itemData.locked}
-              luaVariableName={itemData.luaVariableName}
-              node={itemData.node}
-              onAddAfter={draggable ? onAddAfter : null}
-              onAddChild={itemData.canReceiveChildren ? onAddChild : null}
-              onEditLuaVariableName={onEditLuaVariableName}
-              onRemove={draggable ? onRemove : null}
-              onSelect={onSelect}
-              treeItem={item}
-              visualShifted={visualShifted}
-            />
+            <div
+              className={[
+                "fx-builder-tree__visual",
+                visualShifted ? "is-visual-shifted" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              data-tree-level={itemMeta.level}
+              style={{ "--fx-builder-tree-level": itemMeta.level }}
+            >
+              <BuilderNodeRow
+                code={itemData.code}
+                draggable={draggable}
+                dragHandleProps={draggable ? item.getDragHandleProps() : null}
+                dragging={dragging}
+                dropTarget={item.isDragTarget()}
+                inspectedAnchor={inspectedAnchor}
+                invalidDropTarget={invalidDropTarget}
+                label={itemData.label}
+                locked={itemData.locked}
+                luaVariableName={itemData.luaVariableName}
+                node={itemData.node}
+                onAddAfter={draggable ? onAddAfter : null}
+                onAddChild={itemData.canReceiveChildren ? onAddChild : null}
+                onEditLuaVariableName={onEditLuaVariableName}
+                onRemove={draggable ? onRemove : null}
+                onSelect={onSelect}
+                treeItem={item}
+              />
+            </div>
           </div>
         );
       })}
@@ -714,7 +724,8 @@ export function BuilderPanel({
   onPaletteDragEnd,
   onPaletteDragStart,
   onRemove,
-  onSelect
+  onSelect,
+  showGeneratedShell = false
 }) {
   const layoutChildren = currentWindow?.layoutChildren ?? [];
 
@@ -748,6 +759,7 @@ export function BuilderPanel({
           onMoveNode={onMoveNode}
           onRemove={onRemove}
           onSelect={onSelect}
+          showGeneratedShell={showGeneratedShell}
         />
       </div>
     </FxFrame>
