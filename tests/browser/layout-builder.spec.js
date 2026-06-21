@@ -315,19 +315,15 @@ async function dragTreeNodeToRow(page, sourceId, targetId) {
   }, { sourceId, targetId });
 }
 
-async function dragPaletteTreeHandleToRow(page, paletteAnchor, targetId) {
-  const sourceHandle = page.locator(
-    `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-handle`
-  );
+async function dragPaletteTileToTreeRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(`[data-anchor="${paletteAnchor}"]`);
   const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
 
   await expect(sourceHandle).toBeVisible();
   await expect(targetRow).toBeVisible();
 
   await page.evaluate(({ paletteAnchor, targetId }) => {
-    const source = document.querySelector(
-      `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-handle`
-    );
+    const source = document.querySelector(`[data-anchor="${paletteAnchor}"]`);
     const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
     if (!source || !target) {
       throw new Error(`Missing tree palette source or target: ${paletteAnchor} -> ${targetId}`);
@@ -552,10 +548,10 @@ test.describe("Layout builder canvas preview", () => {
     ).toHaveCount(1);
   });
 
-  test("palette tree handle inserts through Headless Tree foreign drops", async ({ page }) => {
+  test("palette tile inserts through Headless Tree foreign drops", async ({ page }) => {
     await seedOneFrameWindow(page);
 
-    await dragPaletteTreeHandleToRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+    await dragPaletteTileToTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
 
     await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
     await expect(

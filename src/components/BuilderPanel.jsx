@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   dragAndDropFeature,
   hotkeysCoreFeature,
@@ -508,8 +508,15 @@ function BuilderPaletteItem({
     atom === HORIZONTAL_FLOW_ATOM_ID
       ? "horizontal_flow_palette_item"
       : "frame_palette_item";
+  const setPaletteRef = useCallback(
+    (element) => {
+      ref(element);
+      handleRef(element);
+    },
+    [handleRef, ref]
+  );
 
-  function handleTreeDragStart(event) {
+  function handlePaletteDragStart(event) {
     if (!currentWindow) {
       event.preventDefault();
       return;
@@ -523,40 +530,23 @@ function BuilderPaletteItem({
   }
 
   return (
-    <div
-      ref={ref}
+    <button
+      ref={setPaletteRef}
       className={[
         "fx-builder-palette__item",
         paletteDraggingAtom === atom || isDragSource ? "is-dragging" : ""
       ]
         .filter(Boolean)
         .join(" ")}
-      aria-disabled={!currentWindow}
       data-anchor={anchor}
+      disabled={!currentWindow}
+      draggable={Boolean(currentWindow)}
+      onDragStart={handlePaletteDragStart}
+      type="button"
     >
-      <button
-        ref={handleRef}
-        className="fx-builder-palette__canvas-handle"
-        disabled={!currentWindow}
-        type="button"
-      >
-        <span>{atomLabel(atom)}</span>
-        <code>{atomCode(atom)}</code>
-      </button>
-      <span
-        aria-disabled={!currentWindow}
-        aria-label={`Drag ${atomLabel(atom)} into component tree`}
-        className="fx-builder-palette__tree-handle"
-        draggable={Boolean(currentWindow)}
-        onDragStart={handleTreeDragStart}
-        onPointerDown={(event) => event.stopPropagation()}
-        role="button"
-        tabIndex={currentWindow ? 0 : -1}
-        title={`Drag ${atomLabel(atom)} into component tree`}
-      >
-        Tree
-      </span>
-    </div>
+      <span>{atomLabel(atom)}</span>
+      <code>{atomCode(atom)}</code>
+    </button>
   );
 }
 

@@ -142,9 +142,10 @@
 .fx-builder-palette__item {
   min-width: 0;
   height: 42px;
+  padding: 6px 8px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
-  align-items: stretch;
+  align-content: center;
+  gap: 1px;
   color: var(--fx-text);
   background: #2f2e2f;
   border: 1px solid #0a0a0a;
@@ -152,16 +153,19 @@
     inset 1px 1px 0 rgba(255, 255, 255, 0.08),
     inset -2px -2px 2px rgba(0, 0, 0, 0.55),
     1px 1px 0 rgba(0, 0, 0, 0.55);
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
 }
 
-.fx-builder-palette__item[aria-disabled="true"] {
+.fx-builder-palette__item:disabled {
+  cursor: not-allowed;
   opacity: 0.55;
 }
 
-.fx-builder-palette__item:has(.fx-builder-palette__canvas-handle:not(:disabled):hover),
-.fx-builder-palette__item:has(.fx-builder-palette__canvas-handle:not(:disabled):focus-visible),
-.fx-builder-palette__item:has(.fx-builder-palette__tree-handle:not([aria-disabled="true"]):hover),
-.fx-builder-palette__item:has(.fx-builder-palette__tree-handle:not([aria-disabled="true"]):focus-visible),
+.fx-builder-palette__item:not(:disabled):hover,
+.fx-builder-palette__item:not(:disabled):focus-visible,
 .fx-builder-palette__item.is-dragging {
   outline: 0;
   background: #393839;
@@ -176,65 +180,22 @@
   cursor: grabbing;
 }
 
-.fx-builder-palette__canvas-handle {
-  min-width: 0;
-  padding: 6px 8px;
-  display: grid;
-  align-content: center;
-  gap: 1px;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  text-align: left;
-  cursor: grab;
-  touch-action: none;
-}
-
-.fx-builder-palette__canvas-handle:disabled {
-  cursor: not-allowed;
-}
-
-.fx-builder-palette__canvas-handle:not(:disabled):focus-visible,
-.fx-builder-palette__tree-handle:not([aria-disabled="true"]):focus-visible {
-  outline: 0;
-}
-
-.fx-builder-palette__canvas-handle span,
-.fx-builder-palette__canvas-handle code {
+.fx-builder-palette__item span,
+.fx-builder-palette__item code {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.fx-builder-palette__canvas-handle span {
+.fx-builder-palette__item span {
   font-size: 13px;
   font-weight: 800;
 }
 
-.fx-builder-palette__canvas-handle code {
+.fx-builder-palette__item code {
   color: var(--fx-blue);
   font-size: 11px;
-}
-
-.fx-builder-palette__tree-handle {
-  min-width: 0;
-  display: grid;
-  place-items: center;
-  color: var(--fx-gold);
-  border-left: 1px solid rgba(0, 0, 0, 0.72);
-  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.05);
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  cursor: grab;
-  user-select: none;
-}
-
-.fx-builder-palette__tree-handle[aria-disabled="true"] {
-  color: var(--fx-disabled);
-  cursor: not-allowed;
 }
 
 .fx-layout-settings {

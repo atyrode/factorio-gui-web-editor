@@ -147,8 +147,10 @@ Inspector.
 
 - Canvas palette drops create either a new `frame` spec or a new
   `horizontal-flow` spec, based on the dragged tile.
-- Component-tree palette drops use the palette tile's tree handle and Headless
-  Tree foreign drag-object support to create the same constrained specs.
+- Component-tree palette drops use the same palette tile and Headless Tree
+  foreign drag-object support to create the same constrained specs. The target
+  decides the drag system: canvas drops use dnd-kit, tree drops use Headless
+  Tree.
 - Palette tiles do not append on click; creation requires an explicit drop
   target.
 - Tree row drops move an existing spec through Headless Tree's ordered target.
