@@ -315,15 +315,33 @@ async function dragTreeNodeToRow(page, sourceId, targetId) {
   }, { sourceId, targetId });
 }
 
-async function dragPaletteTileToTreeRow(page, paletteAnchor, targetId) {
-  const sourceHandle = page.locator(`[data-anchor="${paletteAnchor}"]`);
+async function dragPaletteGripToTreeRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(
+    `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-grip`
+  );
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+
+  await sourceHandle.dragTo(targetRow, {
+    targetPosition: { x: 56, y: 18 }
+  });
+}
+
+async function previewPaletteGripOverTreeRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(
+    `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-grip`
+  );
   const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
 
   await expect(sourceHandle).toBeVisible();
   await expect(targetRow).toBeVisible();
 
   await page.evaluate(({ paletteAnchor, targetId }) => {
-    const source = document.querySelector(`[data-anchor="${paletteAnchor}"]`);
+    const source = document.querySelector(
+      `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-grip`
+    );
     const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
     if (!source || !target) {
       throw new Error(`Missing tree palette source or target: ${paletteAnchor} -> ${targetId}`);
@@ -347,9 +365,13 @@ async function dragPaletteTileToTreeRow(page, paletteAnchor, targetId) {
     fireDragEvent(source, "dragstart", sourceRect);
     fireDragEvent(target, "dragenter", targetRect);
     fireDragEvent(target, "dragover", targetRect);
-    fireDragEvent(target, "drop", targetRect);
-    fireDragEvent(source, "dragend", sourceRect);
   }, { paletteAnchor, targetId });
+}
+
+async function endNativeDrag(page) {
+  await page.evaluate(() => {
+    window.dispatchEvent(new DragEvent("dragend", { bubbles: true }));
+  });
 }
 
 async function measureHover(page) {
@@ -548,10 +570,10 @@ test.describe("Layout builder canvas preview", () => {
     ).toHaveCount(1);
   });
 
-  test("palette tile inserts through Headless Tree foreign drops", async ({ page }) => {
+  test("palette tile grip inserts through Headless Tree foreign drops", async ({ page }) => {
     await seedOneFrameWindow(page);
 
-    await dragPaletteTileToTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+    await dragPaletteGripToTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
 
     await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
     await expect(
@@ -559,6 +581,27 @@ test.describe("Layout builder canvas preview", () => {
     ).toHaveCount(1);
     await expect(page.locator('[data-anchor="builder_tree_item_gui_horizontal_flow_2"]'))
       .toHaveClass(/is-selected/);
+  });
+
+  test("component tree preview opens insertion space for palette drops", async ({ page }) => {
+    await seedEditorState(page, TWO_VERTICAL_FRAME_STATE);
+
+    const secondFrameRow = page.locator('[data-anchor="builder_tree_item_gui_frame_2"]');
+    const before = await secondFrameRow.boundingBox();
+    expect(before).not.toBeNull();
+
+    await previewPaletteGripOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+
+    const placeholder = page.locator('[data-anchor="builder_tree_insertion_placeholder"]');
+    await expect(placeholder).toBeVisible();
+
+    await expect.poll(async () => {
+      const after = await secondFrameRow.boundingBox();
+      expect(after).not.toBeNull();
+      return after.y;
+    }).toBeGreaterThan(before.y + 20);
+
+    await endNativeDrag(page);
   });
 
   test("palette can insert a Horizontal Flow inside a Frame", async ({ page }) => {

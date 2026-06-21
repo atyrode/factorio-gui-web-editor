@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   dragAndDropFeature,
   hotkeysCoreFeature,
@@ -508,13 +508,6 @@ function BuilderPaletteItem({
     atom === HORIZONTAL_FLOW_ATOM_ID
       ? "horizontal_flow_palette_item"
       : "frame_palette_item";
-  const setPaletteRef = useCallback(
-    (element) => {
-      ref(element);
-      handleRef(element);
-    },
-    [handleRef, ref]
-  );
 
   function handlePaletteDragStart(event) {
     if (!currentWindow) {
@@ -530,23 +523,59 @@ function BuilderPaletteItem({
   }
 
   return (
-    <button
-      ref={setPaletteRef}
+    <div
+      ref={ref}
       className={[
         "fx-builder-palette__item",
         paletteDraggingAtom === atom || isDragSource ? "is-dragging" : ""
       ]
         .filter(Boolean)
         .join(" ")}
+      aria-disabled={!currentWindow}
       data-anchor={anchor}
-      disabled={!currentWindow}
-      draggable={Boolean(currentWindow)}
-      onDragStart={handlePaletteDragStart}
-      type="button"
     >
-      <span>{atomLabel(atom)}</span>
-      <code>{atomCode(atom)}</code>
-    </button>
+      <button
+        aria-label={`Drag ${atomLabel(atom)} into component tree`}
+        className="fx-builder-palette__tree-grip"
+        disabled={!currentWindow}
+        draggable={Boolean(currentWindow)}
+        onDragStart={handlePaletteDragStart}
+        onPointerDown={(event) => event.stopPropagation()}
+        title={`Drag ${atomLabel(atom)} into component tree`}
+        type="button"
+      >
+        <GripVertical aria-hidden="true" />
+      </button>
+      <button
+        ref={handleRef}
+        className="fx-builder-palette__canvas-handle"
+        disabled={!currentWindow}
+        title={`Drag ${atomLabel(atom)} onto canvas`}
+        type="button"
+      >
+        <span>{atomLabel(atom)}</span>
+        <code>{atomCode(atom)}</code>
+      </button>
+    </div>
+  );
+}
+
+function BuilderTreeInsertionPlaceholder({
+  index,
+  level
+}) {
+  return (
+    <div
+      className="fx-builder-tree__item fx-builder-tree__item--placeholder"
+      data-anchor="builder_tree_insertion_placeholder"
+      data-tree-level={level}
+      key={`builder-tree-placeholder-${index}-${level}`}
+      style={{ "--fx-builder-tree-level": level }}
+    >
+      <div className="fx-builder-tree__insertion-placeholder" aria-hidden="true">
+        <span />
+      </div>
+    </div>
   );
 }
 
@@ -662,20 +691,54 @@ function BuilderHeadlessTree({
   const draggedIds = new Set(
     (tree.getState().dnd?.draggedItems ?? []).map((item) => item.getId())
   );
+  const treeItems = tree.getItems();
+  const dragTarget = tree.getDragTarget();
+  const placeholder =
+    dragTarget && isOrderedDragTarget(dragTarget)
+      ? {
+          index: dragTarget.dragLineIndex,
+          level: dragTarget.dragLineLevel
+        }
+      : dragTarget
+        ? (() => {
+            const targetIndex = treeItems.findIndex(
+              (item) => item.getId() === dragTarget.item.getId()
+            );
+            const targetLevel = dragTarget.item.getItemMeta().level;
+            let index = targetIndex + 1;
+            while (
+              index < treeItems.length &&
+              treeItems[index].getItemMeta().level > targetLevel
+            ) {
+              index += 1;
+            }
+            return {
+              index,
+              level: targetLevel + 1
+            };
+          })()
+        : null;
 
   return (
     <div
       {...tree.getContainerProps("Generated component tree")}
       className="fx-builder-tree fx-builder-tree--headless"
     >
-      {tree.getItems().map((item) => {
+      {treeItems.map((item) => {
         const itemData = item.getItemData();
         const itemMeta = item.getItemMeta();
         const draggable = Boolean(itemData.draggable);
         const dragging = draggedIds.has(item.getId());
         const invalidDropTarget = item.isDraggingOver() && !item.isDragTarget();
 
-        return (
+        return [
+          placeholder?.index === itemMeta.index ? (
+            <BuilderTreeInsertionPlaceholder
+              index={placeholder.index}
+              key={`placeholder-before-${item.getKey()}`}
+              level={placeholder.level}
+            />
+          ) : null,
           <div
             className="fx-builder-tree__item"
             data-tree-level={itemMeta.level}
@@ -703,8 +766,14 @@ function BuilderHeadlessTree({
               treeItem={item}
             />
           </div>
-        );
+        ];
       })}
+      {placeholder?.index === treeItems.length ? (
+        <BuilderTreeInsertionPlaceholder
+          index={placeholder.index}
+          level={placeholder.level}
+        />
+      ) : null}
       <div
         className="fx-builder-tree__drag-line"
         data-anchor="builder_tree_drag_line"
