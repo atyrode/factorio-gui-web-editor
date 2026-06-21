@@ -5,6 +5,10 @@ export const FRAME_ID_PREFIX = "gui_frame_";
 export const HORIZONTAL_FLOW_ATOM_ID = "horizontal-flow";
 export const GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT = "generic-horizontal-flow";
 export const HORIZONTAL_FLOW_ID_PREFIX = "gui_horizontal_flow_";
+export const LAYOUT_NODE_SIZE_LIMITS = Object.freeze({
+  minimalWidth: Object.freeze({ min: 48, max: 800 }),
+  minimalHeight: Object.freeze({ min: 48, max: 600 })
+});
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -27,6 +31,15 @@ function nodeNumberFromId(id, prefix) {
 function normalizeNextNumber(value) {
   const numberValue = Number(value);
   return Number.isSafeInteger(numberValue) && numberValue > 0 ? numberValue : 1;
+}
+
+function clampInteger(value, { min, max }) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) {
+    return null;
+  }
+
+  return Math.min(max, Math.max(min, Math.round(numberValue)));
 }
 
 function canonicalStyleVariant(atom) {
@@ -56,10 +69,12 @@ function normalizeAtom(atom, parentAtom) {
 }
 
 function cloneNode(node) {
+  const size = normalizeLayoutNodeSize(node.size);
   return {
     id: node.id,
     atom: node.atom,
     styleVariant: canonicalStyleVariant(node.atom),
+    ...(size ? { size } : {}),
     children: node.children.map(cloneNode)
   };
 }
@@ -90,6 +105,26 @@ export function createFrameSpec(nodeNumber) {
 
 export function createHorizontalFlowSpec(nodeNumber) {
   return createLayoutSpec(HORIZONTAL_FLOW_ATOM_ID, nodeNumber);
+}
+
+export function normalizeLayoutNodeSize(value = null) {
+  if (!isObject(value)) {
+    return null;
+  }
+
+  const size = {};
+  for (const key of Object.keys(LAYOUT_NODE_SIZE_LIMITS)) {
+    if (!Object.hasOwn(value, key)) {
+      continue;
+    }
+
+    const normalizedValue = clampInteger(value[key], LAYOUT_NODE_SIZE_LIMITS[key]);
+    if (normalizedValue != null) {
+      size[key] = normalizedValue;
+    }
+  }
+
+  return Object.keys(size).length ? Object.freeze(size) : null;
 }
 
 export function normalizeLayoutState(value = {}) {
@@ -143,10 +178,13 @@ export function normalizeLayoutState(value = {}) {
       ? node.children.map((child) => normalizeNode(child, atom)).filter(Boolean)
       : [];
 
+    const size = normalizeLayoutNodeSize(node.size);
+
     return {
       id,
       atom,
       styleVariant: canonicalStyleVariant(atom),
+      ...(size ? { size } : {}),
       children
     };
   }
@@ -332,4 +370,38 @@ export function moveLayoutNode(layoutChildren = [], sourceId, targetParentId, in
   );
 
   return insertion.changed ? insertion : { layoutChildren, changed: false };
+}
+
+export function updateLayoutNodeSize(layoutChildren = [], nodeId, sizePatch = {}) {
+  if (!nodeId) {
+    return { layoutChildren, changed: false };
+  }
+
+  let changed = false;
+  function updateIn(nodes) {
+    return nodes.map((entry) => {
+      const cloned = cloneNode(entry);
+      if (entry.id !== nodeId) {
+        return { ...cloned, children: updateIn(entry.children) };
+      }
+
+      const nextSize = normalizeLayoutNodeSize({
+        ...(entry.size ?? {}),
+        ...sizePatch
+      });
+      changed =
+        (entry.size?.minimalWidth ?? null) !== (nextSize?.minimalWidth ?? null) ||
+        (entry.size?.minimalHeight ?? null) !== (nextSize?.minimalHeight ?? null);
+
+      if (!nextSize) {
+        const { size: _size, ...withoutSize } = cloned;
+        return withoutSize;
+      }
+
+      return { ...cloned, size: nextSize };
+    });
+  }
+
+  const nextChildren = updateIn(layoutChildren);
+  return changed ? { layoutChildren: nextChildren, changed } : { layoutChildren, changed: false };
 }

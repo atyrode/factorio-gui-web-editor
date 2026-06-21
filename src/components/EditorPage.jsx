@@ -11,6 +11,7 @@ import {
 import {
   createWindowModel,
   DEFAULT_WINDOW_SIZE,
+  findModelNode,
   getWindowInspectorRows,
   HORIZONTAL_FLOW_DIRECTION,
   normalizeWindowBodyDirection,
@@ -30,9 +31,11 @@ import {
   findLayoutParentChildren,
   HORIZONTAL_FLOW_ATOM_ID,
   insertLayoutNode,
+  LAYOUT_NODE_SIZE_LIMITS,
   moveLayoutNode,
   normalizeLayoutState,
-  removeLayoutNode
+  removeLayoutNode,
+  updateLayoutNodeSize
 } from "../factorioLayoutTree.js";
 import {
   readBuilderPaletteDrag
@@ -66,6 +69,7 @@ const DEFAULT_EDITOR_STATE = {
   showInspector: false,
   showLuaOutput: true,
   showGuiShadows: true,
+  resizeMode: false,
   inspectorLocked: false,
   inspectedAnchor: null,
   showLayoutSettings: false,
@@ -160,6 +164,10 @@ function readCachedEditorState() {
         typeof parsedValue.showGuiShadows === "boolean"
           ? parsedValue.showGuiShadows
           : DEFAULT_EDITOR_STATE.showGuiShadows,
+      resizeMode:
+        typeof parsedValue.resizeMode === "boolean"
+          ? parsedValue.resizeMode
+          : DEFAULT_EDITOR_STATE.resizeMode,
       inspectorLocked: Boolean(parsedValue.inspectorLocked),
       inspectedAnchor:
         Boolean(parsedValue.inspectorLocked) && typeof parsedValue.inspectedAnchor === "string"
@@ -188,10 +196,287 @@ function writeCachedEditorState(editorState) {
   }
 }
 
+function currentWindowWithResizeDraft(currentWindow, draft) {
+  if (!currentWindow || !draft?.anchor) {
+    return currentWindow;
+  }
+
+  if (draft.kind === "window" && draft.anchor === "gui_window") {
+    return {
+      ...currentWindow,
+      size: normalizeWindowSize(draft.size)
+    };
+  }
+
+  if (draft.kind !== "layout-node") {
+    return currentWindow;
+  }
+
+  const update = updateLayoutNodeSize(
+    currentWindow.layoutChildren ?? [],
+    draft.anchor,
+    draft.size
+  );
+
+  return update.changed
+    ? { ...currentWindow, layoutChildren: update.layoutChildren }
+    : currentWindow;
+}
+
+function resizeCapabilityForAnchor({ anchor, currentWindow, model }) {
+  if (!anchor || !currentWindow || !model?.root) {
+    return null;
+  }
+
+  const node = findModelNode(model, anchor);
+  if (!node) {
+    return null;
+  }
+
+  if (anchor === "gui_window") {
+    const size = normalizeWindowSize(currentWindow.size);
+    return {
+      anchor,
+      kind: "window",
+      supported: true,
+      widthField: "width",
+      heightField: "height",
+      width: size.width,
+      height: size.height,
+      widthLimits: {
+        min: WINDOW_SIZE_LIMITS.minWidth,
+        max: WINDOW_SIZE_LIMITS.maxWidth
+      },
+      heightLimits: {
+        min: WINDOW_SIZE_LIMITS.minHeight,
+        max: WINDOW_SIZE_LIMITS.maxHeight
+      }
+    };
+  }
+
+  const layoutMatch = findLayoutNode(currentWindow.layoutChildren ?? [], anchor);
+  if (
+    layoutMatch &&
+    (layoutMatch.node.atom === FRAME_ATOM_ID ||
+      layoutMatch.node.atom === HORIZONTAL_FLOW_ATOM_ID)
+  ) {
+    return {
+      anchor,
+      kind: "layout-node",
+      supported: true,
+      widthField: "minimalWidth",
+      heightField: "minimalHeight",
+      width: node.styleReference?.minimalWidth ?? LAYOUT_NODE_SIZE_LIMITS.minimalWidth.min,
+      height: node.styleReference?.minimalHeight ?? LAYOUT_NODE_SIZE_LIMITS.minimalHeight.min,
+      widthLimits: LAYOUT_NODE_SIZE_LIMITS.minimalWidth,
+      heightLimits: LAYOUT_NODE_SIZE_LIMITS.minimalHeight
+    };
+  }
+
+  return {
+    anchor,
+    kind: "unsupported",
+    supported: false
+  };
+}
+
+function clampResizeValue(value, limits) {
+  const numberValue = Number(value);
+  const safeValue = Number.isFinite(numberValue) ? numberValue : limits.min;
+  return Math.min(limits.max, Math.max(limits.min, Math.round(safeValue)));
+}
+
+const RESIZE_HANDLES = Object.freeze([
+  { id: "nw", label: "Resize northwest" },
+  { id: "n", label: "Resize north" },
+  { id: "ne", label: "Resize northeast" },
+  { id: "e", label: "Resize east" },
+  { id: "se", label: "Resize southeast" },
+  { id: "s", label: "Resize south" },
+  { id: "sw", label: "Resize southwest" },
+  { id: "w", label: "Resize west" }
+]);
+
+function resizeDraftForPointer(drag, event) {
+  const deltaX = event.clientX - drag.originX;
+  const deltaY = event.clientY - drag.originY;
+  const horizontalSign =
+    drag.handle.includes("e") ? 1 : drag.handle.includes("w") ? -1 : 0;
+  const verticalSign =
+    drag.handle.includes("s") ? 1 : drag.handle.includes("n") ? -1 : 0;
+
+  return {
+    anchor: drag.capability.anchor,
+    kind: drag.capability.kind,
+    size: {
+      [drag.capability.widthField]: clampResizeValue(
+        drag.capability.width + deltaX * horizontalSign,
+        drag.capability.widthLimits
+      ),
+      [drag.capability.heightField]: clampResizeValue(
+        drag.capability.height + deltaY * verticalSign,
+        drag.capability.heightLimits
+      )
+    }
+  };
+}
+
+function ResizeOverlay({
+  active,
+  anchor,
+  builderDragActive,
+  canvasRef,
+  currentWindow,
+  model,
+  onCancel,
+  onCommit,
+  onDraft
+}) {
+  const resizeDragRef = useRef(null);
+  const [box, setBox] = useState(null);
+  const capability = resizeCapabilityForAnchor({ anchor, currentWindow, model });
+  const visible = Boolean(active && !builderDragActive && anchor && capability);
+
+  useEffect(() => {
+    if (!visible || !canvasRef.current) {
+      setBox(null);
+      return undefined;
+    }
+
+    const canvas = canvasRef.current;
+
+    function measureTarget() {
+      const target = canvas.querySelector(`[data-anchor="${anchor}"]`);
+      if (!target) {
+        setBox(null);
+        return;
+      }
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      setBox({
+        left: Math.round(targetRect.left - canvasRect.left + canvas.scrollLeft),
+        top: Math.round(targetRect.top - canvasRect.top + canvas.scrollTop),
+        width: Math.round(targetRect.width),
+        height: Math.round(targetRect.height)
+      });
+    }
+
+    measureTarget();
+    window.addEventListener("resize", measureTarget);
+    canvas.addEventListener("scroll", measureTarget);
+
+    return () => {
+      window.removeEventListener("resize", measureTarget);
+      canvas.removeEventListener("scroll", measureTarget);
+    };
+  }, [anchor, canvasRef, currentWindow, model, visible]);
+
+  if (!visible || !box) {
+    return null;
+  }
+
+  function startResize(event) {
+    if (event.button !== 0 || !capability?.supported) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizeDragRef.current = {
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      handle: event.currentTarget.dataset.resizeHandle,
+      capability,
+      latestDraft: null
+    };
+  }
+
+  function moveResize(event) {
+    const drag = resizeDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    const draft = resizeDraftForPointer(drag, event);
+    drag.latestDraft = draft;
+    onDraft?.(draft);
+  }
+
+  function endResize(event) {
+    const drag = resizeDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    resizeDragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    onCommit?.(drag.latestDraft);
+  }
+
+  function cancelResize(event) {
+    const drag = resizeDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    resizeDragRef.current = null;
+    onCancel?.();
+  }
+
+  return (
+    <div
+      className={[
+        "fx-resize-overlay",
+        capability.supported ? "is-supported" : "is-disabled"
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-anchor="resize_overlay"
+      data-resize-anchor={anchor}
+      data-resize-supported={capability.supported ? "true" : "false"}
+      style={{
+        left: `${box.left}px`,
+        top: `${box.top}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`
+      }}
+    >
+      {capability.supported ? (
+        RESIZE_HANDLES.map((handle) => (
+          <button
+            aria-label={handle.label}
+            className={`fx-resize-overlay__handle fx-resize-overlay__handle--${handle.id}`}
+            data-resize-handle={handle.id}
+            key={handle.id}
+            onPointerCancel={cancelResize}
+            onPointerDown={startResize}
+            onPointerMove={moveResize}
+            onPointerUp={endResize}
+            title={handle.label}
+            type="button"
+          />
+        ))
+      ) : (
+        <span className="fx-resize-overlay__disabled">Resize unavailable</span>
+      )}
+    </div>
+  );
+}
+
 function EditorCanvas({
   currentWindow,
   model,
   inspectorActive,
+  selectionActive = inspectorActive,
   inspectorLocked,
   inspectedAnchor,
   inspectorPreview,
@@ -200,9 +485,13 @@ function EditorCanvas({
   onInspect,
   onInspectClear,
   onInspectLock,
+  onResizeCancel,
+  onResizeCommit,
+  onResizeDraft,
   onWindowLocationChange,
   builderDragActive,
   builderDropTarget,
+  resizeMode = false,
   shadowsVisible = true
 }) {
   const canvasRef = useRef(null);
@@ -352,7 +641,7 @@ function EditorCanvas({
           title={currentWindow.title}
           className={windowClassName}
           styleReference={styleReference}
-          inspectorActive={inspectorActive}
+          inspectorActive={selectionActive}
           inspectorLocked={inspectorLocked}
           inspectedAnchor={previewAnchor}
           onInspect={onInspect}
@@ -389,6 +678,17 @@ function EditorCanvas({
           <span>{measurementBox.label}</span>
         </div>
       ) : null}
+      <ResizeOverlay
+        active={resizeMode}
+        anchor={inspectedAnchor}
+        builderDragActive={builderDragActive}
+        canvasRef={canvasRef}
+        currentWindow={currentWindow}
+        model={model}
+        onCancel={onResizeCancel}
+        onCommit={onResizeCommit}
+        onDraft={onResizeDraft}
+      />
     </div>
   );
 }
@@ -960,6 +1260,7 @@ export function EditorPage() {
   const [inspectorPreview, setInspectorPreview] = useState(null);
   const [builderDrag, setBuilderDrag] = useState(null);
   const [builderDropTarget, setBuilderDropTarget] = useState(null);
+  const [resizeDraft, setResizeDraft] = useState(null);
   const shellRef = useRef(null);
   const sidebarResizeRef = useRef(null);
   const {
@@ -970,6 +1271,7 @@ export function EditorPage() {
     showInspector,
     showLuaOutput,
     showGuiShadows,
+    resizeMode,
     inspectorLocked,
     inspectedAnchor,
     showLayoutSettings,
@@ -978,9 +1280,10 @@ export function EditorPage() {
     sidebarWidth
   } = editorState;
   const normalizedLayoutSettings = normalizeLayoutSettings(layoutSettings);
-  const currentModel = currentWindow
+  const previewWindow = currentWindowWithResizeDraft(currentWindow, resizeDraft);
+  const currentModel = previewWindow
     ? createWindowModel({
-        ...currentWindow,
+        ...previewWindow,
         layoutSettings: normalizedLayoutSettings
       })
     : null;
@@ -1008,6 +1311,7 @@ export function EditorPage() {
   function createWindow() {
     setInspectorHistory({ back: [], forward: [] });
     setInspectorPreview(null);
+    setResizeDraft(null);
     setEditorState((state) => {
       const layoutState = normalizeLayoutState(state.currentWindow ?? {});
       const currentWindow = {
@@ -1044,6 +1348,7 @@ export function EditorPage() {
     setInspectorPreview(null);
     setBuilderDrag(null);
     setBuilderDropTarget(null);
+    setResizeDraft(null);
     setEditorState((state) => ({
       ...state,
       currentWindow: null,
@@ -1111,6 +1416,76 @@ export function EditorPage() {
       ...state,
       showGuiShadows: event.target.checked
     }));
+  }
+
+  function updateResizeModeEnabled(event) {
+    const enabled = event.target.checked;
+    setResizeDraft(null);
+    setEditorState((state) => ({
+      ...state,
+      resizeMode: enabled,
+      inspectedAnchor:
+        enabled && state.currentWindow && !state.inspectedAnchor
+          ? "gui_window"
+          : state.inspectedAnchor,
+      inspectorLocked:
+        enabled && state.currentWindow && !state.inspectedAnchor
+          ? true
+          : state.inspectorLocked
+    }));
+  }
+
+  function commitResizeDraft(draft) {
+    setResizeDraft(null);
+    if (!draft?.anchor) {
+      return;
+    }
+
+    setEditorState((state) => {
+      if (!state.currentWindow) {
+        return state;
+      }
+
+      if (draft.kind === "window" && draft.anchor === "gui_window") {
+        const nextSize = normalizeWindowSize(draft.size);
+        return {
+          ...state,
+          windowSize: nextSize,
+          currentWindow: {
+            ...state.currentWindow,
+            size: nextSize
+          }
+        };
+      }
+
+      if (draft.kind !== "layout-node") {
+        return state;
+      }
+
+      const layoutState = normalizeLayoutState(state.currentWindow);
+      const update = updateLayoutNodeSize(
+        layoutState.layoutChildren,
+        draft.anchor,
+        draft.size
+      );
+      if (!update.changed) {
+        return state;
+      }
+
+      const currentWindow = {
+        ...state.currentWindow,
+        layoutChildren: update.layoutChildren,
+        nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+      };
+
+      return {
+        ...state,
+        currentWindow: {
+          ...currentWindow,
+          luaVariableNames: normalizeWindowLuaVariableNames(currentWindow)
+        }
+      };
+    });
   }
 
   function updateComponentTreeShellVisible(event) {
@@ -1364,6 +1739,7 @@ export function EditorPage() {
       return;
     }
 
+    setResizeDraft(null);
     setBuilderDrag(drag);
     setBuilderDropTarget(null);
   }
@@ -1385,6 +1761,7 @@ export function EditorPage() {
 
   function applyLayoutUpdate(updater) {
     setInspectorPreview(null);
+    setResizeDraft(null);
     setEditorState((state) => {
       if (!state.currentWindow) {
         return state;
@@ -1716,6 +2093,14 @@ export function EditorPage() {
             >
               GUI shadows
             </FxCheckbox>
+            <FxCheckbox
+              checked={resizeMode}
+              data-anchor="resize_mode_toggle"
+              readOnly={false}
+              onChange={updateResizeModeEnabled}
+            >
+              Resize mode
+            </FxCheckbox>
             {showInspector ? (
               <StyleInspector
                 canGoBack={inspectorHistory.back.length > 0}
@@ -1762,9 +2147,10 @@ export function EditorPage() {
         <section className="fx-editor-stage" aria-label="Editor canvas">
           <div id="editor-root">
             <EditorCanvas
-              currentWindow={currentWindow}
+              currentWindow={previewWindow}
               model={currentModel}
               inspectorActive={showInspector}
+              selectionActive={showInspector || resizeMode}
               inspectorLocked={inspectorLocked}
               inspectedAnchor={inspectedAnchor}
               inspectorPreview={inspectorPreview}
@@ -1773,9 +2159,13 @@ export function EditorPage() {
               onInspectLock={lockInspectedAnchor}
               onBuilderDrop={handleCanvasDrop}
               onBuilderDropTargetOver={handleCanvasDropTargetOver}
+              onResizeCancel={() => setResizeDraft(null)}
+              onResizeCommit={commitResizeDraft}
+              onResizeDraft={setResizeDraft}
               onWindowLocationChange={updateWindowLocation}
               builderDragActive={Boolean(builderDrag)}
               builderDropTarget={builderDropTarget}
+              resizeMode={resizeMode}
               shadowsVisible={showGuiShadows}
             />
           </div>

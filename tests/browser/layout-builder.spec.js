@@ -94,6 +94,19 @@ const NESTED_TREE_STATE = {
   }
 };
 
+function stateWithSelection(state, anchor, overrides = {}) {
+  return {
+    ...state,
+    inspectedAnchor: anchor,
+    inspectorLocked: true,
+    ...overrides,
+    currentWindow: {
+      ...state.currentWindow,
+      ...(overrides.currentWindow ?? {})
+    }
+  };
+}
+
 function roundedRect(rect) {
   return {
     left: Math.round(rect.left),
@@ -215,6 +228,22 @@ async function seedEditorState(page, state) {
 async function seedOneFrameWindow(page) {
   await seedEditorState(page, ONE_FRAME_STATE);
   await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
+}
+
+async function dragResizeHandle(page, handle, deltaX, deltaY) {
+  const handleLocator = page.locator(
+    `[data-anchor="resize_overlay"] [data-resize-handle="${handle}"]`
+  );
+  await handleLocator.scrollIntoViewIfNeeded();
+  const handleBox = await handleLocator.boundingBox();
+  expect(handleBox).not.toBeNull();
+
+  const startX = handleBox.x + handleBox.width / 2;
+  const startY = handleBox.y + handleBox.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + deltaX, startY + deltaY);
+  await page.mouse.up();
 }
 
 async function startNativePaletteDrag(page, paletteAnchor) {
@@ -884,6 +913,90 @@ test.describe("Layout builder canvas preview", () => {
     expect(shadowOff.body).toBe("none");
     expect(shadowOff.frame).toBe(shadowOn.frame);
     expect(shadowOff.frameBevel).toBe(shadowOn.frameBevel);
+  });
+
+  test("resize mode shows handles only when enabled for a resizable Frame", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+
+    await expect(page.locator('[data-anchor="resize_overlay"]')).toHaveCount(0);
+    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+
+    const overlay = page.locator('[data-anchor="resize_overlay"]');
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveAttribute("data-resize-anchor", "gui_frame_1");
+    await expect(overlay).toHaveAttribute("data-resize-supported", "true");
+    await expect(overlay.locator("[data-resize-handle]")).toHaveCount(8);
+
+    await dragResizeHandle(page, "se", 140, 50);
+
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
+      "data-fx-minimal-width",
+      "308"
+    );
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
+      "data-fx-minimal-height",
+      "122"
+    );
+    await expect(page.locator('[data-anchor="lua_output_file"]')).toBeVisible();
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "gui_frame_1.style.minimal_width = 308"
+    );
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "gui_frame_1.style.minimal_height = 122"
+    );
+
+    const storedSize = await page.evaluate((key) => {
+      const state = JSON.parse(window.localStorage.getItem(key));
+      return state.currentWindow.layoutChildren[0].size;
+    }, EDITOR_STORAGE_KEY);
+    expect(storedSize).toEqual({ minimalWidth: 308, minimalHeight: 122 });
+  });
+
+  test("resize mode updates Window width and height through exported style fields", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_window", { showLuaOutput: true })
+    );
+    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+
+    const overlay = page.locator('[data-anchor="resize_overlay"]');
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveAttribute("data-resize-anchor", "gui_window");
+    await dragResizeHandle(page, "se", 100, 40);
+
+    await expect(page.locator("#window-width")).toHaveValue("1200");
+    await expect(page.locator("#window-height")).toHaveValue("490");
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "gui_window.style.width = 1200"
+    );
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "gui_window.style.height = 490"
+    );
+  });
+
+  test("resize mode marks unsupported generated nodes without mutating state", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_window_title")
+    );
+    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+
+    const overlay = page.locator('[data-anchor="resize_overlay"]');
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveAttribute("data-resize-anchor", "gui_window_title");
+    await expect(overlay).toHaveAttribute("data-resize-supported", "false");
+    await expect(overlay.locator("[data-resize-handle]")).toHaveCount(0);
+    await expect(overlay.getByText("Resize unavailable")).toBeVisible();
+
+    const storedWindow = await page.evaluate((key) => {
+      const state = JSON.parse(window.localStorage.getItem(key));
+      return state.currentWindow;
+    }, EDITOR_STORAGE_KEY);
+    expect(storedWindow.layoutChildren[0].size).toBeUndefined();
+    expect(storedWindow.size).toEqual({ width: 1100, height: 450 });
   });
 
   test("vertical Window body splits sibling Frames with a substrate gutter", async ({ page }) => {

@@ -67,6 +67,7 @@ The editor rail contains three pinned sections:
 [Inspector]
   Ctrl+F6 style inspector toggle
   Lua output toggle
+  Resize mode toggle
   selected node details
 
 [Settings]
@@ -101,6 +102,12 @@ width, nested minimum width, minimum height, and padding.
 It also owns the presentation toggle for showing or hiding the generated Window
 shell rows in the Builder tree.
 
+Resize mode is a canvas tool, not always-active drag behavior. When enabled, the
+selected GUI node gets a measured overlay. Supported nodes show side and corner
+handles; unsupported nodes show a disabled resize state. The tool reuses the
+same selected anchor as the Builder tree and Inspector, so selecting a row,
+inspector item, or canvas element targets the same model node.
+
 ## Data Contract
 
 The Window panel has one create/recreate command. A nearby body-flow toggle
@@ -117,6 +124,10 @@ Flow body. The persisted editor state stores only constrained specs:
         "id": "gui_frame_1",
         "atom": "frame",
         "styleVariant": "inside-deep-frame",
+        "size": {
+          "minimalWidth": 240,
+          "minimalHeight": 96
+        },
         "children": []
       }
     ],
@@ -138,6 +149,12 @@ Renderer CSS reads those hydrated style facts through custom properties. Lua
 export writes the same supported style assignments onto editor-created Frames
 and Horizontal Flows, preserving current 1:1 editor-to-Lua compatibility for
 this slice without treating CSS as source of truth.
+
+The optional `size` object is authored per layout node. `minimalWidth` and
+`minimalHeight` override the corresponding global layout setting for that node
+only, clamp to Factorio-safe editor limits, hydrate into `styleReference`, and
+export as `LuaStyle.minimal_width` / `LuaStyle.minimal_height`. Existing nodes
+without `size` keep using global layout settings.
 
 Each exported node also has an effective Lua local variable name. By default it
 matches the stable node id after Lua identifier sanitization. The component tree
@@ -195,6 +212,23 @@ Inspector.
   through the same Horizontal Flow shell as a real Horizontal Flow.
 - Removing a row removes its subtree in this slice.
 
+## Resize Rules
+
+- Resize mode is toggled from the Inspector panel at `resize_mode_toggle`.
+- `gui_window` supports width and height resizing through `currentWindow.size`;
+  the Window controls and Lua `.style.width` / `.style.height` update on commit.
+- Editor-created Frames and Horizontal Flows support `minimal_width` and
+  `minimal_height` resizing through their per-node `size` object.
+- Generated shell children such as `gui_window_title` and
+  `gui_window_drag_handle` are unsupported until their atom contracts define
+  explicit Factorio-exportable size fields.
+- Builder drag/drop hides resize handles while active. Resize handle events stop
+  propagation so they cannot begin Window dragging, tree dragging, or Inspector
+  selection changes.
+- Resize mode changes only model/exportable size fields. It must not create
+  absolute-positioned child layout, arbitrary CSS transforms, or freeform pixel
+  coordinates as layout source of truth.
+
 ## Fixtures
 
 | Fixture | State | Expected behavior |
@@ -207,6 +241,8 @@ Inspector.
 | `nested-split` | Frame -> Horizontal Flow -> Frame | Nested split remains model-consistent and exportable. |
 | `cross-parent-move` | Two root Frames, one nested Frame | Tree drag can move a Frame between body and another compatible flow, preserving order. |
 | `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and keeps the model unchanged. |
+| `resize-frame` | Selected root Frame with resize mode enabled | Handles resize authored `minimal_width`/`minimal_height`, update preview, persist `size`, and export Lua style fields. |
+| `resize-unsupported-shell-node` | Selected generated title label with resize mode enabled | Resize overlay reports unsupported and does not mutate Window or layout specs. |
 
 ## Stable Anchors
 
@@ -219,6 +255,8 @@ Inspector.
 - `builder_body_tree`
 - `builder_tree_drag_line`
 - `builder_tree_item_<node_id>`
+- `resize_mode_toggle`
+- `resize_overlay`
 - `gui_window_body`
 - `gui_frame_N` for editor-created Frame nodes
 - `gui_horizontal_flow_N` for editor-created Horizontal Flow nodes

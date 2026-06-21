@@ -1,6 +1,7 @@
 export {
   createWindowModel,
   DEFAULT_WINDOW_SIZE,
+  findModelNode,
   frameStyleReference,
   getWindowInspectorRows,
   HORIZONTAL_FLOW_DIRECTION,

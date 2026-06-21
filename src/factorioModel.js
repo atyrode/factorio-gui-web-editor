@@ -1186,6 +1186,7 @@ function layoutFrameMinimumWidth(layoutSettings, depth) {
 
 function createLayoutFrameNode(spec, layoutSettings, luaVariableNames = {}, depth = 0) {
   const variant = frameStyleVariants.insideDeepFrame;
+  const authoredSize = spec.size ?? {};
 
   return createFrameNode({
     id: spec.id,
@@ -1201,8 +1202,8 @@ function createLayoutFrameNode(spec, layoutSettings, luaVariableNames = {}, dept
       rightPadding: variant.rightPadding,
       bottomPadding: variant.bottomPadding,
       leftPadding: variant.leftPadding,
-      minimalWidth: layoutFrameMinimumWidth(layoutSettings, depth),
-      minimalHeight: layoutSettings.horizontalFlowMinimumHeight,
+      minimalWidth: authoredSize.minimalWidth ?? layoutFrameMinimumWidth(layoutSettings, depth),
+      minimalHeight: authoredSize.minimalHeight ?? layoutSettings.horizontalFlowMinimumHeight,
       childMinimalWidth: 0,
       childMinimalHeight: layoutSettings.horizontalFlowMinimumHeight,
       childHorizontalSpacing: layoutSettings.horizontalFlowSpacing,
@@ -1222,6 +1223,7 @@ function createLayoutFrameNode(spec, layoutSettings, luaVariableNames = {}, dept
 
 function createLayoutHorizontalFlowNode(spec, layoutSettings, luaVariableNames = {}, depth = 0) {
   const variant = horizontalFlowStyleVariants.generic;
+  const authoredSize = spec.size ?? {};
 
   return createHorizontalFlowNode({
     id: spec.id,
@@ -1239,8 +1241,8 @@ function createLayoutHorizontalFlowNode(spec, layoutSettings, luaVariableNames =
       rightPadding: layoutSettings.horizontalFlowPadding,
       bottomPadding: layoutSettings.horizontalFlowPadding,
       leftPadding: layoutSettings.horizontalFlowPadding,
-      minimalWidth: 0,
-      minimalHeight: layoutSettings.horizontalFlowMinimumHeight,
+      minimalWidth: authoredSize.minimalWidth ?? 0,
+      minimalHeight: authoredSize.minimalHeight ?? layoutSettings.horizontalFlowMinimumHeight,
       childMinimalWidth: layoutSettings.nestedHorizontalFlowMinimumWidth,
       childMinimalHeight: layoutSettings.horizontalFlowMinimumHeight,
       childHorizontalSpacing: layoutSettings.horizontalFlowSpacing,
