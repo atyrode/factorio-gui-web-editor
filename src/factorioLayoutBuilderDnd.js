@@ -12,16 +12,6 @@ export function paletteDragData(atom = "frame") {
   };
 }
 
-export function nodeDragData(sourceId, atom = null) {
-  return {
-    builderDrag: {
-      kind: "node",
-      sourceId,
-      atom
-    }
-  };
-}
-
 export function dropTargetData({ parentId, index, surface }) {
   return {
     builderDropTarget: {
@@ -39,14 +29,6 @@ export function readBuilderDrag(source) {
     return {
       kind: "palette",
       atom: VALID_PALETTE_ATOMS.has(drag.atom) ? drag.atom : "frame"
-    };
-  }
-
-  if (drag?.kind === "node" && typeof drag.sourceId === "string") {
-    return {
-      kind: "node",
-      sourceId: drag.sourceId,
-      atom: VALID_PALETTE_ATOMS.has(drag.atom) ? drag.atom : null
     };
   }
 

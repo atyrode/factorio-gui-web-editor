@@ -1,19 +1,30 @@
-import { Fragment, useEffect, useId, useRef, useState } from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/react";
-import { Code2 } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  dragAndDropFeature,
+  hotkeysCoreFeature,
+  isOrderedDragTarget,
+  keyboardDragAndDropFeature,
+  selectionFeature,
+  syncDataLoaderFeature
+} from "@headless-tree/core";
+import { useTree } from "@headless-tree/react";
+import { useDraggable } from "@dnd-kit/react";
+import { Code2, GripVertical } from "lucide-react";
 
 import {
   LAYOUT_BUILDER_DND_TYPE,
-  dropTargetData,
-  nodeDragData,
   paletteDragData
 } from "../factorioLayoutBuilderDnd.js";
 import {
   BODY_LAYOUT_ROOT_ID,
+  canDropLayoutNode,
   FRAME_ATOM_ID,
   HORIZONTAL_FLOW_ATOM_ID
 } from "../factorioLayoutTree.js";
 import { FxActionButton, FxFrame } from "./factorioGui.jsx";
+
+const BUILDER_TREE_ROOT_ID = "builder_tree_root";
+const PALETTE_TREE_DND_FORMAT = "application/x-factorio-gui-builder-palette";
 
 function bodyFlowLabel(currentWindow) {
   return currentWindow?.bodyDirection === "vertical"
@@ -61,6 +72,187 @@ function collectModelNodes(model) {
 
   walk(model?.root);
   return nodes;
+}
+
+function paletteTreeAtomFormat(atom) {
+  return `${PALETTE_TREE_DND_FORMAT}-${atom}`;
+}
+
+function dataTransferTypes(dataTransfer) {
+  return Array.from(dataTransfer?.types ?? []);
+}
+
+function readPaletteTreeAtom(dataTransfer, readPayload = true) {
+  if (!dataTransfer) {
+    return null;
+  }
+
+  if (readPayload) {
+    const payload = dataTransfer.getData(PALETTE_TREE_DND_FORMAT);
+    if (payload === FRAME_ATOM_ID || payload === HORIZONTAL_FLOW_ATOM_ID) {
+      return payload;
+    }
+  }
+
+  const types = dataTransferTypes(dataTransfer);
+  if (types.includes(paletteTreeAtomFormat(FRAME_ATOM_ID))) {
+    return FRAME_ATOM_ID;
+  }
+
+  if (types.includes(paletteTreeAtomFormat(HORIZONTAL_FLOW_ATOM_ID))) {
+    return HORIZONTAL_FLOW_ATOM_ID;
+  }
+
+  return null;
+}
+
+function dropLocationFromTarget(target) {
+  if (!target) {
+    return null;
+  }
+
+  const parentItem = target.item;
+  const parentData = parentItem.getItemData();
+  if (!parentData?.canReceiveChildren) {
+    return null;
+  }
+
+  return {
+    parentId: parentData.id,
+    index: isOrderedDragTarget(target)
+      ? target.insertionIndex
+      : parentItem.getChildren().length
+  };
+}
+
+function createTreePayload({
+  id,
+  node,
+  label,
+  code = id,
+  atom = node?.atom ?? null,
+  locked = false,
+  draggable = false,
+  canReceiveChildren = false,
+  childrenIds = [],
+  luaVariableName = code
+}) {
+  return {
+    id,
+    node,
+    label,
+    code,
+    atom,
+    locked,
+    draggable,
+    canReceiveChildren,
+    childrenIds,
+    luaVariableName
+  };
+}
+
+function buildBuilderTreeData({ currentWindow, layoutChildren, model }) {
+  const root = model?.root;
+  const modelNodeById = collectModelNodes(model);
+  const items = new Map();
+  const expandedIds = [BUILDER_TREE_ROOT_ID];
+
+  function addItem(payload) {
+    items.set(payload.id, payload);
+    if (payload.childrenIds.length || payload.canReceiveChildren) {
+      expandedIds.push(payload.id);
+    }
+  }
+
+  if (!currentWindow || !root) {
+    addItem(createTreePayload({
+      id: BUILDER_TREE_ROOT_ID,
+      label: "Component tree",
+      locked: true
+    }));
+    return { items, expandedIds };
+  }
+
+  const titlebar = root.children?.[0];
+  const titleLabel = titlebar?.children?.[0];
+  const dragHandle = titlebar?.children?.[1];
+  const body = root.children?.[1];
+  const rootChildrenIds = [titlebar?.id, body?.id].filter(Boolean);
+  const titlebarChildrenIds = [titleLabel?.id, dragHandle?.id].filter(Boolean);
+  const bodyChildrenIds = layoutChildren.map((node) => node.id);
+
+  addItem(createTreePayload({
+    id: BUILDER_TREE_ROOT_ID,
+    label: "Component tree",
+    locked: true,
+    childrenIds: [root.id]
+  }));
+  addItem(createTreePayload({
+    id: root.id,
+    node: root,
+    label: shellNodeLabel(root),
+    locked: true,
+    childrenIds: rootChildrenIds,
+    luaVariableName: root.luaVariableName ?? root.id
+  }));
+
+  if (titlebar) {
+    addItem(createTreePayload({
+      id: titlebar.id,
+      node: titlebar,
+      label: shellNodeLabel(titlebar),
+      locked: true,
+      childrenIds: titlebarChildrenIds,
+      luaVariableName: titlebar.luaVariableName ?? titlebar.id
+    }));
+  }
+
+  for (const node of [titleLabel, dragHandle].filter(Boolean)) {
+    addItem(createTreePayload({
+      id: node.id,
+      node,
+      label: shellNodeLabel(node),
+      locked: true,
+      luaVariableName: node.luaVariableName ?? node.id
+    }));
+  }
+
+  if (body) {
+    addItem(createTreePayload({
+      id: body.id,
+      node: { ...body, atom: HORIZONTAL_FLOW_ATOM_ID },
+      label: bodyFlowLabel(currentWindow),
+      atom: HORIZONTAL_FLOW_ATOM_ID,
+      locked: true,
+      canReceiveChildren: true,
+      childrenIds: bodyChildrenIds,
+      luaVariableName: body.luaVariableName ?? BODY_LAYOUT_ROOT_ID
+    }));
+  }
+
+  function addAuthoredNode(node) {
+    const modelNode = modelNodeById.get(node.id);
+    addItem(createTreePayload({
+      id: node.id,
+      node,
+      label: atomLabel(node.atom),
+      atom: node.atom,
+      draggable: true,
+      canReceiveChildren: true,
+      childrenIds: (node.children ?? []).map((child) => child.id),
+      luaVariableName: modelNode?.luaVariableName ?? node.id
+    }));
+
+    for (const child of node.children ?? []) {
+      addAuthoredNode(child);
+    }
+  }
+
+  for (const node of layoutChildren) {
+    addAuthoredNode(node);
+  }
+
+  return { items, expandedIds: [...new Set(expandedIds)] };
 }
 
 function BuilderLuaVariableEditor({
@@ -193,85 +385,67 @@ function shellNodeLabel(node) {
   return node?.className ?? "GUI Element";
 }
 
-function BuilderDropSlot({
-  parentId,
-  index,
-  dragActive,
-  dropTarget,
-  surface = "list"
-}) {
-  const { ref, isDropTarget } = useDroppable({
-    id: `builder-${surface}-slot-${parentId}-${index}`,
-    type: LAYOUT_BUILDER_DND_TYPE,
-    accept: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !dragActive,
-    data: dropTargetData({ parentId, index, surface })
-  });
-  const active = isDropTarget || dropTarget?.surface === surface &&
-    dropTarget.parentId === parentId &&
-    dropTarget.index === index;
-
-  return (
-    <li
-      ref={ref}
-      className={[
-        "fx-builder-drop-slot",
-        dragActive ? "is-armed" : "",
-        active ? "is-active" : ""
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {active ? (
-        <div className="fx-builder-ghost" data-anchor="builder_ghost_marker" aria-hidden="true" />
-      ) : null}
-    </li>
-  );
-}
-
 function BuilderNodeRow({
   node,
   code = node.id,
   draggable = true,
+  dragHandleProps = null,
+  treeItem = null,
   label = atomLabel(node.atom),
   locked = false,
   luaVariableName = code,
   inspectedAnchor,
-  draggingId,
+  dragging = false,
+  dropTarget = false,
+  invalidDropTarget = false,
   onAddAfter,
   onAddChild,
   onEditLuaVariableName,
   onRemove,
-  onSelect
+  onSelect,
+  rowProps = {}
 }) {
-  const { ref, handleRef, isDragSource } = useDraggable({
-    id: `builder-node-${node.id}`,
-    type: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !draggable,
-    data: nodeDragData(node.id, node.atom)
-  });
+  const { className: rowPropClassName, onClick: rowPropOnClick, ...restRowProps } = rowProps;
+
+  function selectFromControl(event) {
+    event.stopPropagation();
+    treeItem?.setFocused?.();
+    treeItem?.primaryAction?.();
+    onSelect?.(node.id);
+  }
 
   return (
     <div
-      ref={ref}
+      {...restRowProps}
       className={[
         "fx-builder-row",
         locked ? "fx-builder-row--locked" : "",
-        draggingId === node.id || isDragSource ? "is-dragging" : "",
-        inspectedAnchor === node.id ? "is-selected" : ""
+        dragging ? "is-dragging" : "",
+        dropTarget ? "is-drop-target" : "",
+        invalidDropTarget ? "is-invalid-drop-target" : "",
+        inspectedAnchor === node.id ? "is-selected" : "",
+        rowPropClassName
       ]
         .filter(Boolean)
         .join(" ")}
-      onClick={() => onSelect(node.id)}
+      data-anchor={`builder_tree_item_${node.id}`}
+      onClick={rowPropOnClick}
     >
+      <button
+        {...(dragHandleProps ?? {})}
+        aria-label={draggable ? `Drag ${label}` : `${label} is locked`}
+        className="fx-builder-row__drag-handle"
+        disabled={!draggable}
+        onClick={(event) => event.stopPropagation()}
+        title={draggable ? `Drag ${label}` : "Generated shell node"}
+        type="button"
+      >
+        <GripVertical aria-hidden="true" />
+      </button>
       <div className="fx-builder-row__main">
         <button
-          ref={draggable ? handleRef : undefined}
           className="fx-builder-row__label"
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelect(node.id);
-          }}
+          onClick={selectFromControl}
           title={code}
           type="button"
         >
@@ -319,114 +493,12 @@ function BuilderNodeRow({
   );
 }
 
-function BuilderNodeList({
-  nodes,
-  parentId,
-  inspectedAnchor,
-  dragActive,
-  draggingId,
-  dropTarget,
-  modelNodeById,
-  onAddAfter,
-  onAddChild,
-  onEditLuaVariableName,
-  onRemove,
-  onSelect
-}) {
-  return (
-    <ul className="fx-builder-tree">
-      <BuilderDropSlot
-        dragActive={dragActive}
-        dropTarget={dropTarget}
-        index={0}
-        parentId={parentId}
-      />
-      {nodes.map((node, index) => (
-        <Fragment key={node.id}>
-          <li className="fx-builder-tree__item">
-            <BuilderNodeRow
-              draggingId={draggingId}
-              inspectedAnchor={inspectedAnchor}
-              luaVariableName={modelNodeById.get(node.id)?.luaVariableName ?? node.id}
-              node={node}
-              onAddAfter={onAddAfter}
-              onAddChild={onAddChild}
-              onEditLuaVariableName={onEditLuaVariableName}
-              onRemove={onRemove}
-              onSelect={onSelect}
-            />
-            <BuilderNodeList
-              dragActive={dragActive}
-              dropTarget={dropTarget}
-              draggingId={draggingId}
-              inspectedAnchor={inspectedAnchor}
-              nodes={node.children}
-              modelNodeById={modelNodeById}
-              onAddAfter={onAddAfter}
-              onAddChild={onAddChild}
-              onEditLuaVariableName={onEditLuaVariableName}
-              onRemove={onRemove}
-              onSelect={onSelect}
-              parentId={node.id}
-            />
-          </li>
-          <BuilderDropSlot
-            dragActive={dragActive}
-            dropTarget={dropTarget}
-            index={index + 1}
-            parentId={parentId}
-          />
-        </Fragment>
-      ))}
-    </ul>
-  );
-}
-
-function BuilderBodyTree({
-  childrenCount,
-  children,
-  dragActive,
-  dropTarget
-}) {
-  const { ref, isDropTarget } = useDroppable({
-    id: "builder-body-tree-drop-end",
-    type: LAYOUT_BUILDER_DND_TYPE,
-    accept: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !dragActive,
-    data: dropTargetData({
-      parentId: BODY_LAYOUT_ROOT_ID,
-      index: childrenCount,
-      surface: "list"
-    })
-  });
-  const active = isDropTarget ||
-    dropTarget?.surface === "list" &&
-    dropTarget.parentId === BODY_LAYOUT_ROOT_ID &&
-    dropTarget.index === childrenCount;
-
-  return (
-    <div
-      ref={ref}
-      className={[
-        "fx-builder-body",
-        dragActive ? "is-armed" : "",
-        active ? "is-drop-target" : ""
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      data-anchor="builder_body_tree"
-    >
-      {children}
-    </div>
-  );
-}
-
 function BuilderPaletteItem({
   atom,
   currentWindow,
   paletteDraggingAtom
 }) {
-  const { ref, isDragSource } = useDraggable({
+  const { ref, handleRef, isDragSource } = useDraggable({
     id: `builder-palette-${atom}`,
     type: LAYOUT_BUILDER_DND_TYPE,
     disabled: !currentWindow,
@@ -437,8 +509,21 @@ function BuilderPaletteItem({
       ? "horizontal_flow_palette_item"
       : "frame_palette_item";
 
+  function handleTreeDragStart(event) {
+    if (!currentWindow) {
+      event.preventDefault();
+      return;
+    }
+
+    event.stopPropagation();
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.dropEffect = "copy";
+    event.dataTransfer.setData(PALETTE_TREE_DND_FORMAT, atom);
+    event.dataTransfer.setData(paletteTreeAtomFormat(atom), atom);
+  }
+
   return (
-    <button
+    <div
       ref={ref}
       className={[
         "fx-builder-palette__item",
@@ -446,139 +531,213 @@ function BuilderPaletteItem({
       ]
         .filter(Boolean)
         .join(" ")}
+      aria-disabled={!currentWindow}
       data-anchor={anchor}
-      disabled={!currentWindow}
-      type="button"
     >
-      <span>{atomLabel(atom)}</span>
-      <code>{atomCode(atom)}</code>
-    </button>
+      <button
+        ref={handleRef}
+        className="fx-builder-palette__canvas-handle"
+        disabled={!currentWindow}
+        type="button"
+      >
+        <span>{atomLabel(atom)}</span>
+        <code>{atomCode(atom)}</code>
+      </button>
+      <span
+        aria-disabled={!currentWindow}
+        aria-label={`Drag ${atomLabel(atom)} into component tree`}
+        className="fx-builder-palette__tree-handle"
+        draggable={Boolean(currentWindow)}
+        onDragStart={handleTreeDragStart}
+        onPointerDown={(event) => event.stopPropagation()}
+        role="button"
+        tabIndex={currentWindow ? 0 : -1}
+        title={`Drag ${atomLabel(atom)} into component tree`}
+      >
+        Tree
+      </span>
+    </div>
   );
 }
 
-function BuilderShellTree({
+function BuilderHeadlessTree({
   currentWindow,
   inspectedAnchor,
   layoutChildren,
   model,
-  dragActive,
-  draggingId,
-  dropTarget,
   onAddAfter,
   onAddChild,
   onEditLuaVariableName,
+  onInsertPalette,
+  onMoveNode,
   onRemove,
   onSelect
 }) {
-  const root = model?.root;
-  if (!currentWindow || !root) {
-    return null;
-  }
+  const { items, expandedIds } = useMemo(
+    () => buildBuilderTreeData({ currentWindow, layoutChildren, model }),
+    [currentWindow, layoutChildren, model]
+  );
+  const selectedItems = inspectedAnchor && items.has(inspectedAnchor)
+    ? [inspectedAnchor]
+    : [];
+  const focusedItem = selectedItems[0] ?? null;
+  const tree = useTree({
+    rootItemId: BUILDER_TREE_ROOT_ID,
+    indent: 20,
+    canReorder: true,
+    reorderAreaPercentage: 0.32,
+    seperateDragHandle: true,
+    draggedItemOverwritesSelection: true,
+    state: {
+      expandedItems: expandedIds,
+      selectedItems,
+      focusedItem
+    },
+    dataLoader: {
+      getItem: (itemId) => items.get(itemId) ?? items.get(BUILDER_TREE_ROOT_ID),
+      getChildren: (itemId) => items.get(itemId)?.childrenIds ?? []
+    },
+    getItemName: (item) => item.getItemData()?.label ?? item.getId(),
+    isItemFolder: (item) => {
+      const itemData = item.getItemData();
+      return Boolean(itemData?.childrenIds?.length || itemData?.canReceiveChildren);
+    },
+    onPrimaryAction: (item) => {
+      const itemData = item.getItemData();
+      if (itemData?.id && itemData.id !== BUILDER_TREE_ROOT_ID) {
+        onSelect?.(itemData.id);
+      }
+    },
+    canDrag: (dragItems) =>
+      dragItems.length === 1 && Boolean(dragItems[0].getItemData()?.draggable),
+    canDrop: (dragItems, target) => {
+      if (dragItems.length !== 1) {
+        return false;
+      }
 
-  const titlebar = root.children?.[0];
-  const titleLabel = titlebar?.children?.[0];
-  const dragHandle = titlebar?.children?.[1];
-  const body = root.children?.[1];
-  const modelNodeById = collectModelNodes(model);
+      const dragItemData = dragItems[0].getItemData();
+      const location = dropLocationFromTarget(target);
+      if (!dragItemData?.draggable || !dragItemData.atom || !location) {
+        return false;
+      }
+
+      return canDropLayoutNode(
+        layoutChildren,
+        dragItemData.id,
+        location.parentId,
+        dragItemData.atom
+      );
+    },
+    canDragForeignDragObjectOver: (dataTransfer, target) => {
+      const atom = readPaletteTreeAtom(dataTransfer, false);
+      const location = dropLocationFromTarget(target);
+      return Boolean(
+        atom &&
+        location &&
+        canDropLayoutNode(layoutChildren, null, location.parentId, atom)
+      );
+    },
+    canDropForeignDragObject: (dataTransfer, target) => {
+      const atom = readPaletteTreeAtom(dataTransfer, true);
+      const location = dropLocationFromTarget(target);
+      return Boolean(
+        atom &&
+        location &&
+        canDropLayoutNode(layoutChildren, null, location.parentId, atom)
+      );
+    },
+    onDrop: (dragItems, target) => {
+      const dragItemData = dragItems[0]?.getItemData();
+      const location = dropLocationFromTarget(target);
+      if (dragItemData?.draggable && location) {
+        onMoveNode?.(dragItemData.id, location.parentId, location.index);
+      }
+    },
+    onDropForeignDragObject: (dataTransfer, target) => {
+      const atom = readPaletteTreeAtom(dataTransfer, true);
+      const location = dropLocationFromTarget(target);
+      if (atom && location) {
+        onInsertPalette?.(location.parentId, location.index, atom);
+      }
+    },
+    features: [
+      syncDataLoaderFeature,
+      selectionFeature,
+      dragAndDropFeature,
+      keyboardDragAndDropFeature,
+      hotkeysCoreFeature
+    ]
+  });
+
+  const draggedIds = new Set(
+    (tree.getState().dnd?.draggedItems ?? []).map((item) => item.getId())
+  );
 
   return (
-    <ul className="fx-builder-tree fx-builder-tree--body-root">
-      <li className="fx-builder-tree__item">
-        <BuilderNodeRow
-          code={root.id}
-          draggable={false}
-          inspectedAnchor={inspectedAnchor}
-          label={shellNodeLabel(root)}
-          locked
-          luaVariableName={root.luaVariableName ?? root.id}
-          node={root}
-          onEditLuaVariableName={onEditLuaVariableName}
-          onSelect={onSelect}
-        />
-        <ul className="fx-builder-tree">
-          {titlebar ? (
-            <li className="fx-builder-tree__item">
-              <BuilderNodeRow
-                code={titlebar.id}
-                draggable={false}
-                inspectedAnchor={inspectedAnchor}
-                label={shellNodeLabel(titlebar)}
-                locked
-                luaVariableName={titlebar.luaVariableName ?? titlebar.id}
-                node={titlebar}
-                onEditLuaVariableName={onEditLuaVariableName}
-                onSelect={onSelect}
-              />
-              <ul className="fx-builder-tree">
-                {[titleLabel, dragHandle].filter(Boolean).map((node) => (
-                  <li className="fx-builder-tree__item" key={node.id}>
-                    <BuilderNodeRow
-                      code={node.id}
-                      draggable={false}
-                      inspectedAnchor={inspectedAnchor}
-                      label={shellNodeLabel(node)}
-                      locked
-                      luaVariableName={node.luaVariableName ?? node.id}
-                      node={node}
-                      onEditLuaVariableName={onEditLuaVariableName}
-                      onSelect={onSelect}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ) : null}
-          {body ? (
-            <li className="fx-builder-tree__item">
-              <BuilderNodeRow
-                code={body.id}
-                draggable={false}
-                inspectedAnchor={inspectedAnchor}
-                label={bodyFlowLabel(currentWindow)}
-                locked
-                luaVariableName={body.luaVariableName ?? BODY_LAYOUT_ROOT_ID}
-                node={{ ...body, atom: HORIZONTAL_FLOW_ATOM_ID }}
-                onAddChild={onAddChild}
-                onEditLuaVariableName={onEditLuaVariableName}
-                onSelect={onSelect}
-              />
-              <BuilderNodeList
-                dragActive={dragActive}
-                dropTarget={dropTarget}
-                draggingId={draggingId}
-                inspectedAnchor={inspectedAnchor}
-                modelNodeById={modelNodeById}
-                nodes={layoutChildren}
-                onAddAfter={onAddAfter}
-                onAddChild={onAddChild}
-                onEditLuaVariableName={onEditLuaVariableName}
-                onRemove={onRemove}
-                onSelect={onSelect}
-                parentId={BODY_LAYOUT_ROOT_ID}
-              />
-            </li>
-          ) : null}
-        </ul>
-      </li>
-    </ul>
+    <div
+      {...tree.getContainerProps("Generated component tree")}
+      className="fx-builder-tree fx-builder-tree--headless"
+    >
+      {tree.getItems().map((item) => {
+        const itemData = item.getItemData();
+        const itemMeta = item.getItemMeta();
+        const draggable = Boolean(itemData.draggable);
+        const dragging = draggedIds.has(item.getId());
+        const invalidDropTarget = item.isDraggingOver() && !item.isDragTarget();
+
+        return (
+          <div
+            className="fx-builder-tree__item"
+            data-tree-level={itemMeta.level}
+            key={item.getKey()}
+            style={{ "--fx-builder-tree-level": itemMeta.level }}
+          >
+            <BuilderNodeRow
+              code={itemData.code}
+              draggable={draggable}
+              dragHandleProps={draggable ? item.getDragHandleProps() : null}
+              dragging={dragging}
+              dropTarget={item.isDragTarget()}
+              inspectedAnchor={inspectedAnchor}
+              invalidDropTarget={invalidDropTarget}
+              label={itemData.label}
+              locked={itemData.locked}
+              luaVariableName={itemData.luaVariableName}
+              node={itemData.node}
+              onAddAfter={draggable ? onAddAfter : null}
+              onAddChild={itemData.canReceiveChildren ? onAddChild : null}
+              onEditLuaVariableName={onEditLuaVariableName}
+              onRemove={draggable ? onRemove : null}
+              onSelect={onSelect}
+              rowProps={item.getProps()}
+              treeItem={item}
+            />
+          </div>
+        );
+      })}
+      <div
+        className="fx-builder-tree__drag-line"
+        data-anchor="builder_tree_drag_line"
+        style={tree.getDragLineStyle(0, 0)}
+      />
+    </div>
   );
 }
 
 export function BuilderPanel({
   currentWindow,
   inspectedAnchor,
-  draggingId = null,
   paletteDraggingAtom = null,
-  dropTarget,
   model,
   onAddAfter,
   onAddChild,
   onEditLuaVariableName,
+  onInsertPalette,
+  onMoveNode,
   onRemove,
   onSelect
 }) {
   const layoutChildren = currentWindow?.layoutChildren ?? [];
-  const dragActive = Boolean(draggingId || paletteDraggingAtom);
 
   return (
     <FxFrame title="Builder" className="fx-editor-panel fx-builder-panel" data-anchor="builder_panel">
@@ -592,29 +751,24 @@ export function BuilderPanel({
           />
         ))}
       </div>
-      <BuilderBodyTree
-        childrenCount={layoutChildren.length}
-        dragActive={dragActive}
-        dropTarget={dropTarget}
-      >
+      <div className="fx-builder-body" data-anchor="builder_body_tree">
         <div className="fx-builder-body__header">
           <span>Component tree</span>
         </div>
-        <BuilderShellTree
+        <BuilderHeadlessTree
           currentWindow={currentWindow}
-          dragActive={dragActive}
-          draggingId={draggingId}
-          dropTarget={dropTarget}
           inspectedAnchor={inspectedAnchor}
           layoutChildren={layoutChildren}
           model={model}
           onAddAfter={onAddAfter}
           onAddChild={onAddChild}
           onEditLuaVariableName={onEditLuaVariableName}
+          onInsertPalette={onInsertPalette}
+          onMoveNode={onMoveNode}
           onRemove={onRemove}
           onSelect={onSelect}
         />
-      </BuilderBodyTree>
+      </div>
     </FxFrame>
   );
 }

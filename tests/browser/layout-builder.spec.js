@@ -58,6 +58,41 @@ const TWO_VERTICAL_FRAME_STATE = {
     nextLayoutNodeNumber: 3
   }
 };
+const NESTED_TREE_STATE = {
+  ...ONE_FRAME_STATE,
+  currentWindow: {
+    ...ONE_FRAME_STATE.currentWindow,
+    layoutChildren: [
+      {
+        id: "gui_frame_1",
+        atom: "frame",
+        styleVariant: "inside-deep-frame",
+        children: [
+          {
+            id: "gui_horizontal_flow_2",
+            atom: "horizontal-flow",
+            styleVariant: "generic-horizontal-flow",
+            children: [
+              {
+                id: "gui_frame_3",
+                atom: "frame",
+                styleVariant: "inside-deep-frame",
+                children: []
+              },
+              {
+                id: "gui_frame_4",
+                atom: "frame",
+                styleVariant: "inside-deep-frame",
+                children: []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    nextLayoutNodeNumber: 5
+  }
+};
 
 function roundedRect(rect) {
   return {
@@ -239,6 +274,88 @@ async function dragHorizontalFlowPaletteToFrame(page) {
   await page.mouse.up();
 }
 
+async function dragTreeNodeToRow(page, sourceId, targetId) {
+  const sourceHandle = page.locator(
+    `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
+  );
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+
+  await page.evaluate(({ sourceId, targetId }) => {
+    const source = document.querySelector(
+      `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
+    );
+    const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
+    if (!source || !target) {
+      throw new Error(`Missing tree drag source or target: ${sourceId} -> ${targetId}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const targetRect = target.getBoundingClientRect();
+    const sourceRect = source.getBoundingClientRect();
+
+    function fireDragEvent(element, type, rect) {
+      const event = new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + Math.min(96, Math.max(8, rect.width / 2)),
+        clientY: rect.top + rect.height / 2,
+        dataTransfer
+      });
+      element.dispatchEvent(event);
+    }
+
+    fireDragEvent(source, "dragstart", sourceRect);
+    fireDragEvent(target, "dragenter", targetRect);
+    fireDragEvent(target, "dragover", targetRect);
+    fireDragEvent(target, "drop", targetRect);
+    fireDragEvent(source, "dragend", sourceRect);
+  }, { sourceId, targetId });
+}
+
+async function dragPaletteTreeHandleToRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(
+    `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-handle`
+  );
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+
+  await page.evaluate(({ paletteAnchor, targetId }) => {
+    const source = document.querySelector(
+      `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-handle`
+    );
+    const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
+    if (!source || !target) {
+      throw new Error(`Missing tree palette source or target: ${paletteAnchor} -> ${targetId}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const sourceRect = source.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+
+    function fireDragEvent(element, type, rect) {
+      const event = new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + Math.min(96, Math.max(8, rect.width / 2)),
+        clientY: rect.top + rect.height / 2,
+        dataTransfer
+      });
+      element.dispatchEvent(event);
+    }
+
+    fireDragEvent(source, "dragstart", sourceRect);
+    fireDragEvent(target, "dragenter", targetRect);
+    fireDragEvent(target, "dragover", targetRect);
+    fireDragEvent(target, "drop", targetRect);
+    fireDragEvent(source, "dragend", sourceRect);
+  }, { paletteAnchor, targetId });
+}
+
 async function measureHover(page) {
   return page.evaluate(() => {
     function rect(selector) {
@@ -379,6 +496,73 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
       .toBeVisible();
     await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
+  });
+
+  test("component tree moves nested nodes through Headless Tree and keeps outputs synchronized", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showInspector: true,
+      showLuaOutput: true
+    });
+
+    await dragTreeNodeToRow(page, "gui_frame_4", "gui_window_body");
+
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_4"]'))
+      .toHaveClass(/is-selected/);
+    await expect(page.locator('[data-anchor="inspector_gui_frame_4"]')).toBeVisible();
+
+    const bodyFrames = await page.locator('[data-anchor="gui_window_body"] > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(bodyFrames).toEqual(["gui_frame_1", "gui_frame_4"]);
+
+    const nestedFrames = await page.locator('[data-anchor="gui_horizontal_flow_2"] > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(nestedFrames).toEqual(["gui_frame_3"]);
+
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText("local gui_frame_4 = gui_window_body.add{");
+    await expect(luaOutput).toContainText("local gui_frame_3 = gui_horizontal_flow_2.add{");
+  });
+
+  test("component tree keeps generated shell rows locked while still selectable", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showInspector: true
+    });
+
+    const windowRow = page.locator('[data-anchor="builder_tree_item_gui_window"]');
+    await windowRow.click();
+
+    await expect(windowRow).toHaveClass(/is-selected/);
+    await expect(page.locator('[data-anchor="inspector_gui_window"]')).toBeVisible();
+    await expect(windowRow.locator(".fx-builder-row__drag-handle")).toBeDisabled();
+    await expect(windowRow.getByRole("button", { name: /remove/i })).toHaveCount(0);
+  });
+
+  test("component tree rejects descendant drops without mutating the model", async ({ page }) => {
+    await seedEditorState(page, NESTED_TREE_STATE);
+
+    await dragTreeNodeToRow(page, "gui_frame_1", "gui_horizontal_flow_2");
+
+    const bodyFrames = await page.locator('[data-anchor="gui_window_body"] > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(bodyFrames).toEqual(["gui_frame_1"]);
+    await expect(
+      page.locator('[data-anchor="gui_frame_1"] > [data-anchor="gui_horizontal_flow_2"]')
+    ).toHaveCount(1);
+  });
+
+  test("palette tree handle inserts through Headless Tree foreign drops", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await dragPaletteTreeHandleToRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
+    await expect(
+      page.locator('[data-anchor="gui_frame_1"] > [data-anchor="gui_horizontal_flow_2"]')
+    ).toHaveCount(1);
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_horizontal_flow_2"]'))
+      .toHaveClass(/is-selected/);
   });
 
   test("palette can insert a Horizontal Flow inside a Frame", async ({ page }) => {

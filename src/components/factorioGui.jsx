@@ -545,7 +545,6 @@ function FlowChildren({
   onInspectLock,
   builderDragActive,
   builderDropTarget,
-  builderDraggingId,
   parentStyleReference
 }) {
   const ghostIndex =
@@ -587,7 +586,6 @@ function FlowChildren({
       <GuiLayoutNode
         builderDragActive={builderDragActive}
         builderDropTarget={builderDropTarget}
-        builderDraggingId={builderDraggingId}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
@@ -630,8 +628,7 @@ export function GuiFrame({
   onInspect,
   onInspectLock,
   builderDragActive = false,
-  builderDropTarget = null,
-  builderDraggingId = null
+  builderDropTarget = null
 }) {
   const frameInspector = inspectorProps({
     active: inspectorActive,
@@ -644,7 +641,6 @@ export function GuiFrame({
   const children = node.children ?? [];
   const isDropParent = builderDropTarget?.surface === "canvas" &&
     builderDropTarget.parentId === node.id;
-  const isDraggingSource = builderDraggingId === node.id;
   const { ref: dropRef, isDropTarget } = useDroppable({
     id: `builder-canvas-parent-${node.id}`,
     type: LAYOUT_BUILDER_DND_TYPE,
@@ -664,7 +660,6 @@ export function GuiFrame({
       shellRef={dropRef}
       className={[
         isDropParent || isDropTarget ? "is-builder-drop-parent" : "",
-        isDraggingSource ? "is-builder-dragging-source" : "",
         frameInspector.className
       ]
         .filter(Boolean)
@@ -678,7 +673,6 @@ export function GuiFrame({
       <FlowChildren
         builderDragActive={builderDragActive}
         builderDropTarget={builderDropTarget}
-        builderDraggingId={builderDraggingId}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
@@ -702,7 +696,6 @@ export function GuiHorizontalFlow({
   onInspectLock,
   builderDragActive = false,
   builderDropTarget = null,
-  builderDraggingId = null,
 }) {
   const flowInspector = inspectorProps({
     active: inspectorActive,
@@ -715,7 +708,6 @@ export function GuiHorizontalFlow({
   const children = node.children ?? [];
   const isDropParent = builderDropTarget?.surface === "canvas" &&
     builderDropTarget.parentId === node.id;
-  const isDraggingSource = builderDraggingId === node.id;
   const { ref: dropRef, isDropTarget } = useDroppable({
     id: `builder-canvas-parent-${node.id}`,
     type: LAYOUT_BUILDER_DND_TYPE,
@@ -735,7 +727,6 @@ export function GuiHorizontalFlow({
       shellRef={dropRef}
       className={[
         isDropParent || isDropTarget ? "is-builder-drop-parent" : "",
-        isDraggingSource ? "is-builder-dragging-source" : "",
         flowInspector.className
       ]
         .filter(Boolean)
@@ -749,7 +740,6 @@ export function GuiHorizontalFlow({
       <FlowChildren
         builderDragActive={builderDragActive}
         builderDropTarget={builderDropTarget}
-        builderDraggingId={builderDraggingId}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
@@ -784,7 +774,6 @@ export function GuiWindow({
   onTitlebarPointerCancel,
   builderDragActive = false,
   builderDropTarget = null,
-  builderDraggingId = null,
   styleReference = frameStyleReference,
   shadowsVisible = true
 }) {
@@ -1016,7 +1005,6 @@ export function GuiWindow({
         <FlowChildren
           builderDragActive={builderDragActive}
           builderDropTarget={builderDropTarget}
-          builderDraggingId={builderDraggingId}
           inspectedAnchor={inspectedAnchor}
           inspectorActive={inspectorActive}
           inspectorLocked={inspectorLocked}

@@ -198,7 +198,6 @@ function EditorCanvas({
   onWindowLocationChange,
   builderDragActive,
   builderDropTarget,
-  builderDraggingId,
   shadowsVisible = true
 }) {
   const canvasRef = useRef(null);
@@ -363,7 +362,6 @@ function EditorCanvas({
           bodyStyleReference={bodyStyleReference}
           builderDragActive={builderDragActive}
           builderDropTarget={builderDropTarget}
-          builderDraggingId={builderDraggingId}
           shadowsVisible={shadowsVisible}
         />
       ) : (
@@ -414,7 +412,7 @@ function BuilderDragPreview({ source }) {
   return (
     <div className="fx-builder-drag-preview" data-anchor="builder_drag_preview">
       <span>{atomLabel(atom)}</span>
-      <code>{drag.kind === "node" ? drag.sourceId : atomCode(atom)}</code>
+      <code>{atomCode(atom)}</code>
     </div>
   );
 }
@@ -1286,10 +1284,6 @@ export function EditorPage() {
     selectInspectorComponent(nodeId);
   }
 
-  function dragSourceId(drag) {
-    return drag?.kind === "node" ? drag.sourceId : null;
-  }
-
   function normalizeDropTarget(
     target,
     drag = builderDrag,
@@ -1300,7 +1294,7 @@ export function EditorPage() {
       !drag ||
       !canDropLayoutNode(
         layoutChildren,
-        dragSourceId(drag),
+        null,
         target.parentId,
         dragAtom(drag)
       )
@@ -1424,6 +1418,26 @@ export function EditorPage() {
     addLayoutNode(nodeId, children?.length ?? Infinity);
   }
 
+  function insertPaletteLayoutNode(parentId, index, requestedAtom) {
+    addLayoutNode(parentId, index, requestedAtom);
+  }
+
+  function moveLayoutNodeFromTree(sourceId, parentId, index) {
+    applyLayoutUpdate((layoutState) => {
+      const movement = moveLayoutNode(
+        layoutState.layoutChildren,
+        sourceId,
+        parentId,
+        index
+      );
+      return {
+        ...movement,
+        selectedAnchor: sourceId,
+        nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+      };
+    });
+  }
+
   function removeLayoutSubtree(nodeId) {
     applyLayoutUpdate((layoutState) => {
       const removal = removeLayoutNode(layoutState.layoutChildren, nodeId);
@@ -1460,20 +1474,6 @@ export function EditorPage() {
           nextLayoutNodeNumber: insertion.changed
             ? layoutState.nextLayoutNodeNumber + 1
             : layoutState.nextLayoutNodeNumber
-        };
-      }
-
-      if (drag.kind === "node") {
-        const movement = moveLayoutNode(
-          layoutState.layoutChildren,
-          drag.sourceId,
-          normalizedTarget.parentId,
-          normalizedTarget.index
-        );
-        return {
-          ...movement,
-          selectedAnchor: drag.sourceId,
-          nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
         };
       }
 
@@ -1660,12 +1660,12 @@ export function EditorPage() {
 
           <BuilderPanel
             currentWindow={currentWindow}
-            draggingId={builderDrag?.kind === "node" ? builderDrag.sourceId : null}
-            dropTarget={builderDropTarget}
             inspectedAnchor={inspectedAnchor}
             onAddAfter={addLayoutNodeAfter}
             onAddChild={addLayoutNodeChild}
             onEditLuaVariableName={updateLuaVariableName}
+            onInsertPalette={insertPaletteLayoutNode}
+            onMoveNode={moveLayoutNodeFromTree}
             onRemove={removeLayoutSubtree}
             paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
             onSelect={selectBuilderNode}
@@ -1751,7 +1751,6 @@ export function EditorPage() {
               onWindowLocationChange={updateWindowLocation}
               builderDragActive={Boolean(builderDrag)}
               builderDropTarget={builderDropTarget}
-              builderDraggingId={builderDrag?.kind === "node" ? builderDrag.sourceId : null}
               shadowsVisible={showGuiShadows}
             />
           </div>
