@@ -121,6 +121,13 @@ nested Horizontal Flow specs:
   styleVariant: generic-horizontal-flow
   children: ordered nested Frame specs
 
+layout spec size:
+  optional per-node authored LuaStyle size override
+  size.minimalWidth: exported `minimal_width` for editor-created Frames and
+  Horizontal Flows, clamped to 48..800
+  size.minimalHeight: exported `minimal_height` for editor-created Frames and
+  Horizontal Flows, clamped to 48..600
+
 currentWindow.nextLayoutNodeNumber:
   next positive integer used to allocate stable editor-created layout ids
 
@@ -178,6 +185,14 @@ node itself, and descendants of the moved node are not legal drop parents.
 Headless Tree supplies component-tree drag/drop targets and accessibility
 state, but it does not change the persisted schema; accepted drops still commit
 only ordered mutations to `layoutChildren`.
+
+Resize mode is a generic editor operation over explicit resize capabilities. It
+does not add arbitrary CSS sizing to the schema. `gui_window` resizes through
+`currentWindow.size` and exports root `.style.width` / `.style.height`.
+Editor-created Frames and Horizontal Flows resize through their optional
+`size.minimalWidth` / `size.minimalHeight` fields. Generated shell children such
+as the title label and header filler remain unsupported until their atom
+contracts define Factorio-exportable size fields.
 
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new

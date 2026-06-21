@@ -686,6 +686,112 @@
   white-space: nowrap;
 }
 
+.fx-resize-overlay {
+  position: absolute;
+  z-index: 14;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 1px solid rgba(245, 168, 65, 0.98);
+  background: rgba(245, 168, 65, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.82),
+    0 0 10px rgba(245, 168, 65, 0.26);
+}
+
+.fx-resize-overlay.is-disabled {
+  border-color: rgba(170, 178, 183, 0.72);
+  background: rgba(170, 178, 183, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.82),
+    0 0 8px rgba(170, 178, 183, 0.18);
+}
+
+.fx-resize-overlay__disabled {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  max-width: calc(100% - 12px);
+  padding: 3px 6px;
+  overflow: hidden;
+  color: #d8dde0;
+  background: rgba(18, 19, 20, 0.94);
+  border: 1px solid #0a0a0a;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-resize-overlay__handle {
+  position: absolute;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  pointer-events: auto;
+  touch-action: none;
+  background: #1c1b1a;
+  border: 2px solid var(--fx-orange);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.86),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.fx-resize-overlay__handle--nw,
+.fx-resize-overlay__handle--n,
+.fx-resize-overlay__handle--ne {
+  top: -6px;
+}
+
+.fx-resize-overlay__handle--se,
+.fx-resize-overlay__handle--s,
+.fx-resize-overlay__handle--sw {
+  bottom: -6px;
+}
+
+.fx-resize-overlay__handle--nw,
+.fx-resize-overlay__handle--w,
+.fx-resize-overlay__handle--sw {
+  left: -6px;
+}
+
+.fx-resize-overlay__handle--ne,
+.fx-resize-overlay__handle--e,
+.fx-resize-overlay__handle--se {
+  right: -6px;
+}
+
+.fx-resize-overlay__handle--n,
+.fx-resize-overlay__handle--s {
+  left: calc(50% - 6px);
+}
+
+.fx-resize-overlay__handle--w,
+.fx-resize-overlay__handle--e {
+  top: calc(50% - 6px);
+}
+
+.fx-resize-overlay__handle--n,
+.fx-resize-overlay__handle--s {
+  cursor: ns-resize;
+}
+
+.fx-resize-overlay__handle--e,
+.fx-resize-overlay__handle--w {
+  cursor: ew-resize;
+}
+
+.fx-resize-overlay__handle--nw,
+.fx-resize-overlay__handle--se {
+  cursor: nwse-resize;
+}
+
+.fx-resize-overlay__handle--ne,
+.fx-resize-overlay__handle--sw {
+  cursor: nesw-resize;
+}
+
 .fx-editor-output {
   grid-column: 1 / -1;
   width: 100%;
