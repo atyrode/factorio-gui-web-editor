@@ -897,7 +897,7 @@
   min-width: 0;
   min-height: 0;
   transform: none;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .fx-gui-flow-drop-target.is-middle {

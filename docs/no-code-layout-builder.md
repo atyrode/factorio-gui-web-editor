@@ -21,16 +21,17 @@ spacing, while Frame owns the visible split/container surface.
 Freeform pixel dragging remains out of scope. Drag/drop in this slice means
 choosing a parent flow and ordered insertion index.
 
-Canvas drag/drop interaction plumbing uses `@dnd-kit/react`. The library owns
-pointer tracking, drag source state, droppable collision, and overlay rendering
-for canvas placement.
+Palette atoms use native browser drag/drop with a small `DataTransfer` payload.
+The same full palette tile can be dropped into the canvas or into the Builder
+tree. Canvas drag/drop owns only visual placement feedback and delegates model
+validation to the shared Factorio layout helpers.
 
 Component-tree drag/drop uses Headless Tree (`@headless-tree/core` and
 `@headless-tree/react`). Headless Tree owns tree drag source handling, ordered
 drop target calculation, reparenting, invalid-drop feedback, drag-line
-rendering, and keyboard/a11y behavior. The project keeps only Factorio-domain
-drop policy: whether a dragged atom is legal under a proposed parent in the
-constrained recursive layout model.
+rendering, external `DataTransfer` drops, and keyboard/a11y behavior. The
+project keeps only Factorio-domain drop policy: whether a dragged atom is legal
+under a proposed parent in the constrained recursive layout model.
 
 ## User Jobs
 
@@ -147,11 +148,9 @@ Inspector.
 
 - Canvas palette drops create either a new `frame` spec or a new
   `horizontal-flow` spec, based on the dragged tile.
-- Component-tree palette drops use the palette tile's built-in grip rail and
-  Headless Tree foreign drag-object support to create the same constrained
-  specs. Canvas drops use the tile body through dnd-kit; tree drops use the same
-  tile's native drag payload because Headless Tree consumes browser
-  `DataTransfer` events.
+- Component-tree palette drops use the same full palette tile and Headless
+  Tree foreign drag-object support to create the same constrained specs. Canvas
+  and tree drops share the same browser `DataTransfer` payload.
 - Palette tiles do not append on click; creation requires an explicit drop
   target.
 - Tree row drops move an existing spec through Headless Tree's ordered target.
@@ -167,7 +166,9 @@ Inspector.
 - `gui_window_body` is horizontal or vertical based on the Window creation
   action. Editor-created body children are Frames in this slice.
 - Tree drop placement is an ordered index in the parent represented by the
-  Headless Tree drag line.
+  Headless Tree drag line. Tree hover feedback must not insert flow-affecting
+  placeholders under the pointer, because that can cause drop-target
+  oscillation when hit testing recalculates after layout shift.
 - In the canvas, sibling Frames split available space equally until
   their minimum width is reached; after that the parent flow scrolls.
 - Vertical Window bodies use the same split-gutter substrate rule: sibling

@@ -8,12 +8,11 @@ import {
   syncDataLoaderFeature
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { useDraggable } from "@dnd-kit/react";
 import { Code2, GripVertical } from "lucide-react";
 
 import {
-  LAYOUT_BUILDER_DND_TYPE,
-  paletteDragData
+  readBuilderPaletteDrag,
+  writeBuilderPaletteDrag
 } from "../factorioLayoutBuilderDnd.js";
 import {
   BODY_LAYOUT_ROOT_ID,
@@ -24,7 +23,6 @@ import {
 import { FxActionButton, FxFrame } from "./factorioGui.jsx";
 
 const BUILDER_TREE_ROOT_ID = "builder_tree_root";
-const PALETTE_TREE_DND_FORMAT = "application/x-factorio-gui-builder-palette";
 
 function bodyFlowLabel(currentWindow) {
   return currentWindow?.bodyDirection === "vertical"
@@ -72,38 +70,6 @@ function collectModelNodes(model) {
 
   walk(model?.root);
   return nodes;
-}
-
-function paletteTreeAtomFormat(atom) {
-  return `${PALETTE_TREE_DND_FORMAT}-${atom}`;
-}
-
-function dataTransferTypes(dataTransfer) {
-  return Array.from(dataTransfer?.types ?? []);
-}
-
-function readPaletteTreeAtom(dataTransfer, readPayload = true) {
-  if (!dataTransfer) {
-    return null;
-  }
-
-  if (readPayload) {
-    const payload = dataTransfer.getData(PALETTE_TREE_DND_FORMAT);
-    if (payload === FRAME_ATOM_ID || payload === HORIZONTAL_FLOW_ATOM_ID) {
-      return payload;
-    }
-  }
-
-  const types = dataTransferTypes(dataTransfer);
-  if (types.includes(paletteTreeAtomFormat(FRAME_ATOM_ID))) {
-    return FRAME_ATOM_ID;
-  }
-
-  if (types.includes(paletteTreeAtomFormat(HORIZONTAL_FLOW_ATOM_ID))) {
-    return HORIZONTAL_FLOW_ATOM_ID;
-  }
-
-  return null;
 }
 
 function dropLocationFromTarget(target) {
@@ -398,6 +364,7 @@ function BuilderNodeRow({
   dragging = false,
   dropTarget = false,
   invalidDropTarget = false,
+  visualShifted = false,
   onAddAfter,
   onAddChild,
   onEditLuaVariableName,
@@ -423,6 +390,7 @@ function BuilderNodeRow({
         dragging ? "is-dragging" : "",
         dropTarget ? "is-drop-target" : "",
         invalidDropTarget ? "is-invalid-drop-target" : "",
+        visualShifted ? "is-visual-shifted" : "",
         inspectedAnchor === node.id ? "is-selected" : "",
         rowPropClassName
       ]
@@ -496,14 +464,10 @@ function BuilderNodeRow({
 function BuilderPaletteItem({
   atom,
   currentWindow,
+  onPaletteDragEnd,
+  onPaletteDragStart,
   paletteDraggingAtom
 }) {
-  const { ref, handleRef, isDragSource } = useDraggable({
-    id: `builder-palette-${atom}`,
-    type: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !currentWindow,
-    data: paletteDragData(atom)
-  });
   const anchor =
     atom === HORIZONTAL_FLOW_ATOM_ID
       ? "horizontal_flow_palette_item"
@@ -515,67 +479,33 @@ function BuilderPaletteItem({
       return;
     }
 
-    event.stopPropagation();
-    event.dataTransfer.effectAllowed = "copy";
-    event.dataTransfer.dropEffect = "copy";
-    event.dataTransfer.setData(PALETTE_TREE_DND_FORMAT, atom);
-    event.dataTransfer.setData(paletteTreeAtomFormat(atom), atom);
+    const drag = writeBuilderPaletteDrag(event.dataTransfer, atom);
+    if (drag) {
+      onPaletteDragStart?.(drag);
+    }
   }
 
   return (
-    <div
-      ref={ref}
+    <button
+      aria-disabled={!currentWindow}
+      aria-label={`Drag ${atomLabel(atom)}`}
       className={[
         "fx-builder-palette__item",
-        paletteDraggingAtom === atom || isDragSource ? "is-dragging" : ""
+        paletteDraggingAtom === atom ? "is-dragging" : ""
       ]
         .filter(Boolean)
         .join(" ")}
-      aria-disabled={!currentWindow}
       data-anchor={anchor}
+      disabled={!currentWindow}
+      draggable={Boolean(currentWindow)}
+      onDragEnd={onPaletteDragEnd}
+      onDragStart={handlePaletteDragStart}
+      title={`Drag ${atomLabel(atom)}`}
+      type="button"
     >
-      <button
-        aria-label={`Drag ${atomLabel(atom)} into component tree`}
-        className="fx-builder-palette__tree-grip"
-        disabled={!currentWindow}
-        draggable={Boolean(currentWindow)}
-        onDragStart={handlePaletteDragStart}
-        onPointerDown={(event) => event.stopPropagation()}
-        title={`Drag ${atomLabel(atom)} into component tree`}
-        type="button"
-      >
-        <GripVertical aria-hidden="true" />
-      </button>
-      <button
-        ref={handleRef}
-        className="fx-builder-palette__canvas-handle"
-        disabled={!currentWindow}
-        title={`Drag ${atomLabel(atom)} onto canvas`}
-        type="button"
-      >
-        <span>{atomLabel(atom)}</span>
-        <code>{atomCode(atom)}</code>
-      </button>
-    </div>
-  );
-}
-
-function BuilderTreeInsertionPlaceholder({
-  index,
-  level
-}) {
-  return (
-    <div
-      className="fx-builder-tree__item fx-builder-tree__item--placeholder"
-      data-anchor="builder_tree_insertion_placeholder"
-      data-tree-level={level}
-      key={`builder-tree-placeholder-${index}-${level}`}
-      style={{ "--fx-builder-tree-level": level }}
-    >
-      <div className="fx-builder-tree__insertion-placeholder" aria-hidden="true">
-        <span />
-      </div>
-    </div>
+      <span>{atomLabel(atom)}</span>
+      <code>{atomCode(atom)}</code>
+    </button>
   );
 }
 
@@ -648,7 +578,7 @@ function BuilderHeadlessTree({
       );
     },
     canDragForeignDragObjectOver: (dataTransfer, target) => {
-      const atom = readPaletteTreeAtom(dataTransfer, false);
+      const atom = readBuilderPaletteDrag(dataTransfer, false)?.atom;
       const location = dropLocationFromTarget(target);
       return Boolean(
         atom &&
@@ -657,7 +587,7 @@ function BuilderHeadlessTree({
       );
     },
     canDropForeignDragObject: (dataTransfer, target) => {
-      const atom = readPaletteTreeAtom(dataTransfer, true);
+      const atom = readBuilderPaletteDrag(dataTransfer, true)?.atom;
       const location = dropLocationFromTarget(target);
       return Boolean(
         atom &&
@@ -673,7 +603,7 @@ function BuilderHeadlessTree({
       }
     },
     onDropForeignDragObject: (dataTransfer, target) => {
-      const atom = readPaletteTreeAtom(dataTransfer, true);
+      const atom = readBuilderPaletteDrag(dataTransfer, true)?.atom;
       const location = dropLocationFromTarget(target);
       if (atom && location) {
         onInsertPalette?.(location.parentId, location.index, atom);
@@ -693,57 +623,51 @@ function BuilderHeadlessTree({
   );
   const treeItems = tree.getItems();
   const dragTarget = tree.getDragTarget();
-  const placeholder =
-    dragTarget && isOrderedDragTarget(dragTarget)
-      ? {
-          index: dragTarget.dragLineIndex,
-          level: dragTarget.dragLineLevel
-        }
-      : dragTarget
-        ? (() => {
-            const targetIndex = treeItems.findIndex(
-              (item) => item.getId() === dragTarget.item.getId()
-            );
-            const targetLevel = dragTarget.item.getItemMeta().level;
-            let index = targetIndex + 1;
-            while (
-              index < treeItems.length &&
-              treeItems[index].getItemMeta().level > targetLevel
-            ) {
-              index += 1;
-            }
-            return {
-              index,
-              level: targetLevel + 1
-            };
-          })()
-        : null;
+  const orderedDragTarget =
+    dragTarget && isOrderedDragTarget(dragTarget) ? dragTarget : null;
 
   return (
     <div
       {...tree.getContainerProps("Generated component tree")}
-      className="fx-builder-tree fx-builder-tree--headless"
+      className={[
+        "fx-builder-tree",
+        "fx-builder-tree--headless",
+        tree.getState().dnd ? "is-dragging" : "",
+        orderedDragTarget ? "has-visual-gap" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {treeItems.map((item) => {
         const itemData = item.getItemData();
         const itemMeta = item.getItemMeta();
+        const {
+          className: itemPropClassName,
+          style: itemPropStyle,
+          ...itemProps
+        } = item.getProps();
         const draggable = Boolean(itemData.draggable);
         const dragging = draggedIds.has(item.getId());
         const invalidDropTarget = item.isDraggingOver() && !item.isDragTarget();
+        const visualShifted =
+          orderedDragTarget && itemMeta.index >= orderedDragTarget.dragLineIndex;
 
-        return [
-          placeholder?.index === itemMeta.index ? (
-            <BuilderTreeInsertionPlaceholder
-              index={placeholder.index}
-              key={`placeholder-before-${item.getKey()}`}
-              level={placeholder.level}
-            />
-          ) : null,
+        return (
           <div
-            className="fx-builder-tree__item"
+            {...itemProps}
+            className={[
+              "fx-builder-tree__item",
+              itemPropClassName
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            data-tree-hit-anchor={`builder_tree_hit_${itemData.id}`}
             data-tree-level={itemMeta.level}
             key={item.getKey()}
-            style={{ "--fx-builder-tree-level": itemMeta.level }}
+            style={{
+              ...itemPropStyle,
+              "--fx-builder-tree-level": itemMeta.level
+            }}
           >
             <BuilderNodeRow
               code={itemData.code}
@@ -762,18 +686,12 @@ function BuilderHeadlessTree({
               onEditLuaVariableName={onEditLuaVariableName}
               onRemove={draggable ? onRemove : null}
               onSelect={onSelect}
-              rowProps={item.getProps()}
               treeItem={item}
+              visualShifted={visualShifted}
             />
           </div>
-        ];
+        );
       })}
-      {placeholder?.index === treeItems.length ? (
-        <BuilderTreeInsertionPlaceholder
-          index={placeholder.index}
-          level={placeholder.level}
-        />
-      ) : null}
       <div
         className="fx-builder-tree__drag-line"
         data-anchor="builder_tree_drag_line"
@@ -793,6 +711,8 @@ export function BuilderPanel({
   onEditLuaVariableName,
   onInsertPalette,
   onMoveNode,
+  onPaletteDragEnd,
+  onPaletteDragStart,
   onRemove,
   onSelect
 }) {
@@ -806,6 +726,8 @@ export function BuilderPanel({
             atom={atom}
             currentWindow={currentWindow}
             key={atom}
+            onPaletteDragEnd={onPaletteDragEnd}
+            onPaletteDragStart={onPaletteDragStart}
             paletteDraggingAtom={paletteDraggingAtom}
           />
         ))}

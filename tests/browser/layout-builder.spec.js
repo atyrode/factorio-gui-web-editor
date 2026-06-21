@@ -217,24 +217,97 @@ async function seedOneFrameWindow(page) {
   await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
 }
 
+async function startNativePaletteDrag(page, paletteAnchor) {
+  const source = page.locator(`[data-anchor="${paletteAnchor}"]`);
+  await expect(source).toBeVisible();
+
+  await page.evaluate(({ paletteAnchor }) => {
+    const source = document.querySelector(`[data-anchor="${paletteAnchor}"]`);
+    if (!source) {
+      throw new Error(`Missing palette source: ${paletteAnchor}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const sourceRect = source.getBoundingClientRect();
+    window.__layoutBuilderNativeDrag = { dataTransfer, source };
+
+    source.dispatchEvent(new DragEvent("dragstart", {
+      bubbles: true,
+      cancelable: true,
+      clientX: sourceRect.left + sourceRect.width / 2,
+      clientY: sourceRect.top + sourceRect.height / 2,
+      dataTransfer
+    }));
+  }, { paletteAnchor });
+
+  await expect(source).toHaveClass(/is-dragging/);
+}
+
+async function dragActiveNativePaletteOver(page, targetSelector, position = {}) {
+  await page.locator(targetSelector).waitFor({ state: "visible" });
+
+  await page.evaluate(({ targetSelector, position }) => {
+    const drag = window.__layoutBuilderNativeDrag;
+    const target = document.querySelector(targetSelector);
+    if (!drag?.dataTransfer || !target) {
+      throw new Error(`Missing active drag or target: ${targetSelector}`);
+    }
+
+    const rect = target.getBoundingClientRect();
+    const clientX = rect.left + (position.x ?? rect.width / 2);
+    const clientY = rect.top + (position.y ?? rect.height / 2);
+
+    for (const type of ["dragenter", "dragover"]) {
+      target.dispatchEvent(new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        dataTransfer: drag.dataTransfer
+      }));
+    }
+  }, { targetSelector, position });
+}
+
+async function dropActiveNativePalette(page, targetSelector, position = {}) {
+  await page.locator(targetSelector).waitFor({ state: "visible" });
+
+  await page.evaluate(({ targetSelector, position }) => {
+    const drag = window.__layoutBuilderNativeDrag;
+    const target = document.querySelector(targetSelector);
+    if (!drag?.dataTransfer || !target) {
+      throw new Error(`Missing active drag or target: ${targetSelector}`);
+    }
+
+    const rect = target.getBoundingClientRect();
+    const clientX = rect.left + (position.x ?? rect.width / 2);
+    const clientY = rect.top + (position.y ?? rect.height / 2);
+
+    target.dispatchEvent(new DragEvent("drop", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer: drag.dataTransfer
+    }));
+    drag.source.dispatchEvent(new DragEvent("dragend", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer: drag.dataTransfer
+    }));
+    delete window.__layoutBuilderNativeDrag;
+  }, { targetSelector, position });
+}
+
 async function dragPaletteToBodyStart(page) {
-  const paletteBox = await page.locator('[data-anchor="frame_palette_item"]').boundingBox();
-  const bodyBox = await page.locator('[data-anchor="gui_window_body"]').boundingBox();
-
-  expect(paletteBox).not.toBeNull();
-  expect(bodyBox).not.toBeNull();
-
-  await page.mouse.move(
-    paletteBox.x + paletteBox.width / 2,
-    paletteBox.y + paletteBox.height / 2
+  await startNativePaletteDrag(page, "frame_palette_item");
+  await dragActiveNativePaletteOver(
+    page,
+    '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+    { x: 8 }
   );
-  await page.mouse.down();
-  await page.mouse.move(paletteBox.x + paletteBox.width / 2 + 12, paletteBox.y + 12, {
-    steps: 4
-  });
-  await expect(page.locator('[data-anchor="builder_drag_preview"]')).toBeVisible();
-
-  await page.mouse.move(bodyBox.x + 8, bodyBox.y + bodyBox.height / 2, { steps: 16 });
   const preview = page.locator('[data-anchor="gui_window_body"] > .fx-gui-flow-drop-preview-slot');
   await expect(preview).toHaveCount(1);
   await expect(preview).toHaveClass(/is-expanded/);
@@ -248,30 +321,10 @@ async function dragPaletteToBodyStart(page) {
 }
 
 async function dragHorizontalFlowPaletteToFrame(page) {
-  const paletteBox = await page.locator('[data-anchor="horizontal_flow_palette_item"]').boundingBox();
-  const frameBox = await page.locator('[data-anchor="gui_frame_1"]').boundingBox();
-
-  expect(paletteBox).not.toBeNull();
-  expect(frameBox).not.toBeNull();
-
-  await page.mouse.move(
-    paletteBox.x + paletteBox.width / 2,
-    paletteBox.y + paletteBox.height / 2
+  await page.locator('[data-anchor="horizontal_flow_palette_item"]').dragTo(
+    page.locator('[data-anchor="gui_frame_1"]'),
+    { targetPosition: { x: 48, y: 28 } }
   );
-  await page.mouse.down();
-  await page.mouse.move(paletteBox.x + paletteBox.width / 2 + 12, paletteBox.y + 12, {
-    steps: 4
-  });
-  await expect(page.locator('[data-anchor="builder_drag_preview"]')).toBeVisible();
-
-  await page.mouse.move(
-    frameBox.x + frameBox.width / 2,
-    frameBox.y + frameBox.height / 2,
-    { steps: 16 }
-  );
-  await expect(page.locator('[data-anchor="gui_frame_1"] > .fx-gui-flow-drop-preview-slot'))
-    .toHaveCount(1);
-  await page.mouse.up();
 }
 
 async function dragTreeNodeToRow(page, sourceId, targetId) {
@@ -315,10 +368,63 @@ async function dragTreeNodeToRow(page, sourceId, targetId) {
   }, { sourceId, targetId });
 }
 
-async function dragPaletteGripToTreeRow(page, paletteAnchor, targetId) {
+async function previewTreeNodeOverRow(page, sourceId, targetId) {
   const sourceHandle = page.locator(
-    `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-grip`
+    `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
   );
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+
+  await page.evaluate(({ sourceId, targetId }) => {
+    const source = document.querySelector(
+      `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
+    );
+    const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
+    if (!source || !target) {
+      throw new Error(`Missing tree drag source or target: ${sourceId} -> ${targetId}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const targetRect = target.getBoundingClientRect();
+    const sourceRect = source.getBoundingClientRect();
+    window.__layoutBuilderTreeDrag = { dataTransfer, source };
+
+    function fireDragEvent(element, type, clientX, clientY) {
+      const event = new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        dataTransfer
+      });
+      element.dispatchEvent(event);
+    }
+
+    fireDragEvent(
+      source,
+      "dragstart",
+      sourceRect.left + sourceRect.width / 2,
+      sourceRect.top + sourceRect.height / 2
+    );
+    fireDragEvent(
+      target,
+      "dragenter",
+      targetRect.left + Math.min(96, Math.max(8, targetRect.width / 2)),
+      targetRect.top + 4
+    );
+    fireDragEvent(
+      target,
+      "dragover",
+      targetRect.left + Math.min(96, Math.max(8, targetRect.width / 2)),
+      targetRect.top + 4
+    );
+  }, { sourceId, targetId });
+}
+
+async function dragPaletteTileToTreeRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(`[data-anchor="${paletteAnchor}"]`);
   const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
 
   await expect(sourceHandle).toBeVisible();
@@ -329,48 +435,32 @@ async function dragPaletteGripToTreeRow(page, paletteAnchor, targetId) {
   });
 }
 
-async function previewPaletteGripOverTreeRow(page, paletteAnchor, targetId) {
-  const sourceHandle = page.locator(
-    `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-grip`
-  );
+async function previewPaletteTileOverTreeRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(`[data-anchor="${paletteAnchor}"]`);
   const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
 
   await expect(sourceHandle).toBeVisible();
   await expect(targetRow).toBeVisible();
-
-  await page.evaluate(({ paletteAnchor, targetId }) => {
-    const source = document.querySelector(
-      `[data-anchor="${paletteAnchor}"] .fx-builder-palette__tree-grip`
-    );
-    const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
-    if (!source || !target) {
-      throw new Error(`Missing tree palette source or target: ${paletteAnchor} -> ${targetId}`);
-    }
-
-    const dataTransfer = new DataTransfer();
-    const sourceRect = source.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-
-    function fireDragEvent(element, type, rect) {
-      const event = new DragEvent(type, {
-        bubbles: true,
-        cancelable: true,
-        clientX: rect.left + Math.min(96, Math.max(8, rect.width / 2)),
-        clientY: rect.top + rect.height / 2,
-        dataTransfer
-      });
-      element.dispatchEvent(event);
-    }
-
-    fireDragEvent(source, "dragstart", sourceRect);
-    fireDragEvent(target, "dragenter", targetRect);
-    fireDragEvent(target, "dragover", targetRect);
-  }, { paletteAnchor, targetId });
+  await startNativePaletteDrag(page, paletteAnchor);
+  await dragActiveNativePaletteOver(
+    page,
+    `[data-anchor="builder_tree_item_${targetId}"]`,
+    { x: 56, y: 18 }
+  );
 }
 
 async function endNativeDrag(page) {
   await page.evaluate(() => {
-    window.dispatchEvent(new DragEvent("dragend", { bubbles: true }));
+    const drag = window.__layoutBuilderNativeDrag ?? window.__layoutBuilderTreeDrag;
+    const dataTransfer = drag?.dataTransfer ?? new DataTransfer();
+    const source = drag?.source ?? window;
+    source.dispatchEvent(new DragEvent("dragend", {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer
+    }));
+    delete window.__layoutBuilderNativeDrag;
+    delete window.__layoutBuilderTreeDrag;
   });
 }
 
@@ -570,10 +660,10 @@ test.describe("Layout builder canvas preview", () => {
     ).toHaveCount(1);
   });
 
-  test("palette tile grip inserts through Headless Tree foreign drops", async ({ page }) => {
+  test("palette tile inserts through Headless Tree foreign drops", async ({ page }) => {
     await seedOneFrameWindow(page);
 
-    await dragPaletteGripToTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+    await dragPaletteTileToTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
 
     await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
     await expect(
@@ -583,23 +673,49 @@ test.describe("Layout builder canvas preview", () => {
       .toHaveClass(/is-selected/);
   });
 
-  test("component tree preview opens insertion space for palette drops", async ({ page }) => {
+  test("component tree palette hover keeps row hit targets stable", async ({ page }) => {
     await seedEditorState(page, TWO_VERTICAL_FRAME_STATE);
 
     const secondFrameRow = page.locator('[data-anchor="builder_tree_item_gui_frame_2"]');
     const before = await secondFrameRow.boundingBox();
     expect(before).not.toBeNull();
 
-    await previewPaletteGripOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+    await previewPaletteTileOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
 
-    const placeholder = page.locator('[data-anchor="builder_tree_insertion_placeholder"]');
-    await expect(placeholder).toBeVisible();
+    await expect(page.locator('[data-anchor="builder_tree_insertion_placeholder"]')).toHaveCount(0);
 
     await expect.poll(async () => {
       const after = await secondFrameRow.boundingBox();
       expect(after).not.toBeNull();
-      return after.y;
-    }).toBeGreaterThan(before.y + 20);
+      return Math.abs(after.y - before.y);
+    }).toBeLessThan(4);
+
+    await endNativeDrag(page);
+  });
+
+  test("component tree move preview opens a visual gap without moving hit targets", async ({ page }) => {
+    await seedEditorState(page, TWO_VERTICAL_FRAME_STATE);
+
+    const targetHitBox = page.locator('[data-tree-hit-anchor="builder_tree_hit_gui_frame_1"]');
+    const targetRow = page.locator('[data-anchor="builder_tree_item_gui_frame_1"]');
+    const beforeHitBox = await targetHitBox.boundingBox();
+    const beforeRowBox = await targetRow.boundingBox();
+    expect(beforeHitBox).not.toBeNull();
+    expect(beforeRowBox).not.toBeNull();
+
+    await previewTreeNodeOverRow(page, "gui_frame_2", "gui_frame_1");
+
+    await expect(targetRow).toHaveClass(/is-visual-shifted/);
+    await expect.poll(async () => {
+      const afterHitBox = await targetHitBox.boundingBox();
+      expect(afterHitBox).not.toBeNull();
+      return Math.abs(afterHitBox.y - beforeHitBox.y);
+    }).toBeLessThan(4);
+    await expect.poll(async () => {
+      const afterRowBox = await targetRow.boundingBox();
+      expect(afterRowBox).not.toBeNull();
+      return afterRowBox.y - beforeRowBox.y;
+    }).toBeGreaterThan(8);
 
     await endNativeDrag(page);
   });
@@ -720,7 +836,11 @@ test.describe("Layout builder canvas preview", () => {
     expect(hover.previewMinHeight).toBe(hover.existingMinHeight);
     expect(new Set(hover.dropTargetBackgrounds)).toEqual(new Set(["rgba(0, 0, 0, 0)"]));
 
-    await page.mouse.up();
+    await dropActiveNativePalette(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
     await expect(page.locator('[data-fx-role="body-frame"]')).toHaveCount(2);
     const finalFrames = await measureFinal(page);
 

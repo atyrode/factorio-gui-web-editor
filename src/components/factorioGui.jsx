@@ -10,11 +10,7 @@ import {
   Search,
   Unlock
 } from "lucide-react";
-import { useDroppable } from "@dnd-kit/react";
-import {
-  LAYOUT_BUILDER_DND_TYPE,
-  dropTargetData
-} from "../factorioLayoutBuilderDnd.js";
+import { createBuilderDropTarget } from "../factorioLayoutBuilderDnd.js";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -456,21 +452,106 @@ function GuiFrameShell({
   );
 }
 
-function CanvasDropTarget({
+function canvasChildElement(parentElement, node) {
+  if (!parentElement || !node?.id) {
+    return null;
+  }
+
+  return parentElement.querySelector(`:scope > [data-anchor="${node.id}"]`);
+}
+
+function nearestCanvasDropTarget(event, parentId, nodes = []) {
+  const parentElement = event.currentTarget;
+  if (!nodes.length) {
+    return createBuilderDropTarget({ parentId, index: 0, surface: "canvas" });
+  }
+
+  const axis = parentElement.dataset.fxDirection === "vertical" ? "y" : "x";
+  const pointer = axis === "y" ? event.clientY : event.clientX;
+
+  for (let index = 0; index < nodes.length; index += 1) {
+    const childElement = canvasChildElement(parentElement, nodes[index]);
+    if (!childElement) {
+      continue;
+    }
+
+    const rect = childElement.getBoundingClientRect();
+    const childCenter = axis === "y"
+      ? rect.top + rect.height / 2
+      : rect.left + rect.width / 2;
+    if (pointer < childCenter) {
+      return createBuilderDropTarget({ parentId, index, surface: "canvas" });
+    }
+  }
+
+  return createBuilderDropTarget({ parentId, index: nodes.length, surface: "canvas" });
+}
+
+function canvasDropHandlers({
   dragActive,
+  onBuilderDrop,
+  onBuilderDropTargetOver,
+  resolveTarget
+}) {
+  function currentTarget(event) {
+    return resolveTarget?.(event) ?? null;
+  }
+
+  function handleDragOver(event) {
+    const target = currentTarget(event);
+    if (!dragActive || !target) {
+      return;
+    }
+
+    const accepted = onBuilderDropTargetOver?.(target, event);
+    if (accepted) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "copy";
+      }
+    }
+  }
+
+  function handleDrop(event) {
+    const target = currentTarget(event);
+    if (!dragActive || !target) {
+      return;
+    }
+
+    const accepted = onBuilderDrop?.(target, event);
+    if (accepted) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  return {
+    onDragEnter: handleDragOver,
+    onDragOver: handleDragOver,
+    onDrop: handleDrop
+  };
+}
+
+function isCanvasDropParent(activeTarget, parentId) {
+  return activeTarget?.surface === "canvas" && activeTarget.parentId === parentId;
+}
+
+function isSameCanvasDropTarget(activeTarget, candidateTarget) {
+  return activeTarget?.surface === "canvas" &&
+    candidateTarget?.surface === "canvas" &&
+    activeTarget.parentId === candidateTarget.parentId &&
+    activeTarget.index === candidateTarget.index;
+}
+
+function CanvasDropTarget({
+  builderDropTarget,
   emptyParent = false,
   parentId,
   index,
   slotCount
 }) {
-  const { ref, isDropTarget } = useDroppable({
-    id: `builder-canvas-slot-${parentId}-${index}`,
-    type: LAYOUT_BUILDER_DND_TYPE,
-    accept: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !dragActive,
-    collisionPriority: 3,
-    data: dropTargetData({ parentId, index, surface: "canvas" })
-  });
+  const target = createBuilderDropTarget({ parentId, index, surface: "canvas" });
   const isStartEdge = !emptyParent && index === 0;
   const isEndEdge = !emptyParent && index === slotCount;
   const isMiddle = !emptyParent && !isStartEdge && !isEndEdge;
@@ -480,10 +561,9 @@ function CanvasDropTarget({
 
   return (
     <div
-      ref={ref}
       className={[
         "fx-gui-flow-drop-target",
-        isDropTarget ? "is-targeted" : "",
+        isSameCanvasDropTarget(builderDropTarget, target) ? "is-targeted" : "",
         emptyParent ? "is-empty-parent" : "",
         isStartEdge ? "is-start-edge" : "",
         isEndEdge ? "is-end-edge" : "",
@@ -543,6 +623,8 @@ function FlowChildren({
   inspectedAnchor,
   onInspect,
   onInspectLock,
+  onBuilderDrop,
+  onBuilderDropTargetOver,
   builderDragActive,
   builderDropTarget,
   parentStyleReference
@@ -557,7 +639,7 @@ function FlowChildren({
     for (let index = 0; index <= nodes.length; index += 1) {
       renderedChildren.push(
         <CanvasDropTarget
-          dragActive={builderDragActive}
+          builderDropTarget={builderDropTarget}
           emptyParent={nodes.length === 0}
           index={index}
           key={`${parentId}-target-${index}`}
@@ -591,6 +673,8 @@ function FlowChildren({
         inspectorLocked={inspectorLocked}
         key={node.id}
         node={node}
+        onBuilderDrop={onBuilderDrop}
+        onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
       />
@@ -625,6 +709,8 @@ export function GuiFrame({
   inspectorActive = false,
   inspectorLocked = false,
   inspectedAnchor = node.id,
+  onBuilderDrop,
+  onBuilderDropTargetOver,
   onInspect,
   onInspectLock,
   builderDragActive = false,
@@ -639,32 +725,33 @@ export function GuiFrame({
     onInspectLock
   });
   const children = node.children ?? [];
-  const isDropParent = builderDropTarget?.surface === "canvas" &&
-    builderDropTarget.parentId === node.id;
-  const { ref: dropRef, isDropTarget } = useDroppable({
-    id: `builder-canvas-parent-${node.id}`,
-    type: LAYOUT_BUILDER_DND_TYPE,
-    accept: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !builderDragActive,
-    collisionPriority: 1,
-    data: dropTargetData({
-      parentId: node.id,
-      index: children.length,
-      surface: "canvas"
-    })
+  const parentDropTarget = createBuilderDropTarget({
+    parentId: node.id,
+    index: children.length,
+    surface: "canvas"
+  });
+  const dropHandlers = canvasDropHandlers({
+    dragActive: builderDragActive,
+    onBuilderDrop,
+    onBuilderDropTargetOver,
+    resolveTarget: (event) => nearestCanvasDropTarget(event, node.id, children)
   });
 
   return (
     <GuiFrameShell
       node={node}
-      shellRef={dropRef}
       className={[
-        isDropParent || isDropTarget ? "is-builder-drop-parent" : "",
+        isCanvasDropParent(builderDropTarget, parentDropTarget?.parentId)
+          ? "is-builder-drop-parent"
+          : "",
         frameInspector.className
       ]
         .filter(Boolean)
         .join(" ")}
       tabIndex={frameInspector.tabIndex}
+      onDragEnter={dropHandlers.onDragEnter}
+      onDragOver={dropHandlers.onDragOver}
+      onDrop={dropHandlers.onDrop}
       onClick={frameInspector.onClick}
       onFocus={frameInspector.onFocus}
       onMouseEnter={frameInspector.onMouseEnter}
@@ -677,6 +764,8 @@ export function GuiFrame({
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
         nodes={children}
+        onBuilderDrop={onBuilderDrop}
+        onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
         parentId={node.id}
@@ -692,10 +781,12 @@ export function GuiHorizontalFlow({
   inspectorActive = false,
   inspectorLocked = false,
   inspectedAnchor = node.id,
+  onBuilderDrop,
+  onBuilderDropTargetOver,
   onInspect,
   onInspectLock,
   builderDragActive = false,
-  builderDropTarget = null,
+  builderDropTarget = null
 }) {
   const flowInspector = inspectorProps({
     active: inspectorActive,
@@ -706,32 +797,33 @@ export function GuiHorizontalFlow({
     onInspectLock
   });
   const children = node.children ?? [];
-  const isDropParent = builderDropTarget?.surface === "canvas" &&
-    builderDropTarget.parentId === node.id;
-  const { ref: dropRef, isDropTarget } = useDroppable({
-    id: `builder-canvas-parent-${node.id}`,
-    type: LAYOUT_BUILDER_DND_TYPE,
-    accept: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !builderDragActive,
-    collisionPriority: 1,
-    data: dropTargetData({
-      parentId: node.id,
-      index: children.length,
-      surface: "canvas"
-    })
+  const parentDropTarget = createBuilderDropTarget({
+    parentId: node.id,
+    index: children.length,
+    surface: "canvas"
+  });
+  const dropHandlers = canvasDropHandlers({
+    dragActive: builderDragActive,
+    onBuilderDrop,
+    onBuilderDropTargetOver,
+    resolveTarget: (event) => nearestCanvasDropTarget(event, node.id, children)
   });
 
   return (
     <GuiHorizontalFlowShell
       node={node}
-      shellRef={dropRef}
       className={[
-        isDropParent || isDropTarget ? "is-builder-drop-parent" : "",
+        isCanvasDropParent(builderDropTarget, parentDropTarget?.parentId)
+          ? "is-builder-drop-parent"
+          : "",
         flowInspector.className
       ]
         .filter(Boolean)
         .join(" ")}
       tabIndex={flowInspector.tabIndex}
+      onDragEnter={dropHandlers.onDragEnter}
+      onDragOver={dropHandlers.onDragOver}
+      onDrop={dropHandlers.onDrop}
       onClick={flowInspector.onClick}
       onFocus={flowInspector.onFocus}
       onMouseEnter={flowInspector.onMouseEnter}
@@ -744,6 +836,8 @@ export function GuiHorizontalFlow({
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
         nodes={children}
+        onBuilderDrop={onBuilderDrop}
+        onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
         parentId={node.id}
@@ -764,6 +858,8 @@ export function GuiWindow({
   inspectorActive = false,
   inspectorLocked = false,
   inspectedAnchor = anchor,
+  onBuilderDrop,
+  onBuilderDropTargetOver,
   onInspect,
   onInspectClear,
   onInspectLock,
@@ -832,22 +928,17 @@ export function GuiWindow({
     onInspect,
     onInspectLock
   });
-  const { ref: bodyDropRef, isDropTarget: isBodyDropTarget } = useDroppable({
-    id: `builder-canvas-parent-${bodyAnchor}`,
-    type: LAYOUT_BUILDER_DND_TYPE,
-    accept: LAYOUT_BUILDER_DND_TYPE,
-    disabled: !builderDragActive,
-    collisionPriority: 1,
-    data: dropTargetData({
-      parentId: bodyAnchor,
-      index: bodyChildren.length,
-      surface: "canvas"
-    })
+  const bodyDropTarget = createBuilderDropTarget({
+    parentId: bodyAnchor,
+    index: bodyChildren.length,
+    surface: "canvas"
   });
-  const bodyDropClass = builderDropTarget?.surface === "canvas" &&
-    builderDropTarget.parentId === bodyAnchor
-    ? "is-builder-drop-parent"
-    : "";
+  const bodyDropHandlers = canvasDropHandlers({
+    dragActive: builderDragActive,
+    onBuilderDrop,
+    onBuilderDropTargetOver,
+    resolveTarget: (event) => nearestCanvasDropTarget(event, bodyAnchor, bodyChildren)
+  });
   const bodyStyle = windowBodyStyleVariables(bodyStyleReference);
 
   return (
@@ -969,10 +1060,11 @@ export function GuiWindow({
         />
       </header>
       <div
-        ref={bodyDropRef}
         className={[
           "fx-gui-window__body",
-          bodyDropClass || isBodyDropTarget ? "is-builder-drop-parent" : "",
+          isCanvasDropParent(builderDropTarget, bodyDropTarget?.parentId)
+            ? "is-builder-drop-parent"
+            : "",
           bodyInspector.className
         ]
           .filter(Boolean)
@@ -997,6 +1089,9 @@ export function GuiWindow({
         data-fx-maximum-vertical-squash-size={styleReference.maximumVerticalSquashSize}
         style={bodyStyle}
         tabIndex={bodyInspector.tabIndex}
+        onDragEnter={bodyDropHandlers.onDragEnter}
+        onDragOver={bodyDropHandlers.onDragOver}
+        onDrop={bodyDropHandlers.onDrop}
         onMouseEnter={bodyInspector.onMouseEnter}
         onMouseMove={bodyInspector.onMouseMove}
         onClick={bodyInspector.onClick}
@@ -1009,6 +1104,8 @@ export function GuiWindow({
           inspectorActive={inspectorActive}
           inspectorLocked={inspectorLocked}
           nodes={bodyChildren}
+          onBuilderDrop={onBuilderDrop}
+          onBuilderDropTargetOver={onBuilderDropTargetOver}
           onInspect={onInspect}
           onInspectLock={onInspectLock}
           parentId={bodyAnchor}

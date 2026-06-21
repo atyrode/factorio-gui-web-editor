@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import {
   FxActionButton,
@@ -36,8 +35,7 @@ import {
   removeLayoutNode
 } from "../factorioLayoutTree.js";
 import {
-  readBuilderDrag,
-  readBuilderDropTarget
+  readBuilderPaletteDrag
 } from "../factorioLayoutBuilderDnd.js";
 import {
   DEFAULT_LAYOUT_SETTINGS,
@@ -192,6 +190,8 @@ function EditorCanvas({
   inspectorLocked,
   inspectedAnchor,
   inspectorPreview,
+  onBuilderDrop,
+  onBuilderDropTargetOver,
   onInspect,
   onInspectClear,
   onInspectLock,
@@ -353,6 +353,8 @@ function EditorCanvas({
           onInspect={onInspect}
           onInspectClear={onInspectClear}
           onInspectLock={onInspectLock}
+          onBuilderDrop={onBuilderDrop}
+          onBuilderDropTargetOver={onBuilderDropTargetOver}
           style={windowStyle}
           onTitlebarPointerDown={startWindowDrag}
           onTitlebarPointerMove={moveWindowDrag}
@@ -398,22 +400,6 @@ function LuaOutput({ model }) {
         <code>{code}</code>
       </pre>
     </FxFrame>
-  );
-}
-
-function BuilderDragPreview({ source }) {
-  const drag = readBuilderDrag(source);
-
-  if (!drag) {
-    return null;
-  }
-  const atom = drag.atom;
-
-  return (
-    <div className="fx-builder-drag-preview" data-anchor="builder_drag_preview">
-      <span>{atomLabel(atom)}</span>
-      <code>{atomCode(atom)}</code>
-    </div>
   );
 }
 
@@ -988,6 +974,21 @@ export function EditorPage() {
     writeCachedEditorState(editorState);
   }, [editorState]);
 
+  useEffect(() => {
+    if (!builderDrag) {
+      return undefined;
+    }
+
+    function handleNativeDragEnd() {
+      clearBuilderDrag();
+    }
+
+    window.addEventListener("dragend", handleNativeDragEnd);
+    return () => {
+      window.removeEventListener("dragend", handleNativeDragEnd);
+    };
+  }, [builderDrag]);
+
   function createWindow() {
     setInspectorHistory({ back: [], forward: [] });
     setInspectorPreview(null);
@@ -1317,15 +1318,16 @@ export function EditorPage() {
 
   function updateBuilderDropTarget(target, drag = builderDrag) {
     if (!drag || !currentWindow) {
-      return;
+      return false;
     }
 
     const normalizedTarget = normalizeDropTarget(target, drag);
     if (normalizedTarget) {
       setBuilderDropTarget(normalizedTarget);
-    } else {
-      setBuilderDropTarget(null);
+      return true;
     }
+
+    return false;
   }
 
   function clearBuilderDrag() {
@@ -1333,9 +1335,7 @@ export function EditorPage() {
     setBuilderDropTarget(null);
   }
 
-  function handleBuilderDragStart(event) {
-    const drag = readBuilderDrag(event.operation.source);
-
+  function handlePaletteDragStart(drag) {
     if (!drag || !currentWindow) {
       clearBuilderDrag();
       return;
@@ -1345,14 +1345,19 @@ export function EditorPage() {
     setBuilderDropTarget(null);
   }
 
-  function handleBuilderDragOver(event) {
-    const drag = readBuilderDrag(event.operation.source) ?? builderDrag;
+  function handleCanvasDropTargetOver(target, event) {
+    const drag = readBuilderPaletteDrag(event?.dataTransfer, false) ?? builderDrag;
 
     if (!drag) {
-      return;
+      return false;
     }
 
-    updateBuilderDropTarget(readBuilderDropTarget(event.operation.target), drag);
+    return updateBuilderDropTarget(target, drag);
+  }
+
+  function handleCanvasDrop(target, event) {
+    const drag = readBuilderPaletteDrag(event?.dataTransfer, true) ?? builderDrag;
+    return commitBuilderDrop(target, drag);
   }
 
   function applyLayoutUpdate(updater) {
@@ -1451,12 +1456,17 @@ export function EditorPage() {
 
   function commitBuilderDrop(target = builderDropTarget, drag = builderDrag) {
     if (!drag) {
-      return;
+      return false;
+    }
+
+    const normalizedTarget = normalizeDropTarget(target, drag);
+    if (!normalizedTarget) {
+      return false;
     }
 
     applyLayoutUpdate((layoutState) => {
-      const normalizedTarget = normalizeDropTarget(target, drag, layoutState.layoutChildren);
-      if (!normalizedTarget) {
+      const currentTarget = normalizeDropTarget(normalizedTarget, drag, layoutState.layoutChildren);
+      if (!currentTarget) {
         return { changed: false };
       }
 
@@ -1464,8 +1474,8 @@ export function EditorPage() {
         const node = createSpecForAtom(drag.atom, layoutState.nextLayoutNodeNumber);
         const insertion = insertLayoutNode(
           layoutState.layoutChildren,
-          normalizedTarget.parentId,
-          normalizedTarget.index,
+          currentTarget.parentId,
+          currentTarget.index,
           node
         );
         return {
@@ -1481,17 +1491,7 @@ export function EditorPage() {
     });
 
     clearBuilderDrag();
-  }
-
-  function handleBuilderDragEnd(event) {
-    if (event.canceled) {
-      clearBuilderDrag();
-      return;
-    }
-
-    const drag = readBuilderDrag(event.operation.source) ?? builderDrag;
-    const target = readBuilderDropTarget(event.operation.target) ?? builderDropTarget;
-    commitBuilderDrop(target, drag);
+    return true;
   }
 
   function updateWindowLocation(location) {
@@ -1580,16 +1580,11 @@ export function EditorPage() {
   }
 
   return (
-    <DragDropProvider
-      onDragEnd={handleBuilderDragEnd}
-      onDragOver={handleBuilderDragOver}
-      onDragStart={handleBuilderDragStart}
+    <main
+      className="fx-editor-shell"
+      ref={shellRef}
+      style={{ "--fx-editor-sidebar-width": `${sidebarWidth}px` }}
     >
-      <main
-        className="fx-editor-shell"
-        ref={shellRef}
-        style={{ "--fx-editor-sidebar-width": `${sidebarWidth}px` }}
-      >
         <aside className="fx-editor-rail" aria-label="Editor controls">
           <FxFrame title="Window" className="fx-editor-panel">
             <label className="fx-field">
@@ -1666,6 +1661,8 @@ export function EditorPage() {
             onEditLuaVariableName={updateLuaVariableName}
             onInsertPalette={insertPaletteLayoutNode}
             onMoveNode={moveLayoutNodeFromTree}
+            onPaletteDragEnd={clearBuilderDrag}
+            onPaletteDragStart={handlePaletteDragStart}
             onRemove={removeLayoutSubtree}
             paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
             onSelect={selectBuilderNode}
@@ -1748,6 +1745,8 @@ export function EditorPage() {
               onInspect={updateInspectedAnchor}
               onInspectClear={clearHoveredInspection}
               onInspectLock={lockInspectedAnchor}
+              onBuilderDrop={handleCanvasDrop}
+              onBuilderDropTargetOver={handleCanvasDropTargetOver}
               onWindowLocationChange={updateWindowLocation}
               builderDragActive={Boolean(builderDrag)}
               builderDropTarget={builderDropTarget}
@@ -1757,15 +1756,5 @@ export function EditorPage() {
         </section>
         {showLuaOutput ? <LuaOutput model={currentModel} /> : null}
       </main>
-      <DragOverlay
-        className="fx-builder-drag-overlay"
-        dropAnimation={{
-          duration: 160,
-          easing: "cubic-bezier(0.2, 0, 0.2, 1)"
-        }}
-      >
-        {(source) => <BuilderDragPreview source={source} />}
-      </DragOverlay>
-    </DragDropProvider>
   );
 }
