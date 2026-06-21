@@ -314,7 +314,7 @@ function expectSharedFlowSize(actual, expected, label) {
 }
 
 test.describe("Layout builder canvas preview", () => {
-  test("Inspector edits Lua variable names without changing stable element names", async ({ page }) => {
+  test("component tree edits Lua variable names without changing stable element names", async ({ page }) => {
     await seedEditorState(page, {
       ...ONE_FRAME_STATE,
       showInspector: true,
@@ -329,34 +329,34 @@ test.describe("Layout builder canvas preview", () => {
 
     const inspector = page.locator('[data-anchor="inspector_gui_frame_1"]');
     await expect(inspector).toBeVisible();
-    const variableRow = inspector
-      .locator(".fx-inspector-row")
-      .filter({ hasText: "lua_variable_name" });
-    await expect(variableRow.locator("button")).toHaveText("gui_frame_1");
+    await expect(inspector.getByText("lua_variable_name")).toHaveCount(0);
 
-    await variableRow.locator("button").click();
-    await variableRow.getByLabel("Edit lua_variable_name").fill("main_controls");
-    await variableRow.getByLabel("Edit lua_variable_name").press("Enter");
+    const variableControl = page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]');
+    await expect(variableControl).toHaveText("gui_frame_1");
 
-    await expect(variableRow.locator("button")).toHaveText("main_controls");
+    await variableControl.click();
+    await page.getByLabel("Edit Lua variable for gui_frame_1").fill("main_controls");
+    await page.getByLabel("Edit Lua variable for gui_frame_1").press("Enter");
+
+    await expect(variableControl).toHaveText("main_controls");
     const luaOutput = page.locator(".fx-editor-output__code code");
     await expect(luaOutput).toContainText("local main_controls = gui_window_body.add{");
     await expect(luaOutput).toContainText('name = "gui_frame_1"');
     await expect(luaOutput).not.toContainText("local gui_frame_1 =");
 
-    await variableRow.locator("button").click();
-    const duplicateInput = variableRow.getByLabel("Edit lua_variable_name");
+    await variableControl.click();
+    const duplicateInput = page.getByLabel("Edit Lua variable for gui_frame_1");
     await duplicateInput.fill("gui_window_body");
     await duplicateInput.press("Enter");
 
     await expect(duplicateInput).toHaveAttribute("aria-invalid", "true");
-    await expect(variableRow.getByRole("alert")).toContainText("already used");
+    await expect(page.getByRole("alert")).toContainText("already used");
     await expect(luaOutput).toContainText("local main_controls = gui_window_body.add{");
 
     await duplicateInput.fill("");
     await duplicateInput.press("Enter");
 
-    await expect(variableRow.locator("button")).toHaveText("gui_frame_1");
+    await expect(variableControl).toHaveText("gui_frame_1");
     await expect(luaOutput).toContainText("local gui_frame_1 = gui_window_body.add{");
   });
 
@@ -374,7 +374,9 @@ test.describe("Layout builder canvas preview", () => {
     await expect(tree.getByText("gui_window_drag_handle", { exact: true })).toBeVisible();
     await expect(tree.getByText("Window body Horizontal Flow")).toBeVisible();
     await expect(tree.getByText("gui_window_body", { exact: true })).toBeVisible();
-    await expect(tree.getByRole("button", { name: "Frame gui_frame_1", exact: true }))
+    await expect(tree.getByRole("button", { name: "Frame", exact: true }))
+      .toBeVisible();
+    await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
       .toBeVisible();
     await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
   });

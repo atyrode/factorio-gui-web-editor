@@ -309,12 +309,10 @@ exported until the model has a rule for when Factorio expects them to be set.
 
 Editable rows must be opt-in. They should mutate only values the editor model
 actually owns. Captured Factorio style facts remain read-only until the model
-defines how changing them maps to valid Factorio Lua/style behavior. Current
-editable fields are the title label caption and `lua_variable_name` for exported
-nodes. Lua variable names must be Lua-safe identifiers, cannot be reserved words,
-and must not duplicate another exported node's effective variable name. Empty
-`lua_variable_name` input resets that node to its generated default. The root
-Window atom still does not own a visible caption field.
+defines how changing them maps to valid Factorio Lua/style behavior. The current
+editable Inspector field is the title label caption; Lua variable names are
+intentionally edited in the component tree instead of this Ctrl+F6-style
+projection. The root Window atom still does not own a visible caption field.
 
 ## Renderer And Export Boundary
 

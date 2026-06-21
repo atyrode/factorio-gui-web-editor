@@ -1,5 +1,6 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/react";
+import { Code2 } from "lucide-react";
 
 import {
   LAYOUT_BUILDER_DND_TYPE,
@@ -42,6 +43,134 @@ function addAfterLabel(node) {
 
 function removeLabel(node) {
   return `Remove ${atomLabel(node.atom)} subtree`;
+}
+
+function collectModelNodes(model) {
+  const nodes = new Map();
+
+  function walk(node) {
+    if (!node?.id) {
+      return;
+    }
+
+    nodes.set(node.id, node);
+    for (const child of node.children ?? []) {
+      walk(child);
+    }
+  }
+
+  walk(model?.root);
+  return nodes;
+}
+
+function BuilderLuaVariableEditor({
+  nodeId,
+  value,
+  onEdit
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftValue, setDraftValue] = useState(value);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const inputRef = useRef(null);
+  const cancelEditRef = useRef(false);
+  const errorId = useId();
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editing) {
+      setDraftValue(value);
+    }
+  }, [editing, value]);
+
+  function startEditing(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    cancelEditRef.current = false;
+    setDraftValue(value);
+    setErrorMessage(null);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    if (cancelEditRef.current) {
+      cancelEditRef.current = false;
+      return;
+    }
+
+    const result = onEdit?.(nodeId, draftValue);
+    if (result?.ok === false) {
+      setErrorMessage(result.message ?? "Invalid Lua variable name.");
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+      return;
+    }
+
+    setErrorMessage(null);
+    setEditing(false);
+  }
+
+  function cancelEdit() {
+    cancelEditRef.current = true;
+    setDraftValue(value);
+    setErrorMessage(null);
+    setEditing(false);
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitEdit();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="fx-builder-row__variable-edit">
+        <input
+          aria-describedby={errorMessage ? errorId : undefined}
+          aria-label={`Edit Lua variable for ${nodeId}`}
+          aria-invalid={errorMessage ? "true" : undefined}
+          className="fx-builder-row__variable-input"
+          onBlur={commitEdit}
+          onChange={(event) => {
+            setDraftValue(event.target.value);
+            setErrorMessage(null);
+          }}
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={handleKeyDown}
+          ref={inputRef}
+          value={draftValue}
+        />
+        {errorMessage ? (
+          <span className="fx-builder-row__variable-error" id={errorId} role="alert">
+            {errorMessage}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      aria-label={`Edit Lua variable ${value} for ${nodeId}`}
+      className="fx-builder-row__variable"
+      data-anchor={`builder_lua_variable_${nodeId}`}
+      onClick={startEditing}
+      title={`Lua variable for ${nodeId}`}
+      type="button"
+    >
+      <Code2 aria-hidden="true" />
+      <code>{value}</code>
+    </button>
+  );
 }
 
 function shellNodeLabel(node) {
@@ -106,10 +235,12 @@ function BuilderNodeRow({
   draggable = true,
   label = atomLabel(node.atom),
   locked = false,
+  luaVariableName = code,
   inspectedAnchor,
   draggingId,
   onAddAfter,
   onAddChild,
+  onEditLuaVariableName,
   onRemove,
   onSelect
 }) {
@@ -133,18 +264,25 @@ function BuilderNodeRow({
         .join(" ")}
       onClick={() => onSelect(node.id)}
     >
-      <button
-        ref={draggable ? handleRef : undefined}
-        className="fx-builder-row__label"
-        onClick={(event) => {
-          event.stopPropagation();
-          onSelect(node.id);
-        }}
-        type="button"
-      >
-        <span>{label}</span>
-        <code>{code}</code>
-      </button>
+      <div className="fx-builder-row__main">
+        <button
+          ref={draggable ? handleRef : undefined}
+          className="fx-builder-row__label"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(node.id);
+          }}
+          title={code}
+          type="button"
+        >
+          <span>{label}</span>
+        </button>
+        <BuilderLuaVariableEditor
+          nodeId={node.id}
+          onEdit={onEditLuaVariableName}
+          value={luaVariableName}
+        />
+      </div>
       <div className="fx-builder-row__actions" aria-label={`${node.id} actions`}>
         {onAddChild ? (
           <FxActionButton
@@ -188,8 +326,10 @@ function BuilderNodeList({
   dragActive,
   draggingId,
   dropTarget,
+  modelNodeById,
   onAddAfter,
   onAddChild,
+  onEditLuaVariableName,
   onRemove,
   onSelect
 }) {
@@ -207,9 +347,11 @@ function BuilderNodeList({
             <BuilderNodeRow
               draggingId={draggingId}
               inspectedAnchor={inspectedAnchor}
+              luaVariableName={modelNodeById.get(node.id)?.luaVariableName ?? node.id}
               node={node}
               onAddAfter={onAddAfter}
               onAddChild={onAddChild}
+              onEditLuaVariableName={onEditLuaVariableName}
               onRemove={onRemove}
               onSelect={onSelect}
             />
@@ -219,8 +361,10 @@ function BuilderNodeList({
               draggingId={draggingId}
               inspectedAnchor={inspectedAnchor}
               nodes={node.children}
+              modelNodeById={modelNodeById}
               onAddAfter={onAddAfter}
               onAddChild={onAddChild}
+              onEditLuaVariableName={onEditLuaVariableName}
               onRemove={onRemove}
               onSelect={onSelect}
               parentId={node.id}
@@ -322,6 +466,7 @@ function BuilderShellTree({
   dropTarget,
   onAddAfter,
   onAddChild,
+  onEditLuaVariableName,
   onRemove,
   onSelect
 }) {
@@ -334,6 +479,7 @@ function BuilderShellTree({
   const titleLabel = titlebar?.children?.[0];
   const dragHandle = titlebar?.children?.[1];
   const body = root.children?.[1];
+  const modelNodeById = collectModelNodes(model);
 
   return (
     <ul className="fx-builder-tree fx-builder-tree--body-root">
@@ -344,7 +490,9 @@ function BuilderShellTree({
           inspectedAnchor={inspectedAnchor}
           label={shellNodeLabel(root)}
           locked
-          node={{ id: root.id }}
+          luaVariableName={root.luaVariableName ?? root.id}
+          node={root}
+          onEditLuaVariableName={onEditLuaVariableName}
           onSelect={onSelect}
         />
         <ul className="fx-builder-tree">
@@ -356,7 +504,9 @@ function BuilderShellTree({
                 inspectedAnchor={inspectedAnchor}
                 label={shellNodeLabel(titlebar)}
                 locked
-                node={{ id: titlebar.id }}
+                luaVariableName={titlebar.luaVariableName ?? titlebar.id}
+                node={titlebar}
+                onEditLuaVariableName={onEditLuaVariableName}
                 onSelect={onSelect}
               />
               <ul className="fx-builder-tree">
@@ -368,7 +518,9 @@ function BuilderShellTree({
                       inspectedAnchor={inspectedAnchor}
                       label={shellNodeLabel(node)}
                       locked
-                      node={{ id: node.id }}
+                      luaVariableName={node.luaVariableName ?? node.id}
+                      node={node}
+                      onEditLuaVariableName={onEditLuaVariableName}
                       onSelect={onSelect}
                     />
                   </li>
@@ -384,8 +536,10 @@ function BuilderShellTree({
                 inspectedAnchor={inspectedAnchor}
                 label={bodyFlowLabel(currentWindow)}
                 locked
-                node={{ id: BODY_LAYOUT_ROOT_ID, atom: HORIZONTAL_FLOW_ATOM_ID }}
+                luaVariableName={body.luaVariableName ?? BODY_LAYOUT_ROOT_ID}
+                node={{ ...body, atom: HORIZONTAL_FLOW_ATOM_ID }}
                 onAddChild={onAddChild}
+                onEditLuaVariableName={onEditLuaVariableName}
                 onSelect={onSelect}
               />
               <BuilderNodeList
@@ -393,9 +547,11 @@ function BuilderShellTree({
                 dropTarget={dropTarget}
                 draggingId={draggingId}
                 inspectedAnchor={inspectedAnchor}
+                modelNodeById={modelNodeById}
                 nodes={layoutChildren}
                 onAddAfter={onAddAfter}
                 onAddChild={onAddChild}
+                onEditLuaVariableName={onEditLuaVariableName}
                 onRemove={onRemove}
                 onSelect={onSelect}
                 parentId={BODY_LAYOUT_ROOT_ID}
@@ -417,6 +573,7 @@ export function BuilderPanel({
   model,
   onAddAfter,
   onAddChild,
+  onEditLuaVariableName,
   onRemove,
   onSelect
 }) {
@@ -453,6 +610,7 @@ export function BuilderPanel({
           model={model}
           onAddAfter={onAddAfter}
           onAddChild={onAddChild}
+          onEditLuaVariableName={onEditLuaVariableName}
           onRemove={onRemove}
           onSelect={onSelect}
         />

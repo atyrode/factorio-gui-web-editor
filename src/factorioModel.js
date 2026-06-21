@@ -1270,15 +1270,6 @@ function createLayoutNode(spec, layoutSettings, luaVariableNames = {}, depth = 0
   return null;
 }
 
-function luaVariableNameProperty(node) {
-  return {
-    label: "lua_variable_name",
-    value: node.luaVariableName ?? luaVariableNameForNode(node.id),
-    editable: { field: "luaVariableName", nodeId: node.id },
-    tone: "default"
-  };
-}
-
 function createLayoutInspectorRows(node) {
   const childRows = modelNodeChildRows(node.children);
 
@@ -1295,10 +1286,7 @@ function createLayoutInspectorRows(node) {
       sizeBeforeStretching: FACTORIO_NOT_IMPLEMENTED,
       maximumHorizontalSquashSize: FACTORIO_NOT_IMPLEMENTED,
       maximumVerticalSquashSize: FACTORIO_NOT_IMPLEMENTED,
-      properties: [
-        luaVariableNameProperty(node),
-        ...getFlowStyleProperties(node.styleReference)
-      ],
+      properties: getFlowStyleProperties(node.styleReference),
       childRows: childRows.length ? childRows : [{ label: "children", value: "" }]
     },
     ...node.children.flatMap(createLayoutInspectorRows)
@@ -1599,7 +1587,6 @@ export function getWindowInspectorRows(model) {
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
       maximalHeight: style.capturedMaximalHeight,
       properties: [
-        luaVariableNameProperty(root),
         { label: "top_padding", value: style.topPadding, indent: 1 },
         { label: "right_padding", value: style.rightPadding, indent: 1 },
         { label: "bottom_padding", value: style.bottomPadding, indent: 1 },
@@ -1639,7 +1626,6 @@ export function getWindowInspectorRows(model) {
           : dragHandleWidth,
       maximumVerticalSquashSize: style.titlebarMaximumVerticalSquashSize,
       properties: [
-        luaVariableNameProperty(titlebar),
         { label: "ignored_by_search", value: titlebar.styleReference.ignoredBySearch, indent: 1 },
         { label: "bottom_padding", value: titlebar.styleReference.bottomPadding, indent: 1 },
         {
@@ -1676,7 +1662,6 @@ export function getWindowInspectorRows(model) {
         style.titleLabelMaximumHorizontalSquashSize ?? titleLabelWidth,
       maximumVerticalSquashSize: style.titleLabelMaximumVerticalSquashSize ?? 0,
       properties: [
-        luaVariableNameProperty(titleLabel),
         { label: "caption", value: titleLabel.caption, editable: { field: "title" }, tone: "default" },
         {
           label: "vertically_stretchable",
@@ -1712,7 +1697,6 @@ export function getWindowInspectorRows(model) {
         style.dragHandleMaximumHorizontalSquashSize ?? dragHandleWidth,
       maximumVerticalSquashSize: style.dragHandleMaximumVerticalSquashSize ?? 0,
       properties: [
-        luaVariableNameProperty(dragHandle),
         { label: "right_margin", value: dragHandle.styleReference.rightMargin },
         { label: "height", value: dragHandle.referenceSize.height },
         { label: "natural_height", value: dragHandle.referenceSize.naturalHeight },
@@ -1740,10 +1724,7 @@ export function getWindowInspectorRows(model) {
       sizeBeforeStretching: sizePair(bodySizeBeforeStretching),
       maximumHorizontalSquashSize: 0,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
-      properties: [
-        luaVariableNameProperty(body),
-        ...getFlowStyleProperties(body.styleReference)
-      ],
+      properties: getFlowStyleProperties(body.styleReference),
       childRows: bodyChildRows
     },
     ...body.children.flatMap(createLayoutInspectorRows)

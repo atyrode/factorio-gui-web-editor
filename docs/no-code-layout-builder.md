@@ -123,12 +123,14 @@ and Horizontal Flows, preserving current 1:1 editor-to-Lua compatibility for
 this slice without treating CSS as source of truth.
 
 Each exported node also has an effective Lua local variable name. By default it
-matches the stable node id after Lua identifier sanitization. The Inspector can
-override it with a user-authored `lua_variable_name`; the generated Lua local
-uses that alias, while the Factorio element `name`, DOM `data-anchor`, builder
-row id, and Inspector `targetId` remain the stable node id. Invalid Lua
-identifiers, Lua reserved words, and duplicates are rejected inline. Empty input
-removes the override and returns to the generated default.
+matches the stable node id after Lua identifier sanitization. The component tree
+shows this as the blue code value on each row, with an edit affordance. Editing
+that value overrides the generated Lua local variable only; the Factorio element
+`name`, DOM `data-anchor`, builder row id, and Inspector `targetId` remain the
+stable node id. Invalid Lua identifiers, Lua reserved words, and duplicates are
+rejected inline. Empty input removes the override and returns to the generated
+default. This control intentionally does not appear in the Ctrl+F6-style
+Inspector.
 
 ## Drop Rules
 

@@ -1230,44 +1230,6 @@ export function EditorPage() {
   }
 
   function updateInspectorEditableValue(editable, value) {
-    if (editable?.field === "luaVariableName") {
-      const nodeId = editable.nodeId;
-      const validation = validateLuaVariableNameEdit(value, {
-        nodeId,
-        nodeIds: collectWindowLuaVariableNodeIds(currentWindow),
-        luaVariableNames: currentWindow?.luaVariableNames
-      });
-
-      if (!validation.ok) {
-        return validation;
-      }
-
-      setEditorState((state) => {
-        if (!state.currentWindow) {
-          return state;
-        }
-
-        const nextValidation = validateLuaVariableNameEdit(value, {
-          nodeId,
-          nodeIds: collectWindowLuaVariableNodeIds(state.currentWindow),
-          luaVariableNames: state.currentWindow.luaVariableNames
-        });
-        if (!nextValidation.ok) {
-          return state;
-        }
-
-        return {
-          ...state,
-          currentWindow: {
-            ...state.currentWindow,
-            luaVariableNames: nextValidation.luaVariableNames
-          }
-        };
-      });
-
-      return { ok: true };
-    }
-
     if (editable?.field !== "title") {
       return { ok: true };
     }
@@ -1279,6 +1241,43 @@ export function EditorPage() {
         ? { ...state.currentWindow, title: windowTitle(value) }
         : state.currentWindow
     }));
+
+    return { ok: true };
+  }
+
+  function updateLuaVariableName(nodeId, value) {
+    const validation = validateLuaVariableNameEdit(value, {
+      nodeId,
+      nodeIds: collectWindowLuaVariableNodeIds(currentWindow),
+      luaVariableNames: currentWindow?.luaVariableNames
+    });
+
+    if (!validation.ok) {
+      return validation;
+    }
+
+    setEditorState((state) => {
+      if (!state.currentWindow) {
+        return state;
+      }
+
+      const nextValidation = validateLuaVariableNameEdit(value, {
+        nodeId,
+        nodeIds: collectWindowLuaVariableNodeIds(state.currentWindow),
+        luaVariableNames: state.currentWindow.luaVariableNames
+      });
+      if (!nextValidation.ok) {
+        return state;
+      }
+
+      return {
+        ...state,
+        currentWindow: {
+          ...state.currentWindow,
+          luaVariableNames: nextValidation.luaVariableNames
+        }
+      };
+    });
 
     return { ok: true };
   }
@@ -1666,6 +1665,7 @@ export function EditorPage() {
             inspectedAnchor={inspectedAnchor}
             onAddAfter={addLayoutNodeAfter}
             onAddChild={addLayoutNodeChild}
+            onEditLuaVariableName={updateLuaVariableName}
             onRemove={removeLayoutSubtree}
             paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
             onSelect={selectBuilderNode}

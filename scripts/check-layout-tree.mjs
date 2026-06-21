@@ -268,14 +268,13 @@ const rootFrameChildRow = bodyInspectorRow.childRows.find(
 );
 assert.equal(rootFrameChildRow.value, "frame");
 const rootFrameInspectorRow = inspectorRows.find((row) => row.id === "gui_frame_1");
-const rootFrameVariableRow = rootFrameInspectorRow.properties.find(
-  (row) => row.label === "lua_variable_name"
+assert.equal(
+  inspectorRows.some((row) =>
+    (row.properties ?? []).some((property) => property.label === "lua_variable_name")
+  ),
+  false,
+  "Lua variable names are edited in the component tree, not the Ctrl+F6-style inspector"
 );
-assert.equal(rootFrameVariableRow.value, "main_frame");
-assert.deepEqual(rootFrameVariableRow.editable, {
-  field: "luaVariableName",
-  nodeId: "gui_frame_1"
-});
 const nestedFlowChildRow = rootFrameInspectorRow.childRows.find(
   (row) => row.targetId === "gui_horizontal_flow_2"
 );
