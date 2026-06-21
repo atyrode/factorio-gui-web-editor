@@ -314,6 +314,52 @@ function expectSharedFlowSize(actual, expected, label) {
 }
 
 test.describe("Layout builder canvas preview", () => {
+  test("Inspector edits Lua variable names without changing stable element names", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showInspector: true,
+      showLuaOutput: true,
+      inspectorLocked: true,
+      inspectedAnchor: "gui_frame_1",
+      currentWindow: {
+        ...ONE_FRAME_STATE.currentWindow,
+        luaVariableNames: {}
+      }
+    });
+
+    const inspector = page.locator('[data-anchor="inspector_gui_frame_1"]');
+    await expect(inspector).toBeVisible();
+    const variableRow = inspector
+      .locator(".fx-inspector-row")
+      .filter({ hasText: "lua_variable_name" });
+    await expect(variableRow.locator("button")).toHaveText("gui_frame_1");
+
+    await variableRow.locator("button").click();
+    await variableRow.getByLabel("Edit lua_variable_name").fill("main_controls");
+    await variableRow.getByLabel("Edit lua_variable_name").press("Enter");
+
+    await expect(variableRow.locator("button")).toHaveText("main_controls");
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText("local main_controls = gui_window_body.add{");
+    await expect(luaOutput).toContainText('name = "gui_frame_1"');
+    await expect(luaOutput).not.toContainText("local gui_frame_1 =");
+
+    await variableRow.locator("button").click();
+    const duplicateInput = variableRow.getByLabel("Edit lua_variable_name");
+    await duplicateInput.fill("gui_window_body");
+    await duplicateInput.press("Enter");
+
+    await expect(duplicateInput).toHaveAttribute("aria-invalid", "true");
+    await expect(variableRow.getByRole("alert")).toContainText("already used");
+    await expect(luaOutput).toContainText("local main_controls = gui_window_body.add{");
+
+    await duplicateInput.fill("");
+    await duplicateInput.press("Enter");
+
+    await expect(variableRow.locator("button")).toHaveText("gui_frame_1");
+    await expect(luaOutput).toContainText("local gui_frame_1 = gui_window_body.add{");
+  });
+
   test("component tree shows the generated Window shell and authored body children", async ({ page }) => {
     await seedOneFrameWindow(page);
 

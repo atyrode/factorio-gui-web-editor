@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import {
@@ -45,6 +45,11 @@ import {
   isDefaultLayoutSettings,
   normalizeLayoutSettings
 } from "../factorioEditorSettings.js";
+import {
+  collectWindowLuaVariableNodeIds,
+  normalizeLuaVariableNames,
+  validateLuaVariableNameEdit
+} from "../factorioLuaNames.js";
 import { BuilderPanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
@@ -94,6 +99,10 @@ function normalizeWindow(value) {
 
   const size = normalizeWindowSize(value.size);
   const layoutState = normalizeLayoutState(value);
+  const luaVariableNames = normalizeLuaVariableNames(
+    value.luaVariableNames,
+    collectWindowLuaVariableNodeIds(layoutState)
+  );
 
   return {
     title: windowTitle(String(value.title ?? DEFAULT_EDITOR_STATE.title)),
@@ -101,8 +110,16 @@ function normalizeWindow(value) {
     size,
     bodyDirection: normalizeWindowBodyDirection(value.bodyDirection),
     layoutChildren: layoutState.layoutChildren,
-    nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+    nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber,
+    luaVariableNames
   };
+}
+
+function normalizeWindowLuaVariableNames(windowState) {
+  return normalizeLuaVariableNames(
+    windowState?.luaVariableNames,
+    collectWindowLuaVariableNodeIds(windowState)
+  );
 }
 
 function clampSidebarWidth(value, shellWidth) {
@@ -558,8 +575,10 @@ function InspectorValue({
   const tone = inspectorValueTone(label, normalizedValue, explicitTone);
   const [editing, setEditing] = useState(false);
   const [draftValue, setDraftValue] = useState(stringValue);
+  const [errorMessage, setErrorMessage] = useState(null);
   const editRef = useRef(null);
   const cancelEditRef = useRef(false);
+  const errorId = useId();
   const rowPreview = preview ?? (
     targetId
       ? {
@@ -573,7 +592,8 @@ function InspectorValue({
     "fx-inspector-row",
     rowPreview ? "has-preview" : "",
     targetId ? "has-target" : "",
-    editable ? "is-editable" : ""
+    editable ? "is-editable" : "",
+    errorMessage ? "has-error" : ""
   ]
     .filter(Boolean)
     .join(" ");
@@ -627,6 +647,7 @@ function InspectorValue({
     event.stopPropagation();
     cancelEditRef.current = false;
     setDraftValue(stringValue);
+    setErrorMessage(null);
     setEditing(true);
   }
 
@@ -636,13 +657,21 @@ function InspectorValue({
       return;
     }
 
-    onEdit?.(editable, draftValue);
+    const result = onEdit?.(editable, draftValue);
+    if (result?.ok === false) {
+      setErrorMessage(result.message ?? "Invalid value.");
+      window.setTimeout(() => editRef.current?.focus(), 0);
+      return;
+    }
+
+    setErrorMessage(null);
     setEditing(false);
   }
 
   function cancelEdit() {
     cancelEditRef.current = true;
     setDraftValue(stringValue);
+    setErrorMessage(null);
     setEditing(false);
   }
 
@@ -674,10 +703,15 @@ function InspectorValue({
       {isGroupLabel ? null : (
         editable && editing ? (
           <input
+            aria-describedby={errorMessage ? errorId : undefined}
             aria-label={`Edit ${label}`}
+            aria-invalid={errorMessage ? "true" : undefined}
             className={`fx-inspector-row__edit fx-inspector-row__value--${tone}`}
             onBlur={commitEdit}
-            onChange={(event) => setDraftValue(event.target.value)}
+            onChange={(event) => {
+              setDraftValue(event.target.value);
+              setErrorMessage(null);
+            }}
             onClick={(event) => event.stopPropagation()}
             onKeyDown={handleEditKeyDown}
             ref={editRef}
@@ -701,6 +735,11 @@ function InspectorValue({
           </span>
         )
       )}
+      {errorMessage ? (
+        <span className="fx-inspector-row__error" id={errorId} role="alert">
+          {errorMessage}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -954,18 +993,28 @@ export function EditorPage() {
   function createWindow() {
     setInspectorHistory({ back: [], forward: [] });
     setInspectorPreview(null);
-    setEditorState((state) => ({
-      ...state,
-      currentWindow: {
+    setEditorState((state) => {
+      const layoutState = normalizeLayoutState(state.currentWindow ?? {});
+      const currentWindow = {
         title: windowTitle(state.title),
         location: state.currentWindow?.location ?? null,
         size: normalizeWindowSize(state.windowSize),
         bodyDirection: normalizeWindowBodyDirection(state.windowBodyDirection),
-        ...normalizeLayoutState(state.currentWindow ?? {})
-      },
-      inspectorLocked: false,
-      inspectedAnchor: BODY_LAYOUT_ROOT_ID
-    }));
+        ...layoutState
+      };
+      return {
+        ...state,
+        currentWindow: {
+          ...currentWindow,
+          luaVariableNames: normalizeWindowLuaVariableNames({
+            ...currentWindow,
+            luaVariableNames: state.currentWindow?.luaVariableNames
+          })
+        },
+        inspectorLocked: false,
+        inspectedAnchor: BODY_LAYOUT_ROOT_ID
+      };
+    });
   }
 
   function updateWindowBodyDirection(direction) {
@@ -1181,8 +1230,46 @@ export function EditorPage() {
   }
 
   function updateInspectorEditableValue(editable, value) {
+    if (editable?.field === "luaVariableName") {
+      const nodeId = editable.nodeId;
+      const validation = validateLuaVariableNameEdit(value, {
+        nodeId,
+        nodeIds: collectWindowLuaVariableNodeIds(currentWindow),
+        luaVariableNames: currentWindow?.luaVariableNames
+      });
+
+      if (!validation.ok) {
+        return validation;
+      }
+
+      setEditorState((state) => {
+        if (!state.currentWindow) {
+          return state;
+        }
+
+        const nextValidation = validateLuaVariableNameEdit(value, {
+          nodeId,
+          nodeIds: collectWindowLuaVariableNodeIds(state.currentWindow),
+          luaVariableNames: state.currentWindow.luaVariableNames
+        });
+        if (!nextValidation.ok) {
+          return state;
+        }
+
+        return {
+          ...state,
+          currentWindow: {
+            ...state.currentWindow,
+            luaVariableNames: nextValidation.luaVariableNames
+          }
+        };
+      });
+
+      return { ok: true };
+    }
+
     if (editable?.field !== "title") {
-      return;
+      return { ok: true };
     }
 
     setEditorState((state) => ({
@@ -1192,6 +1279,8 @@ export function EditorPage() {
         ? { ...state.currentWindow, title: windowTitle(value) }
         : state.currentWindow
     }));
+
+    return { ok: true };
   }
 
   function selectBuilderNode(nodeId) {
@@ -1286,14 +1375,19 @@ export function EditorPage() {
         return state;
       }
 
+      const currentWindow = {
+        ...state.currentWindow,
+        layoutChildren: result.layoutChildren,
+        nextLayoutNodeNumber: result.nextLayoutNodeNumber ?? layoutState.nextLayoutNodeNumber
+      };
+
       return {
         ...state,
         inspectedAnchor: result.selectedAnchor ?? state.inspectedAnchor,
         inspectorLocked: result.selectedAnchor ? true : state.inspectorLocked,
         currentWindow: {
-          ...state.currentWindow,
-          layoutChildren: result.layoutChildren,
-          nextLayoutNodeNumber: result.nextLayoutNodeNumber ?? layoutState.nextLayoutNodeNumber
+          ...currentWindow,
+          luaVariableNames: normalizeWindowLuaVariableNames(currentWindow)
         }
       };
     });

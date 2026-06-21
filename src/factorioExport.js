@@ -9,13 +9,14 @@ export {
   VERTICAL_FLOW_DIRECTION,
   WINDOW_SIZE_LIMITS
 } from "./factorioModel.js";
+import { luaDefaultVariableName } from "./factorioLuaNames.js";
 
 function luaString(value) {
   return `"${String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-function luaName(value) {
-  return String(value).replace(/[^a-zA-Z0-9_]/g, "_");
+function nodeVariableName(node) {
+  return node?.luaVariableName ?? luaDefaultVariableName(node?.id);
 }
 
 function styleAssignmentLines(variableName, node) {
@@ -69,7 +70,7 @@ function styleAssignmentLines(variableName, node) {
 
 function renderLayoutNodeLua(parentVariableName, node, depth = 1) {
   const indent = "  ".repeat(depth);
-  const variableName = luaName(node.id);
+  const variableName = nodeVariableName(node);
   const styleLines = styleAssignmentLines(variableName, node)
     .map((line) => `${indent}${line.trimStart()}`)
     .join("\n");
@@ -94,14 +95,14 @@ export function renderWindowLua(model) {
   }
 
   const root = model.root;
-  const frame = luaName(root.id);
-  const titlebar = luaName(root.children[0].id);
+  const frame = nodeVariableName(root);
+  const titlebar = nodeVariableName(root.children[0]);
   const titleNode = root.children[0].children[0];
-  const title = luaName(titleNode.id);
+  const title = nodeVariableName(titleNode);
   const dragNode = root.children[0].children[1];
   const bodyNode = root.children[1];
-  const dragHandle = luaName(dragNode.id);
-  const body = luaName(bodyNode.id);
+  const dragHandle = nodeVariableName(dragNode);
+  const body = nodeVariableName(bodyNode);
   const style = root.styleReference;
   const titlebarStyleLines = styleAssignmentLines(titlebar, root.children[0]);
   const bodyStyleLines = styleAssignmentLines(body, bodyNode);
@@ -120,8 +121,8 @@ export function renderWindowLua(model) {
 local function build_gui(player)
   local screen = player.gui.screen
 
-  if screen.${frame} then
-    screen.${frame}.destroy()
+  if screen.${luaDefaultVariableName(root.id)} then
+    screen.${luaDefaultVariableName(root.id)}.destroy()
   end
 
   local ${frame} = screen.add{

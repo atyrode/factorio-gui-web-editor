@@ -122,7 +122,11 @@ nested Horizontal Flow specs:
   children: ordered nested Frame specs
 
 currentWindow.nextLayoutNodeNumber:
-  next positive integer used to allocate stable flow ids
+  next positive integer used to allocate stable editor-created layout ids
+
+currentWindow.luaVariableNames:
+  optional map from exported node id to user-authored Lua local variable name;
+  omitted entries use the generated default based on the stable node id
 ```
 
 The editor also persists authored layout settings at the editor-state level.
@@ -151,6 +155,9 @@ Renderer CSS reads the hydrated model style facts through custom properties; it
 does not store separate layout truth. Lua export writes the same supported
 `LuaStyle` assignments so the current constrained layout builder slice remains
 structurally compatible with the generated Lua skeleton.
+Lua variable names are export-facing aliases only: they change generated local
+identifiers in `gui.lua`, while stable node ids, DOM anchors, Inspector targets,
+and Factorio element `name` fields stay unchanged.
 
 Legacy cached windows normalize to an empty `layoutChildren` array with
 `nextLayoutNodeNumber: 1`. Legacy root `horizontal-flow` specs normalize into
@@ -302,9 +309,12 @@ exported until the model has a rule for when Factorio expects them to be set.
 
 Editable rows must be opt-in. They should mutate only values the editor model
 actually owns. Captured Factorio style facts remain read-only until the model
-defines how changing them maps to valid Factorio Lua/style behavior. The current
-editable field is the title label caption; the root Window atom does not own a
-caption field.
+defines how changing them maps to valid Factorio Lua/style behavior. Current
+editable fields are the title label caption and `lua_variable_name` for exported
+nodes. Lua variable names must be Lua-safe identifiers, cannot be reserved words,
+and must not duplicate another exported node's effective variable name. Empty
+`lua_variable_name` input resets that node to its generated default. The root
+Window atom still does not own a visible caption field.
 
 ## Renderer And Export Boundary
 
@@ -312,6 +322,8 @@ The DOM renderer should render nodes by stable `id`/`data-anchor` and Factorio
 primitive semantics. Renderer-only chrome, such as the painted frame edge or
 measurement overlays, must not be added as model children.
 
-Lua export should consume the model structure and style facts. Generated Lua is
-a structural skeleton until behavior hooks and event wiring are explicitly
-modeled.
+Lua export should consume the model structure, style facts, and effective
+`luaVariableName` values. Generated Lua local variables use the effective Lua
+variable names, but every created Factorio element still uses the stable model
+id as its `name`. Generated Lua is a structural skeleton until behavior hooks
+and event wiring are explicitly modeled.

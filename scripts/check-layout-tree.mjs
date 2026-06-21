@@ -23,6 +23,12 @@ import {
   VERTICAL_FLOW_DIRECTION
 } from "../src/factorioModel.js";
 import { renderWindowLua } from "../src/factorioExport.js";
+import {
+  collectWindowLuaVariableNodeIds,
+  luaDefaultVariableName,
+  normalizeLuaVariableNames,
+  validateLuaVariableNameEdit
+} from "../src/factorioLuaNames.js";
 
 function ids(nodes) {
   return nodes.map((node) => node.id);
@@ -113,6 +119,64 @@ const removal = removeLayoutNode(tree, "gui_frame_1");
 assert.equal(removal.changed, true);
 assert.deepEqual(ids(removal.layoutChildren), ["gui_frame_3"]);
 
+const variableNodeIds = collectWindowLuaVariableNodeIds({
+  layoutChildren: [
+    {
+      id: "gui_frame_1",
+      children: [
+        {
+          id: "gui_horizontal_flow_2",
+          children: []
+        }
+      ]
+    }
+  ]
+});
+assert.ok(variableNodeIds.includes("gui_window"));
+assert.ok(variableNodeIds.includes("gui_window_body"));
+assert.ok(variableNodeIds.includes("gui_frame_1"));
+assert.equal(luaDefaultVariableName("1 invalid-name"), "_1_invalid_name");
+assert.deepEqual(
+  normalizeLuaVariableNames(
+    {
+      gui_window: "main_window",
+      gui_window_body: "end",
+      gui_frame_1: "main_window",
+      gui_horizontal_flow_2: "main_controls",
+      stale_node: "unused_name"
+    },
+    variableNodeIds
+  ),
+  {
+    gui_window: "main_window",
+    gui_horizontal_flow_2: "main_controls"
+  }
+);
+assert.equal(
+  validateLuaVariableNameEdit("gui_window_body", {
+    nodeId: "gui_frame_1",
+    nodeIds: variableNodeIds,
+    luaVariableNames: {}
+  }).ok,
+  false
+);
+assert.equal(
+  validateLuaVariableNameEdit("repeat", {
+    nodeId: "gui_frame_1",
+    nodeIds: variableNodeIds,
+    luaVariableNames: {}
+  }).ok,
+  false
+);
+assert.deepEqual(
+  validateLuaVariableNameEdit("", {
+    nodeId: "gui_frame_1",
+    nodeIds: variableNodeIds,
+    luaVariableNames: { gui_frame_1: "main_frame" }
+  }).luaVariableNames,
+  {}
+);
+
 const model = createWindowModel({
   title: "Builder test",
   layoutSettings: {
@@ -143,15 +207,33 @@ const model = createWindowModel({
         }
       ]
     }
-  ]
+  ],
+  luaVariableNames: {
+    gui_window: "main_window",
+    gui_window_titlebar: "window_header",
+    gui_window_title: "window_heading",
+    gui_window_drag_handle: "window_drag_space",
+    gui_window_body: "content_body",
+    gui_frame_1: "main_frame",
+    gui_horizontal_flow_2: "main_controls",
+    gui_frame_3: "nested_frame"
+  }
 });
 const body = model.root.children[1];
+assert.equal(model.root.luaVariableName, "main_window");
+assert.equal(model.root.children[0].luaVariableName, "window_header");
+assert.equal(model.root.children[0].children[0].luaVariableName, "window_heading");
+assert.equal(model.root.children[0].children[1].luaVariableName, "window_drag_space");
+assert.equal(body.luaVariableName, "content_body");
 assert.equal(body.children[0].id, "gui_frame_1");
+assert.equal(body.children[0].luaVariableName, "main_frame");
 assert.equal(body.children[0].primitive, "frame");
 assert.equal(body.children[0].style, "inside_deep_frame");
 assert.equal(body.children[0].role, "body-frame");
 assert.equal(body.children[0].children[0].id, "gui_horizontal_flow_2");
+assert.equal(body.children[0].children[0].luaVariableName, "main_controls");
 assert.equal(body.children[0].children[0].children[0].id, "gui_frame_3");
+assert.equal(body.children[0].children[0].children[0].luaVariableName, "nested_frame");
 assert.equal(body.styleReference.childMinimalWidth, 220);
 assert.equal(body.styleReference.childMinimalHeight, 80);
 assert.equal(body.styleReference.childHorizontalSpacing, 10);
@@ -186,6 +268,14 @@ const rootFrameChildRow = bodyInspectorRow.childRows.find(
 );
 assert.equal(rootFrameChildRow.value, "frame");
 const rootFrameInspectorRow = inspectorRows.find((row) => row.id === "gui_frame_1");
+const rootFrameVariableRow = rootFrameInspectorRow.properties.find(
+  (row) => row.label === "lua_variable_name"
+);
+assert.equal(rootFrameVariableRow.value, "main_frame");
+assert.deepEqual(rootFrameVariableRow.editable, {
+  field: "luaVariableName",
+  nodeId: "gui_frame_1"
+});
 const nestedFlowChildRow = rootFrameInspectorRow.childRows.find(
   (row) => row.targetId === "gui_horizontal_flow_2"
 );
@@ -196,16 +286,38 @@ assert.ok(lua.includes('name = "gui_frame_1"'));
 assert.ok(lua.includes('name = "gui_horizontal_flow_2"'));
 assert.ok(lua.includes('type = "frame"'));
 assert.ok(lua.includes('style = "inside_deep_frame"'));
-assert.ok(lua.includes("gui_frame_1.style.minimal_width = 220"));
-assert.ok(lua.includes("gui_frame_1.style.minimal_height = 80"));
-assert.ok(lua.includes("gui_frame_1.style.horizontally_stretchable = true"));
-assert.ok(lua.includes("gui_horizontal_flow_2.style.horizontal_spacing = 10"));
-assert.ok(lua.includes("gui_horizontal_flow_2.style.left_padding = 12"));
-assert.ok(lua.includes("gui_frame_3.style.minimal_width = 120"));
+assert.ok(lua.includes("if screen.gui_window then"));
+assert.ok(lua.includes("local main_window = screen.add{"));
+assert.ok(lua.includes("local main_frame = content_body.add{"));
+assert.ok(lua.includes("local main_controls = main_frame.add{"));
+assert.ok(lua.includes("main_frame.style.minimal_width = 220"));
+assert.ok(lua.includes("main_frame.style.minimal_height = 80"));
+assert.ok(lua.includes("main_frame.style.horizontally_stretchable = true"));
+assert.ok(lua.includes("main_controls.style.horizontal_spacing = 10"));
+assert.ok(lua.includes("main_controls.style.left_padding = 12"));
+assert.ok(lua.includes("nested_frame.style.minimal_width = 120"));
 assert.ok(
   lua.indexOf('name = "gui_frame_1"') <
     lua.indexOf('name = "gui_horizontal_flow_2"')
 );
+
+const movedVariableNames = normalizeLuaVariableNames(
+  {
+    gui_frame_1: "main_frame",
+    gui_horizontal_flow_2: "main_controls",
+    gui_frame_3: "nested_frame"
+  },
+  collectWindowLuaVariableNodeIds({ layoutChildren: movement.layoutChildren })
+);
+assert.equal(movedVariableNames.gui_horizontal_flow_2, "main_controls");
+const prunedVariableNames = normalizeLuaVariableNames(
+  movedVariableNames,
+  collectWindowLuaVariableNodeIds({ layoutChildren: removal.layoutChildren })
+);
+assert.deepEqual(prunedVariableNames, {
+  gui_horizontal_flow_2: "main_controls",
+  gui_frame_3: "nested_frame"
+});
 
 const verticalBodyModel = createWindowModel({
   title: "Vertical body",

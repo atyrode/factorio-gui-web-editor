@@ -9,6 +9,11 @@ import {
   DEFAULT_LAYOUT_SETTINGS,
   normalizeLayoutSettings
 } from "./factorioEditorSettings.js";
+import {
+  collectWindowLuaVariableNodeIds,
+  luaVariableNameForNode,
+  normalizeLuaVariableNames
+} from "./factorioLuaNames.js";
 
 export const FACTORIO_GUI_MODEL_SCHEMA = "factorio-gui-layout.v0";
 export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
@@ -197,12 +202,14 @@ export function createHorizontalFlowNode({
   styleDescription = null,
   derivedFrom = "horizontal_flow",
   role = null,
+  luaVariableName = null,
   referenceSize = null,
   styleReference = {},
   children = []
 }) {
   return {
     id,
+    luaVariableName: luaVariableName ?? luaVariableNameForNode(id),
     primitive: "flow",
     className,
     style,
@@ -251,12 +258,14 @@ export function createFrameNode({
   derivedFrom = "frame",
   role = "body-frame",
   direction = VERTICAL_FLOW_DIRECTION,
+  luaVariableName = null,
   referenceSize = null,
   styleReference = {},
   children = []
 }) {
   return {
     id,
+    luaVariableName: luaVariableName ?? luaVariableNameForNode(id),
     primitive: "frame",
     className,
     style,
@@ -1175,11 +1184,12 @@ function layoutFrameMinimumWidth(layoutSettings, depth) {
     : layoutSettings.nestedHorizontalFlowMinimumWidth;
 }
 
-function createLayoutFrameNode(spec, layoutSettings, depth = 0) {
+function createLayoutFrameNode(spec, layoutSettings, luaVariableNames = {}, depth = 0) {
   const variant = frameStyleVariants.insideDeepFrame;
 
   return createFrameNode({
     id: spec.id,
+    luaVariableName: luaVariableNameForNode(spec.id, luaVariableNames),
     className: variant.className,
     style: variant.style,
     styleDescription: variant.styleDescription,
@@ -1205,16 +1215,17 @@ function createLayoutFrameNode(spec, layoutSettings, depth = 0) {
       ignoredBySearch: false
     },
     children: spec.children.map((child) =>
-      createLayoutHorizontalFlowNode(child, layoutSettings, depth)
+      createLayoutHorizontalFlowNode(child, layoutSettings, luaVariableNames, depth)
     )
   });
 }
 
-function createLayoutHorizontalFlowNode(spec, layoutSettings, depth = 0) {
+function createLayoutHorizontalFlowNode(spec, layoutSettings, luaVariableNames = {}, depth = 0) {
   const variant = horizontalFlowStyleVariants.generic;
 
   return createHorizontalFlowNode({
     id: spec.id,
+    luaVariableName: luaVariableNameForNode(spec.id, luaVariableNames),
     className: variant.className,
     style: variant.style,
     styleDescription: variant.styleDescription,
@@ -1242,21 +1253,30 @@ function createLayoutHorizontalFlowNode(spec, layoutSettings, depth = 0) {
       ignoredBySearch: false
     },
     children: spec.children.map((child) =>
-      createLayoutFrameNode(child, layoutSettings, depth + 1)
+      createLayoutFrameNode(child, layoutSettings, luaVariableNames, depth + 1)
     )
   });
 }
 
-function createLayoutNode(spec, layoutSettings, depth = 0) {
+function createLayoutNode(spec, layoutSettings, luaVariableNames = {}, depth = 0) {
   if (spec.atom === FRAME_ATOM_ID) {
-    return createLayoutFrameNode(spec, layoutSettings, depth);
+    return createLayoutFrameNode(spec, layoutSettings, luaVariableNames, depth);
   }
 
   if (spec.atom === HORIZONTAL_FLOW_ATOM_ID) {
-    return createLayoutHorizontalFlowNode(spec, layoutSettings, depth);
+    return createLayoutHorizontalFlowNode(spec, layoutSettings, luaVariableNames, depth);
   }
 
   return null;
+}
+
+function luaVariableNameProperty(node) {
+  return {
+    label: "lua_variable_name",
+    value: node.luaVariableName ?? luaVariableNameForNode(node.id),
+    editable: { field: "luaVariableName", nodeId: node.id },
+    tone: "default"
+  };
 }
 
 function createLayoutInspectorRows(node) {
@@ -1275,7 +1295,10 @@ function createLayoutInspectorRows(node) {
       sizeBeforeStretching: FACTORIO_NOT_IMPLEMENTED,
       maximumHorizontalSquashSize: FACTORIO_NOT_IMPLEMENTED,
       maximumVerticalSquashSize: FACTORIO_NOT_IMPLEMENTED,
-      properties: getFlowStyleProperties(node.styleReference),
+      properties: [
+        luaVariableNameProperty(node),
+        ...getFlowStyleProperties(node.styleReference)
+      ],
       childRows: childRows.length ? childRows : [{ label: "children", value: "" }]
     },
     ...node.children.flatMap(createLayoutInspectorRows)
@@ -1314,6 +1337,7 @@ export function createWindowModel({
   size = null,
   bodyDirection = HORIZONTAL_FLOW_DIRECTION,
   layoutChildren = [],
+  luaVariableNames: sourceLuaVariableNames = {},
   layoutSettings: sourceLayoutSettings = DEFAULT_LAYOUT_SETTINGS
 } = {}) {
   const caption = title.trim() || "Untitled window";
@@ -1335,9 +1359,16 @@ export function createWindowModel({
     caption
   );
   const normalizedLayout = normalizeLayoutState({ layoutChildren });
+  const luaVariableNodeIds = collectWindowLuaVariableNodeIds({
+    layoutChildren: normalizedLayout.layoutChildren
+  });
+  const luaVariableNames = normalizeLuaVariableNames(
+    sourceLuaVariableNames,
+    luaVariableNodeIds
+  );
   const layoutSettings = normalizeLayoutSettings(sourceLayoutSettings);
   const hydratedLayoutChildren = normalizedLayout.layoutChildren
-    .map((node) => createLayoutNode(node, layoutSettings, 0))
+    .map((node) => createLayoutNode(node, layoutSettings, luaVariableNames, 0))
     .filter(Boolean);
   const bodyStyleReference = {
     variantId:
@@ -1362,6 +1393,7 @@ export function createWindowModel({
     styleReference.bodyDirection === HORIZONTAL_FLOW_DIRECTION
       ? createHorizontalFlowNode({
           id: "gui_window_body",
+          luaVariableName: luaVariableNameForNode("gui_window_body", luaVariableNames),
           className: styleReference.bodyClassName,
           style: styleReference.bodyStyle,
           styleDescription: styleReference.bodyStyleDescription,
@@ -1372,6 +1404,7 @@ export function createWindowModel({
         })
       : {
           id: "gui_window_body",
+          luaVariableName: luaVariableNameForNode("gui_window_body", luaVariableNames),
           primitive: "flow",
           className: styleReference.bodyClassName,
           style: styleReference.bodyStyle,
@@ -1387,6 +1420,7 @@ export function createWindowModel({
     schema: FACTORIO_GUI_MODEL_SCHEMA,
     root: {
       id: "gui_window",
+      luaVariableName: luaVariableNameForNode("gui_window", luaVariableNames),
       primitive: "frame",
       className: styleReference.className,
       style: styleReference.style,
@@ -1402,6 +1436,7 @@ export function createWindowModel({
       children: [
         createHorizontalFlowNode({
           id: "gui_window_titlebar",
+          luaVariableName: luaVariableNameForNode("gui_window_titlebar", luaVariableNames),
           className: styleReference.titlebarClassName,
           style: styleReference.titlebarStyle,
           styleDescription: styleReference.titlebarStyleDescription,
@@ -1420,6 +1455,7 @@ export function createWindowModel({
           children: [
             {
               id: "gui_window_title",
+              luaVariableName: luaVariableNameForNode("gui_window_title", luaVariableNames),
               primitive: "label",
               className: "agui::Label",
               caption,
@@ -1441,6 +1477,10 @@ export function createWindowModel({
             },
             {
               id: "gui_window_drag_handle",
+              luaVariableName: luaVariableNameForNode(
+                "gui_window_drag_handle",
+                luaVariableNames
+              ),
               primitive: "empty-widget",
               className: "agui::Filler",
               style: styleReference.dragHandleStyle,
@@ -1559,6 +1599,7 @@ export function getWindowInspectorRows(model) {
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
       maximalHeight: style.capturedMaximalHeight,
       properties: [
+        luaVariableNameProperty(root),
         { label: "top_padding", value: style.topPadding, indent: 1 },
         { label: "right_padding", value: style.rightPadding, indent: 1 },
         { label: "bottom_padding", value: style.bottomPadding, indent: 1 },
@@ -1598,6 +1639,7 @@ export function getWindowInspectorRows(model) {
           : dragHandleWidth,
       maximumVerticalSquashSize: style.titlebarMaximumVerticalSquashSize,
       properties: [
+        luaVariableNameProperty(titlebar),
         { label: "ignored_by_search", value: titlebar.styleReference.ignoredBySearch, indent: 1 },
         { label: "bottom_padding", value: titlebar.styleReference.bottomPadding, indent: 1 },
         {
@@ -1634,6 +1676,7 @@ export function getWindowInspectorRows(model) {
         style.titleLabelMaximumHorizontalSquashSize ?? titleLabelWidth,
       maximumVerticalSquashSize: style.titleLabelMaximumVerticalSquashSize ?? 0,
       properties: [
+        luaVariableNameProperty(titleLabel),
         { label: "caption", value: titleLabel.caption, editable: { field: "title" }, tone: "default" },
         {
           label: "vertically_stretchable",
@@ -1669,6 +1712,7 @@ export function getWindowInspectorRows(model) {
         style.dragHandleMaximumHorizontalSquashSize ?? dragHandleWidth,
       maximumVerticalSquashSize: style.dragHandleMaximumVerticalSquashSize ?? 0,
       properties: [
+        luaVariableNameProperty(dragHandle),
         { label: "right_margin", value: dragHandle.styleReference.rightMargin },
         { label: "height", value: dragHandle.referenceSize.height },
         { label: "natural_height", value: dragHandle.referenceSize.naturalHeight },
@@ -1696,7 +1740,10 @@ export function getWindowInspectorRows(model) {
       sizeBeforeStretching: sizePair(bodySizeBeforeStretching),
       maximumHorizontalSquashSize: 0,
       maximumVerticalSquashSize: style.maximumVerticalSquashSize,
-      properties: getFlowStyleProperties(body.styleReference),
+      properties: [
+        luaVariableNameProperty(body),
+        ...getFlowStyleProperties(body.styleReference)
+      ],
       childRows: bodyChildRows
     },
     ...body.children.flatMap(createLayoutInspectorRows)

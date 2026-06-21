@@ -122,6 +122,14 @@ export writes the same supported style assignments onto editor-created Frames
 and Horizontal Flows, preserving current 1:1 editor-to-Lua compatibility for
 this slice without treating CSS as source of truth.
 
+Each exported node also has an effective Lua local variable name. By default it
+matches the stable node id after Lua identifier sanitization. The Inspector can
+override it with a user-authored `lua_variable_name`; the generated Lua local
+uses that alias, while the Factorio element `name`, DOM `data-anchor`, builder
+row id, and Inspector `targetId` remain the stable node id. Invalid Lua
+identifiers, Lua reserved words, and duplicates are rejected inline. Empty input
+removes the override and returns to the generated default.
+
 ## Drop Rules
 
 - Palette drops create either a new `frame` spec or a new `horizontal-flow`
@@ -199,6 +207,8 @@ verify:
 - empty Frames look like editable Factorio GUI surfaces, not cards;
 - nested flows remain scannable in the rail at narrow sidebar widths;
 - Lua output order matches the builder tree order;
+- Lua output uses any authored `lua_variable_name` aliases without changing
+  stable Factorio element names;
 - no operation creates arbitrary CSS or absolute-positioned child layout.
 
 ## Automated Regression Gate
