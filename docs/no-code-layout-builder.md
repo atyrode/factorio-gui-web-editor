@@ -280,6 +280,8 @@ verify:
 - Lua output order matches the builder tree order;
 - Lua output uses any authored `lua_variable_name` aliases without changing
   stable Factorio element names;
+- Factorio preview mod export wraps the same Lua output, so in-game comparison
+  tests the current shared model rather than a separate sample fixture;
 - no operation creates arbitrary CSS or absolute-positioned child layout.
 
 ## Automated Regression Gate

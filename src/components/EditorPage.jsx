@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, SlidersHorizontal } from "lucide-react";
 import {
   FxActionButton,
   FxButton,
@@ -20,6 +20,7 @@ import {
   VERTICAL_FLOW_DIRECTION,
   WINDOW_SIZE_LIMITS
 } from "../factorioExport.js";
+import { createFactorioModDownload } from "../factorioModExport.js";
 import {
   BODY_LAYOUT_ROOT_ID,
   acceptedLayoutChildAtom,
@@ -695,11 +696,41 @@ function EditorCanvas({
 
 function LuaOutput({ model }) {
   const code = renderWindowLua(model);
+  const canExportMod = Boolean(model?.root);
+
+  function downloadFactorioMod() {
+    if (!model?.root) {
+      return;
+    }
+
+    const { filename, data } = createFactorioModDownload(model);
+    const blob = new Blob([data], { type: "application/zip" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+  }
 
   return (
     <FxFrame title="Lua Output" className="fx-editor-output" as="section">
-      <div className="fx-editor-output__file" data-anchor="lua_output_file">
-        gui.lua
+      <div className="fx-editor-output__bar">
+        <div className="fx-editor-output__file" data-anchor="lua_output_file">
+          gui.lua
+        </div>
+        <FxButton
+          className="fx-editor-output__download"
+          data-anchor="factorio_mod_download"
+          disabled={!canExportMod}
+          onClick={downloadFactorioMod}
+        >
+          <Download aria-hidden="true" />
+          <span>Download mod</span>
+        </FxButton>
       </div>
       <pre className="fx-editor-output__code">
         <code>{code}</code>

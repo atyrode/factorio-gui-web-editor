@@ -1,7 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
+import { strFromU8, unzipSync } from "fflate";
 
 const EDITOR_STORAGE_KEY = "labtorio.editorState.v1";
+const FACTORIO_PREVIEW_MOD_FOLDER = "labtorio_gui_preview_0.1.0";
+const FACTORIO_PREVIEW_MOD_ZIP_FILENAME = `${FACTORIO_PREVIEW_MOD_FOLDER}.zip`;
 const ONE_FRAME_STATE = {
   title: "Machin truc lab",
   windowSize: { width: 1100, height: 450 },
@@ -975,6 +979,36 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator(".fx-editor-output__code")).toContainText(
       "gui_window.style.height = 490"
     );
+  });
+
+  test("downloads a Factorio preview mod zip from the current Lua output", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.locator('[data-anchor="factorio_mod_download"]').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe(FACTORIO_PREVIEW_MOD_ZIP_FILENAME);
+
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    const zipEntries = unzipSync(new Uint8Array(await readFile(downloadPath)));
+    const guiLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/gui.lua`]);
+    const controlLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/control.lua`]);
+    const infoJson = JSON.parse(
+      strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/info.json`])
+    );
+
+    expect(infoJson.name).toBe("labtorio_gui_preview");
+    expect(infoJson.factorio_version).toBe("2.0");
+    expect(controlLua).toContain('local build_gui = require("gui")');
+    expect(controlLua).toContain("defines.events.on_player_created");
+    expect(controlLua).toContain("defines.events.on_player_joined_game");
+    expect(guiLua).toContain('caption = "Machin truc lab"');
+    expect(guiLua).toContain('name = "gui_frame_1"');
+    expect(guiLua).toContain("gui_frame_1.style.minimal_width = 168");
   });
 
   test("resize mode marks unsupported generated nodes without mutating state", async ({ page }) => {

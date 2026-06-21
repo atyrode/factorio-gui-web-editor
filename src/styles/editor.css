@@ -199,6 +199,29 @@
   font-size: 11px;
 }
 
+.fx-editor-output__bar {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.fx-editor-output__download {
+  min-height: 30px;
+  padding-inline: 10px;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.fx-editor-output__download svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
 .fx-layout-settings {
   flex: 0 0 auto;
 }

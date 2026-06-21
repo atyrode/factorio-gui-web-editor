@@ -30,6 +30,7 @@ REQUIRED_FILES = [
     "src/docs.js",
     "src/factorioEditorSettings.js",
     "src/factorioLayoutTree.js",
+    "src/factorioModExport.js",
     "src/main.jsx",
     "package.json",
     "package-lock.json",
@@ -44,6 +45,7 @@ REQUIRED_FILES = [
     "docs/README.md",
     "docs/no-code-layout-builder.md",
     "docs/atom-specs.md",
+    "docs/factorio-mod-export.md",
     "docs/hosting.md",
     "docs/spec-factory.md",
     "docs/roadmap.md",
@@ -123,6 +125,7 @@ def main() -> int:
             "docs/README.md",
             "docs/no-code-layout-builder.md",
             "docs/atom-specs.md",
+            "docs/factorio-mod-export.md",
             "docs/hosting.md",
             "docs/spec-factory.md",
             "docs/roadmap.md",
@@ -157,6 +160,8 @@ def main() -> int:
     assert_contains(source_blob, "FRAME_ATOM_ID", "app source")
     assert_contains(source_blob, "data-fx-class={styleReference.bodyClassName}", "app source")
     assert_contains(source_blob, "data-fx-role=\"window-body\"", "app source")
+    assert_contains(source_blob, "factorio_mod_download", "app source")
+    assert_contains(source_blob, "labtorio_gui_preview_0.1.0", "app source")
 
     for forbidden in FORBIDDEN_PAYLOADS:
         if forbidden in source_blob:
