@@ -58,6 +58,41 @@ const TWO_VERTICAL_FRAME_STATE = {
     nextLayoutNodeNumber: 3
   }
 };
+const NESTED_TREE_STATE = {
+  ...ONE_FRAME_STATE,
+  currentWindow: {
+    ...ONE_FRAME_STATE.currentWindow,
+    layoutChildren: [
+      {
+        id: "gui_frame_1",
+        atom: "frame",
+        styleVariant: "inside-deep-frame",
+        children: [
+          {
+            id: "gui_horizontal_flow_2",
+            atom: "horizontal-flow",
+            styleVariant: "generic-horizontal-flow",
+            children: [
+              {
+                id: "gui_frame_3",
+                atom: "frame",
+                styleVariant: "inside-deep-frame",
+                children: []
+              },
+              {
+                id: "gui_frame_4",
+                atom: "frame",
+                styleVariant: "inside-deep-frame",
+                children: []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    nextLayoutNodeNumber: 5
+  }
+};
 
 function roundedRect(rect) {
   return {
@@ -182,24 +217,97 @@ async function seedOneFrameWindow(page) {
   await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
 }
 
+async function startNativePaletteDrag(page, paletteAnchor) {
+  const source = page.locator(`[data-anchor="${paletteAnchor}"]`);
+  await expect(source).toBeVisible();
+
+  await page.evaluate(({ paletteAnchor }) => {
+    const source = document.querySelector(`[data-anchor="${paletteAnchor}"]`);
+    if (!source) {
+      throw new Error(`Missing palette source: ${paletteAnchor}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const sourceRect = source.getBoundingClientRect();
+    window.__layoutBuilderNativeDrag = { dataTransfer, source };
+
+    source.dispatchEvent(new DragEvent("dragstart", {
+      bubbles: true,
+      cancelable: true,
+      clientX: sourceRect.left + sourceRect.width / 2,
+      clientY: sourceRect.top + sourceRect.height / 2,
+      dataTransfer
+    }));
+  }, { paletteAnchor });
+
+  await expect(source).toHaveClass(/is-dragging/);
+}
+
+async function dragActiveNativePaletteOver(page, targetSelector, position = {}) {
+  await page.locator(targetSelector).waitFor({ state: "visible" });
+
+  await page.evaluate(({ targetSelector, position }) => {
+    const drag = window.__layoutBuilderNativeDrag;
+    const target = document.querySelector(targetSelector);
+    if (!drag?.dataTransfer || !target) {
+      throw new Error(`Missing active drag or target: ${targetSelector}`);
+    }
+
+    const rect = target.getBoundingClientRect();
+    const clientX = rect.left + (position.x ?? rect.width / 2);
+    const clientY = rect.top + (position.y ?? rect.height / 2);
+
+    for (const type of ["dragenter", "dragover"]) {
+      target.dispatchEvent(new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        dataTransfer: drag.dataTransfer
+      }));
+    }
+  }, { targetSelector, position });
+}
+
+async function dropActiveNativePalette(page, targetSelector, position = {}) {
+  await page.locator(targetSelector).waitFor({ state: "visible" });
+
+  await page.evaluate(({ targetSelector, position }) => {
+    const drag = window.__layoutBuilderNativeDrag;
+    const target = document.querySelector(targetSelector);
+    if (!drag?.dataTransfer || !target) {
+      throw new Error(`Missing active drag or target: ${targetSelector}`);
+    }
+
+    const rect = target.getBoundingClientRect();
+    const clientX = rect.left + (position.x ?? rect.width / 2);
+    const clientY = rect.top + (position.y ?? rect.height / 2);
+
+    target.dispatchEvent(new DragEvent("drop", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer: drag.dataTransfer
+    }));
+    drag.source.dispatchEvent(new DragEvent("dragend", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer: drag.dataTransfer
+    }));
+    delete window.__layoutBuilderNativeDrag;
+  }, { targetSelector, position });
+}
+
 async function dragPaletteToBodyStart(page) {
-  const paletteBox = await page.locator('[data-anchor="frame_palette_item"]').boundingBox();
-  const bodyBox = await page.locator('[data-anchor="gui_window_body"]').boundingBox();
-
-  expect(paletteBox).not.toBeNull();
-  expect(bodyBox).not.toBeNull();
-
-  await page.mouse.move(
-    paletteBox.x + paletteBox.width / 2,
-    paletteBox.y + paletteBox.height / 2
+  await startNativePaletteDrag(page, "frame_palette_item");
+  await dragActiveNativePaletteOver(
+    page,
+    '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+    { x: 8 }
   );
-  await page.mouse.down();
-  await page.mouse.move(paletteBox.x + paletteBox.width / 2 + 12, paletteBox.y + 12, {
-    steps: 4
-  });
-  await expect(page.locator('[data-anchor="builder_drag_preview"]')).toBeVisible();
-
-  await page.mouse.move(bodyBox.x + 8, bodyBox.y + bodyBox.height / 2, { steps: 16 });
   const preview = page.locator('[data-anchor="gui_window_body"] > .fx-gui-flow-drop-preview-slot');
   await expect(preview).toHaveCount(1);
   await expect(preview).toHaveClass(/is-expanded/);
@@ -213,30 +321,147 @@ async function dragPaletteToBodyStart(page) {
 }
 
 async function dragHorizontalFlowPaletteToFrame(page) {
-  const paletteBox = await page.locator('[data-anchor="horizontal_flow_palette_item"]').boundingBox();
-  const frameBox = await page.locator('[data-anchor="gui_frame_1"]').boundingBox();
-
-  expect(paletteBox).not.toBeNull();
-  expect(frameBox).not.toBeNull();
-
-  await page.mouse.move(
-    paletteBox.x + paletteBox.width / 2,
-    paletteBox.y + paletteBox.height / 2
+  await page.locator('[data-anchor="horizontal_flow_palette_item"]').dragTo(
+    page.locator('[data-anchor="gui_frame_1"]'),
+    { targetPosition: { x: 48, y: 28 } }
   );
-  await page.mouse.down();
-  await page.mouse.move(paletteBox.x + paletteBox.width / 2 + 12, paletteBox.y + 12, {
-    steps: 4
+}
+
+async function dragTreeNodeToRow(page, sourceId, targetId) {
+  const sourceHandle = page.locator(
+    `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
+  );
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+
+  await page.evaluate(({ sourceId, targetId }) => {
+    const source = document.querySelector(
+      `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
+    );
+    const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
+    if (!source || !target) {
+      throw new Error(`Missing tree drag source or target: ${sourceId} -> ${targetId}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const targetRect = target.getBoundingClientRect();
+    const sourceRect = source.getBoundingClientRect();
+
+    function fireDragEvent(element, type, rect) {
+      const event = new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + Math.min(96, Math.max(8, rect.width / 2)),
+        clientY: rect.top + rect.height / 2,
+        dataTransfer
+      });
+      element.dispatchEvent(event);
+    }
+
+    fireDragEvent(source, "dragstart", sourceRect);
+    fireDragEvent(target, "dragenter", targetRect);
+    fireDragEvent(target, "dragover", targetRect);
+    fireDragEvent(target, "drop", targetRect);
+    fireDragEvent(source, "dragend", sourceRect);
+  }, { sourceId, targetId });
+}
+
+async function previewTreeNodeOverRow(page, sourceId, targetId) {
+  const sourceHandle = page.locator(
+    `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
+  );
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+
+  await page.evaluate(({ sourceId, targetId }) => {
+    const source = document.querySelector(
+      `[data-anchor="builder_tree_item_${sourceId}"] .fx-builder-row__drag-handle`
+    );
+    const target = document.querySelector(`[data-anchor="builder_tree_item_${targetId}"]`);
+    if (!source || !target) {
+      throw new Error(`Missing tree drag source or target: ${sourceId} -> ${targetId}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const targetRect = target.getBoundingClientRect();
+    const sourceRect = source.getBoundingClientRect();
+    window.__layoutBuilderTreeDrag = { dataTransfer, source };
+
+    function fireDragEvent(element, type, clientX, clientY) {
+      const event = new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        dataTransfer
+      });
+      element.dispatchEvent(event);
+    }
+
+    fireDragEvent(
+      source,
+      "dragstart",
+      sourceRect.left + sourceRect.width / 2,
+      sourceRect.top + sourceRect.height / 2
+    );
+    fireDragEvent(
+      target,
+      "dragenter",
+      targetRect.left + Math.min(96, Math.max(8, targetRect.width / 2)),
+      targetRect.top + 4
+    );
+    fireDragEvent(
+      target,
+      "dragover",
+      targetRect.left + Math.min(96, Math.max(8, targetRect.width / 2)),
+      targetRect.top + 4
+    );
+  }, { sourceId, targetId });
+}
+
+async function dragPaletteTileToTreeRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(`[data-anchor="${paletteAnchor}"]`);
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+
+  await sourceHandle.dragTo(targetRow, {
+    targetPosition: { x: 56, y: 18 }
   });
-  await expect(page.locator('[data-anchor="builder_drag_preview"]')).toBeVisible();
+}
 
-  await page.mouse.move(
-    frameBox.x + frameBox.width / 2,
-    frameBox.y + frameBox.height / 2,
-    { steps: 16 }
+async function previewPaletteTileOverTreeRow(page, paletteAnchor, targetId) {
+  const sourceHandle = page.locator(`[data-anchor="${paletteAnchor}"]`);
+  const targetRow = page.locator(`[data-anchor="builder_tree_item_${targetId}"]`);
+
+  await expect(sourceHandle).toBeVisible();
+  await expect(targetRow).toBeVisible();
+  await startNativePaletteDrag(page, paletteAnchor);
+  await dragActiveNativePaletteOver(
+    page,
+    `[data-anchor="builder_tree_item_${targetId}"]`,
+    { x: 56, y: 18 }
   );
-  await expect(page.locator('[data-anchor="gui_frame_1"] > .fx-gui-flow-drop-preview-slot'))
-    .toHaveCount(1);
-  await page.mouse.up();
+}
+
+async function endNativeDrag(page) {
+  await page.evaluate(() => {
+    const drag = window.__layoutBuilderNativeDrag ?? window.__layoutBuilderTreeDrag;
+    const dataTransfer = drag?.dataTransfer ?? new DataTransfer();
+    const source = drag?.source ?? window;
+    source.dispatchEvent(new DragEvent("dragend", {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer
+    }));
+    delete window.__layoutBuilderNativeDrag;
+    delete window.__layoutBuilderTreeDrag;
+  });
 }
 
 async function measureHover(page) {
@@ -360,8 +585,28 @@ test.describe("Layout builder canvas preview", () => {
     await expect(luaOutput).toContainText("local gui_frame_1 = gui_window_body.add{");
   });
 
-  test("component tree shows the generated Window shell and authored body children", async ({ page }) => {
+  test("component tree defaults to the Window body flow", async ({ page }) => {
     await seedOneFrameWindow(page);
+
+    const tree = page.locator('[data-anchor="builder_body_tree"]');
+    await expect(tree.getByText("Window Frame")).toHaveCount(0);
+    await expect(tree.getByText("Titlebar Horizontal Flow")).toHaveCount(0);
+    await expect(tree.getByText("Title Label")).toHaveCount(0);
+    await expect(tree.getByText("Header Filler")).toHaveCount(0);
+    await expect(tree.getByText("Window body Horizontal Flow")).toBeVisible();
+    await expect(tree.getByText("gui_window_body", { exact: true })).toBeVisible();
+    await expect(tree.getByRole("button", { name: "Frame", exact: true }))
+      .toBeVisible();
+    await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
+      .toBeVisible();
+    await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
+  });
+
+  test("component tree can show the generated Window shell", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showComponentTreeShell: true
+    });
 
     const tree = page.locator('[data-anchor="builder_body_tree"]');
     await expect(tree.getByText("Window Frame")).toBeVisible();
@@ -381,6 +626,167 @@ test.describe("Layout builder canvas preview", () => {
     await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
   });
 
+  test("settings toggle switches component tree between body flow and generated shell", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    const tree = page.locator('[data-anchor="builder_body_tree"]');
+    await expect(tree.getByText("Window Frame")).toHaveCount(0);
+
+    await page.locator('[data-anchor="layout_settings_toggle"]').click();
+    const shellToggle = page.locator('[data-anchor="component_tree_shell_toggle"] input');
+    await expect(shellToggle).not.toBeChecked();
+    await shellToggle.click({ force: true });
+
+    await expect(tree.getByText("Window Frame")).toBeVisible();
+    await expect(tree.getByText("Titlebar Horizontal Flow")).toBeVisible();
+    await expect(tree.getByText("Header Filler")).toBeVisible();
+  });
+
+  test("nested Horizontal Flow keeps horizontal direction in DOM and Lua", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showLuaOutput: true
+    });
+
+    const flow = page.locator('[data-anchor="gui_horizontal_flow_2"]');
+    await expect(flow).toBeVisible();
+    await expect(flow).toHaveAttribute("data-fx-direction", "horizontal");
+    await expect(flow).toHaveCSS("flex-direction", "row");
+
+    const childGeometry = await flow.locator(':scope > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          id: element.dataset.anchor,
+          left: rect.left,
+          top: rect.top
+        };
+      }));
+    expect(childGeometry.map((child) => child.id)).toEqual(["gui_frame_3", "gui_frame_4"]);
+    expect(childGeometry[1].left).toBeGreaterThan(childGeometry[0].left);
+    expect(Math.abs(childGeometry[1].top - childGeometry[0].top)).toBeLessThan(2);
+
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText('local gui_horizontal_flow_2 = gui_frame_1.add{');
+    await expect(luaOutput).toContainText('direction = "horizontal"');
+  });
+
+  test("component tree moves nested nodes through Headless Tree and keeps outputs synchronized", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showInspector: true,
+      showLuaOutput: true
+    });
+
+    await dragTreeNodeToRow(page, "gui_frame_4", "gui_window_body");
+
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_4"]'))
+      .toHaveClass(/is-selected/);
+    await expect(page.locator('[data-anchor="inspector_gui_frame_4"]')).toBeVisible();
+
+    const bodyFrames = await page.locator('[data-anchor="gui_window_body"] > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(bodyFrames).toEqual(["gui_frame_1", "gui_frame_4"]);
+
+    const nestedFrames = await page.locator('[data-anchor="gui_horizontal_flow_2"] > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(nestedFrames).toEqual(["gui_frame_3"]);
+
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText("local gui_frame_4 = gui_window_body.add{");
+    await expect(luaOutput).toContainText("local gui_frame_3 = gui_horizontal_flow_2.add{");
+  });
+
+  test("component tree keeps generated shell rows locked while still selectable", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showInspector: true,
+      showComponentTreeShell: true
+    });
+
+    const windowRow = page.locator('[data-anchor="builder_tree_item_gui_window"]');
+    await windowRow.click();
+
+    await expect(windowRow).toHaveClass(/is-selected/);
+    await expect(page.locator('[data-anchor="inspector_gui_window"]')).toBeVisible();
+    await expect(windowRow.locator(".fx-builder-row__drag-handle")).toBeDisabled();
+    await expect(windowRow.getByRole("button", { name: /remove/i })).toHaveCount(0);
+  });
+
+  test("component tree rejects descendant drops without mutating the model", async ({ page }) => {
+    await seedEditorState(page, NESTED_TREE_STATE);
+
+    await dragTreeNodeToRow(page, "gui_frame_1", "gui_horizontal_flow_2");
+
+    const bodyFrames = await page.locator('[data-anchor="gui_window_body"] > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(bodyFrames).toEqual(["gui_frame_1"]);
+    await expect(
+      page.locator('[data-anchor="gui_frame_1"] > [data-anchor="gui_horizontal_flow_2"]')
+    ).toHaveCount(1);
+  });
+
+  test("palette tile inserts through Headless Tree foreign drops", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await dragPaletteTileToTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
+    await expect(
+      page.locator('[data-anchor="gui_frame_1"] > [data-anchor="gui_horizontal_flow_2"]')
+    ).toHaveCount(1);
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_horizontal_flow_2"]'))
+      .toHaveClass(/is-selected/);
+  });
+
+  test("component tree palette hover keeps row hit targets stable", async ({ page }) => {
+    await seedEditorState(page, TWO_VERTICAL_FRAME_STATE);
+
+    const secondFrameRow = page.locator('[data-anchor="builder_tree_item_gui_frame_2"]');
+    const before = await secondFrameRow.boundingBox();
+    expect(before).not.toBeNull();
+
+    await previewPaletteTileOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+
+    await expect(page.locator('[data-anchor="builder_tree_insertion_placeholder"]')).toHaveCount(0);
+
+    await expect.poll(async () => {
+      const after = await secondFrameRow.boundingBox();
+      expect(after).not.toBeNull();
+      return Math.abs(after.y - before.y);
+    }).toBeLessThan(4);
+
+    await endNativeDrag(page);
+  });
+
+  test("component tree move preview opens a visual gap without moving hit targets", async ({ page }) => {
+    await seedEditorState(page, TWO_VERTICAL_FRAME_STATE);
+
+    const targetHitBox = page.locator('[data-tree-hit-anchor="builder_tree_hit_gui_frame_1"]');
+    const targetRow = page.locator('[data-anchor="builder_tree_item_gui_frame_1"]');
+    const targetVisual = targetHitBox.locator(".fx-builder-tree__visual");
+    const beforeHitBox = await targetHitBox.boundingBox();
+    const beforeRowBox = await targetRow.boundingBox();
+    expect(beforeHitBox).not.toBeNull();
+    expect(beforeRowBox).not.toBeNull();
+
+    await previewTreeNodeOverRow(page, "gui_frame_2", "gui_frame_1");
+
+    await expect(targetVisual).toHaveClass(/is-visual-shifted/);
+    await expect.poll(async () => {
+      const afterHitBox = await targetHitBox.boundingBox();
+      expect(afterHitBox).not.toBeNull();
+      return Math.abs(afterHitBox.y - beforeHitBox.y);
+    }).toBeLessThan(4);
+    await expect.poll(async () => {
+      const afterRowBox = await targetRow.boundingBox();
+      expect(afterRowBox).not.toBeNull();
+      return afterRowBox.y - beforeRowBox.y;
+    }).toBeGreaterThan(8);
+
+    await endNativeDrag(page);
+  });
+
   test("palette can insert a Horizontal Flow inside a Frame", async ({ page }) => {
     await seedOneFrameWindow(page);
     await expect(page.locator('[data-anchor="frame_palette_item"]')).toBeVisible();
@@ -396,6 +802,40 @@ test.describe("Layout builder canvas preview", () => {
       "gui_horizontal_flow_2",
       { exact: true }
     )).toBeVisible();
+  });
+
+  test("drag-created Horizontal Flow keeps horizontal child layout", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await dragHorizontalFlowPaletteToFrame(page);
+    await page.locator('[data-anchor="frame_palette_item"]').dragTo(
+      page.locator('[data-anchor="gui_horizontal_flow_2"]'),
+      { targetPosition: { x: 20, y: 24 } }
+    );
+    await page.locator('[data-anchor="frame_palette_item"]').dragTo(
+      page.locator('[data-anchor="gui_horizontal_flow_2"]'),
+      { targetPosition: { x: 120, y: 24 } }
+    );
+
+    const flow = page.locator('[data-anchor="gui_horizontal_flow_2"]');
+    await expect(flow).toHaveAttribute("data-fx-direction", "horizontal");
+    await expect(flow).toHaveCSS("flex-direction", "row");
+
+    const childGeometry = await flow.locator(':scope > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          id: element.dataset.anchor,
+          left: rect.left,
+          top: rect.top
+        };
+      }));
+    expect(new Set(childGeometry.map((child) => child.id))).toEqual(
+      new Set(["gui_frame_3", "gui_frame_4"])
+    );
+    const byLeft = [...childGeometry].sort((left, right) => left.left - right.left);
+    expect(byLeft[1].left).toBeGreaterThan(byLeft[0].left);
+    expect(Math.abs(byLeft[1].top - byLeft[0].top)).toBeLessThan(2);
   });
 
   test("GUI shadow toggle disables only the Window cast shadow", async ({ page }) => {
@@ -497,7 +937,11 @@ test.describe("Layout builder canvas preview", () => {
     expect(hover.previewMinHeight).toBe(hover.existingMinHeight);
     expect(new Set(hover.dropTargetBackgrounds)).toEqual(new Set(["rgba(0, 0, 0, 0)"]));
 
-    await page.mouse.up();
+    await dropActiveNativePalette(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
     await expect(page.locator('[data-fx-role="body-frame"]')).toHaveCount(2);
     const finalFrames = await measureFinal(page);
 

@@ -175,6 +175,9 @@ padding values, and ordered Frame children. Legal parents alternate by primitive
 the Window body and Horizontal Flow nodes accept Frames, while Frame nodes accept
 Horizontal Flows. The Window root, titlebar, title label, drag filler, a moved
 node itself, and descendants of the moved node are not legal drop parents.
+Headless Tree supplies component-tree drag/drop targets and accessibility
+state, but it does not change the persisted schema; accepted drops still commit
+only ordered mutations to `layoutChildren`.
 
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new

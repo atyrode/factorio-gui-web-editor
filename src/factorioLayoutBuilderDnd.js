@@ -1,72 +1,68 @@
-export const LAYOUT_BUILDER_DND_TYPE = "layout-builder";
+export const LAYOUT_BUILDER_DND_TYPE = "application/x-factorio-gui-builder-palette";
 
 const VALID_DROP_SURFACES = new Set(["list", "canvas"]);
 const VALID_PALETTE_ATOMS = new Set(["frame", "horizontal-flow"]);
 
-export function paletteDragData(atom = "frame") {
-  return {
-    builderDrag: {
-      kind: "palette",
-      atom
-    }
-  };
+function dataTransferTypes(dataTransfer) {
+  return Array.from(dataTransfer?.types ?? []);
 }
 
-export function nodeDragData(sourceId, atom = null) {
-  return {
-    builderDrag: {
-      kind: "node",
-      sourceId,
-      atom
-    }
-  };
+export function normalizeBuilderPaletteAtom(atom = "frame") {
+  return VALID_PALETTE_ATOMS.has(atom) ? atom : null;
 }
 
-export function dropTargetData({ parentId, index, surface }) {
-  return {
-    builderDropTarget: {
-      parentId,
-      index,
-      surface
-    }
-  };
+export function paletteAtomDataTransferFormat(atom = "frame") {
+  return `${LAYOUT_BUILDER_DND_TYPE}-${normalizeBuilderPaletteAtom(atom) ?? "frame"}`;
 }
 
-export function readBuilderDrag(source) {
-  const drag = source?.data?.builderDrag;
-
-  if (drag?.kind === "palette") {
-    return {
-      kind: "palette",
-      atom: VALID_PALETTE_ATOMS.has(drag.atom) ? drag.atom : "frame"
-    };
+export function writeBuilderPaletteDrag(dataTransfer, atom = "frame") {
+  const normalizedAtom = normalizeBuilderPaletteAtom(atom);
+  if (!dataTransfer || !normalizedAtom) {
+    return null;
   }
 
-  if (drag?.kind === "node" && typeof drag.sourceId === "string") {
-    return {
-      kind: "node",
-      sourceId: drag.sourceId,
-      atom: VALID_PALETTE_ATOMS.has(drag.atom) ? drag.atom : null
-    };
+  dataTransfer.effectAllowed = "copy";
+  dataTransfer.dropEffect = "copy";
+  dataTransfer.setData(LAYOUT_BUILDER_DND_TYPE, normalizedAtom);
+  dataTransfer.setData(paletteAtomDataTransferFormat(normalizedAtom), normalizedAtom);
+  dataTransfer.setData("text/plain", normalizedAtom);
+
+  return { kind: "palette", atom: normalizedAtom };
+}
+
+export function readBuilderPaletteDrag(dataTransfer, readPayload = true) {
+  if (!dataTransfer) {
+    return null;
+  }
+
+  if (readPayload) {
+    const atom = normalizeBuilderPaletteAtom(dataTransfer.getData(LAYOUT_BUILDER_DND_TYPE));
+    if (atom) {
+      return { kind: "palette", atom };
+    }
+  }
+
+  const types = dataTransferTypes(dataTransfer);
+  for (const atom of VALID_PALETTE_ATOMS) {
+    if (types.includes(paletteAtomDataTransferFormat(atom))) {
+      return { kind: "palette", atom };
+    }
   }
 
   return null;
 }
 
-export function readBuilderDropTarget(target) {
-  const dropTarget = target?.data?.builderDropTarget;
-
+export function createBuilderDropTarget({ parentId, index, surface = "canvas" }) {
   if (
-    !dropTarget ||
-    typeof dropTarget.parentId !== "string" ||
-    !VALID_DROP_SURFACES.has(dropTarget.surface)
+    typeof parentId !== "string" ||
+    !VALID_DROP_SURFACES.has(surface)
   ) {
     return null;
   }
 
   return {
-    parentId: dropTarget.parentId,
-    index: Number(dropTarget.index),
-    surface: dropTarget.surface
+    parentId,
+    index: Number(index),
+    surface
   };
 }

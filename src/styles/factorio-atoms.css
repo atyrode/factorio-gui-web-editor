@@ -886,16 +886,6 @@
     0 0 12px rgba(227, 152, 39, 0.28);
 }
 
-.fx-gui-horizontal-flow.is-builder-dragging-source,
-.fx-gui-frame.is-builder-dragging-source {
-  opacity: 0.48;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 4px 4px -1px rgba(0, 0, 0, 0.56),
-    inset 0 -3px 3px -1px rgba(0, 0, 0, 0.54),
-    0 0 0 1px rgba(125, 202, 237, 0.55);
-}
-
 .fx-gui-flow-drop-target {
   box-sizing: border-box;
   position: absolute;
@@ -907,7 +897,7 @@
   min-width: 0;
   min-height: 0;
   transform: none;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .fx-gui-flow-drop-target.is-middle {

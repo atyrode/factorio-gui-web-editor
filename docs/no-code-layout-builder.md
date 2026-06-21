@@ -21,11 +21,17 @@ spacing, while Frame owns the visible split/container surface.
 Freeform pixel dragging remains out of scope. Drag/drop in this slice means
 choosing a parent flow and ordered insertion index.
 
-Drag/drop interaction plumbing uses `@dnd-kit/react`. The library owns pointer
-tracking, drag source state, droppable collision, and overlay rendering. The
-project still owns tree mutation because the persisted shape is a constrained
-recursive Factorio layout tree, not a flat sortable list or arbitrary DOM
-layout.
+Palette atoms use native browser drag/drop with a small `DataTransfer` payload.
+The same full palette tile can be dropped into the canvas or into the Builder
+tree. Canvas drag/drop owns only visual placement feedback and delegates model
+validation to the shared Factorio layout helpers.
+
+Component-tree drag/drop uses Headless Tree (`@headless-tree/core` and
+`@headless-tree/react`). Headless Tree owns tree drag source handling, ordered
+drop target calculation, reparenting, invalid-drop feedback, drag-line
+rendering, external `DataTransfer` drops, and keyboard/a11y behavior. The
+project keeps only Factorio-domain drop policy: whether a dragged atom is legal
+under a proposed parent in the constrained recursive layout model.
 
 ## User Jobs
 
@@ -51,11 +57,11 @@ The editor rail contains three pinned sections:
 
 [Builder]
   [Palette: drag-only Frame, Horizontal Flow]
-  [Scroll: full generated component tree]
-    [Non-deletable Window frame root]
-    [Non-deletable titlebar flow, title label, header filler]
+  [Scroll: component tree, starting at Window body flow by default]
+    [Optional non-deletable Window frame root]
+    [Optional non-deletable titlebar flow, title label, header filler]
     [Non-deletable Window body flow root]
-    [Drop slots and ghost blocks under the root]
+    [Headless Tree drag line for ordered placement]
     [Child rows with add child, add after, remove]
 
 [Inspector]
@@ -71,18 +77,29 @@ The editor rail contains three pinned sections:
 
 The canvas remains the visual preview. It accepts legal drops into the Window
 body, user-created Frames, and user-created Horizontal Flows. The Window
-root/header/titlebar shell is visible in the component tree but locked.
+root/header/titlebar shell can be shown in the component tree when the Settings
+toggle is enabled; those generated shell rows are locked.
 
 The Builder tree is the structure navigator for the generated Lua hierarchy. It
-shows locked shell nodes such as `gui_window`, `gui_window_titlebar`,
-`gui_window_title`, `gui_window_drag_handle`, and `gui_window_body`, followed by
-editable authored layout specs under the body flow. It has a bounded height and
-scrolls when nested layout would otherwise crowd the Inspector.
+starts at the locked `gui_window_body` flow by default, followed by editable
+authored layout specs under the body flow. A Settings toggle can expose the full
+generated shell, including locked nodes such as `gui_window`,
+`gui_window_titlebar`, `gui_window_title`, and `gui_window_drag_handle`. It has
+a bounded height and scrolls when nested layout would otherwise crowd the
+Inspector.
+
+Tree row rendering remains Factorio-styled local UI, but tree interaction logic
+is not custom. Headless Tree supplies flat visible items, ARIA tree props,
+separate drag-handle props, drag targets, and drag-line positioning. The
+rendered rows reuse the editor's dark panel/menu vocabulary, compact action
+buttons, orange active affordances, and blue structural guide color.
 
 The Settings panel is the last section in the editor rail and is collapsed by
 default. It owns authored Horizontal Flow assumptions until Factorio defaults
 are proven. It currently controls generic flow spacing, top-level minimum
 width, nested minimum width, minimum height, and padding.
+It also owns the presentation toggle for showing or hiding the generated Window
+shell rows in the Builder tree.
 
 ## Data Contract
 
@@ -134,36 +151,48 @@ Inspector.
 
 ## Drop Rules
 
-- Palette drops create either a new `frame` spec or a new `horizontal-flow`
-  spec, based on the dragged tile.
+- Canvas palette drops create either a new `frame` spec or a new
+  `horizontal-flow` spec, based on the dragged tile.
+- Component-tree palette drops use the same full palette tile and Headless
+  Tree foreign drag-object support to create the same constrained specs. Canvas
+  and tree drops share the same browser `DataTransfer` payload.
 - Palette tiles do not append on click; creation requires an explicit drop
   target.
-- Row drops move an existing spec.
+- Tree row drops move an existing spec through Headless Tree's ordered target.
 - Legal parents alternate by primitive: `gui_window_body` and user-created
   Horizontal Flow nodes accept Frames; user-created Frames accept Horizontal
   Flows.
 - Illegal parents include the Window root, titlebar, title label, drag filler,
   self, and descendants of the moved source.
-- The Builder tree shows the generated Window shell. Shell nodes can be
-  selected for inspection but cannot be dragged, deleted, or reordered.
-  `gui_window_body` is the one locked shell node that can receive authored
-  children, because the Window shell owns that Factorio body flow.
+- The Builder tree starts from `gui_window_body` by default. When the generated
+  Window shell setting is enabled, shell nodes can be selected for inspection
+  but cannot be dragged, deleted, or reordered. `gui_window_body` is the one
+  locked shell node that can receive authored children, because the Window
+  shell owns that Factorio body flow.
 - `gui_window_body` is horizontal or vertical based on the Window creation
   action. Editor-created body children are Frames in this slice.
-- Drop placement is an ordered index in the parent, represented by ghost blocks.
+- Frames are vertical containers in this model. Multiple Horizontal Flow
+  children inside the same Frame stack vertically; each Horizontal Flow lays out
+  its own children left-to-right.
+- Tree drop placement is an ordered index in the parent represented by the
+  Headless Tree drag line. Tree hover feedback must not insert flow-affecting
+  placeholders under the pointer, because that can cause drop-target
+  oscillation when hit testing recalculates after layout shift.
 - In the canvas, sibling Frames split available space equally until
   their minimum width is reached; after that the parent flow scrolls.
 - Vertical Window bodies use the same split-gutter substrate rule: sibling
   Frames split available height equally until minimum height is reached, and the
   body flow keeps a visible gutter between stacked Frames.
-- The drag overlay, source highlight, active parent highlight, and ghost block
-  are visual feedback only. The stored operation remains `{parentId, index}`.
+- Tree drag-line, source highlight, active parent highlight, and blocked target
+  states are visual feedback only. The stored operation remains
+  `{parentId, index}`.
+- Canvas drag overlay, active parent highlight, and ghost preview are visual
+  feedback only. Canvas hit/collision geometry must not paint layout feedback.
 - Canvas hover previews must use the same flex sizing contract as the atom that
-  will exist after drop. Hit/collision geometry must not paint layout feedback,
-  and highlight paint must not extend the future node's bounds. Previews are
-  atom render states: a Frame preview renders through the same Frame shell as a
-  real Frame, and a nested Horizontal Flow preview renders through the same
-  Horizontal Flow shell as a real Horizontal Flow.
+  will exist after drop. Highlight paint must not extend the future node's
+  bounds. Previews are atom render states: a Frame preview renders through the
+  same Frame shell as a real Frame, and a nested Horizontal Flow preview renders
+  through the same Horizontal Flow shell as a real Horizontal Flow.
 - Removing a row removes its subtree in this slice.
 
 ## Fixtures
@@ -176,18 +205,20 @@ Inspector.
 | `full-shell-tree` | Window exists | Builder tree shows Window Frame -> titlebar Flow -> Label/Filler and Window body Flow -> authored children. |
 | `frame-with-flow` | Root Frame with one child Horizontal Flow | Child is visible in tree and canvas, inspector has rows for both. |
 | `nested-split` | Frame -> Horizontal Flow -> Frame | Nested split remains model-consistent and exportable. |
-| `cross-parent-move` | Two root Frames, one nested Frame | Drag can move a Frame between body and another compatible flow, preserving order. |
-| `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and shows no ghost. |
+| `cross-parent-move` | Two root Frames, one nested Frame | Tree drag can move a Frame between body and another compatible flow, preserving order. |
+| `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and keeps the model unchanged. |
 
 ## Stable Anchors
 
 - `builder_panel`
 - `layout_settings_panel`
 - `layout_settings_toggle`
+- `component_tree_shell_toggle`
 - `frame_palette_item`
 - `horizontal_flow_palette_item`
 - `builder_body_tree`
-- `builder_ghost_marker`
+- `builder_tree_drag_line`
+- `builder_tree_item_<node_id>`
 - `gui_window_body`
 - `gui_frame_N` for editor-created Frame nodes
 - `gui_horizontal_flow_N` for editor-created Horizontal Flow nodes
@@ -197,7 +228,7 @@ Inspector.
 Before expanding to Label, Action Button, or additional Frame-style insertion,
 verify:
 
-- ghost placement is visible in both the builder list and canvas;
+- Headless Tree drag-line placement is visible in the builder list;
 - canvas ghost placement expands smoothly so affected sibling flows slide into
   the proposed drop layout instead of jumping instantly;
 - dragged source rows/flows and current drop parents have clear highlighted
