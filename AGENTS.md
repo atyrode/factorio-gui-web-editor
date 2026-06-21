@@ -14,6 +14,8 @@ These instructions apply to the whole repository.
 - Do not force-push shared branches, delete remote refs, or rewrite shared
   history unless the operator explicitly authorizes that exact action.
 - Never revert user changes unless explicitly requested.
+- Run GitHub CLI (`gh`) commands outside the sandbox with escalation; local
+  `gh` auth and network operations are expected to fail inside the sandbox.
 
 ## Product Direction
 
