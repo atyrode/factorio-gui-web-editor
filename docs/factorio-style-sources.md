@@ -222,14 +222,20 @@ shadow inspection: it disables cast shadows for review without removing bevel
 or inset edge styling. A disabled shadow state should make external depth easier
 to inspect while preserving the Window and Frame graphical-set edge rules above.
 
-The official Factorio API docs list `flow` as the runtime primitive for
-horizontal or vertical child layout. The editor therefore treats
-`agui::HorizontalFlow` as one reusable atom whose direction is fixed to
-`horizontal`; `frame_header_flow`, `inset_frame_container_horizontal_flow`, and
-the compact header action group are role/style variants of that atom. The
-captured header/body numbers above are evidence fixtures. They are not product
-defaults, and they are not exported as general style formulas until additional
-captures or an in-game validation harness prove the rule.
+Exact `inside_deep_frame` pixel parity is deferred. The current browser Frame
+renderer is a bounded approximation that keeps the model/export structure
+honest, but it should not be treated as a completed reproduction of Factorio's
+graphical-set edge pixels.
+
+The official Factorio API docs list `flow` and `frame` as distinct runtime
+element types. The editor therefore treats `agui::HorizontalFlow` and
+`agui::Frame` as separate atoms. Horizontal and vertical are directions on
+layout-capable elements; style names such as `frame_header_flow`,
+`inset_frame_container_horizontal_flow`, and `inside_deep_frame` are style or
+role variants, not atom identities. The captured header/body numbers above are
+evidence fixtures. They are not product defaults, and they are not exported as
+general style formulas until additional captures or an in-game validation
+harness prove the rule.
 
 The current Window captures in this section were taken with Factorio UI scale
 set to Manual (pixels) `150%`. That is capture metadata, not a completed scale
@@ -411,152 +417,6 @@ model records an explicit screen location and the Lua preview emits that
 location. The Lua output is toggled from the Inspector section and, when shown,
 occupies a full-width bottom row beneath the editor rather than only the stage
 column.
-
-## Failed Frame Glint Audit
-
-Issue: <https://github.com/atyrode/factorio-gui-web-editor/issues/20>
-
-The requested effect was not just "a brighter bottom line" on child Frames. The
-requested effect was the same visual language as the top-level Window outer
-border glint, applied to every relevant inner bottom edge of the main GUI. The
-glint must read as light catching border or bevel geometry. It must not read as
-a separate stripe, overlay, divider, or decorative rule painted across the
-Frame's inner face.
-
-Failed implementation attempts:
-
-- A low-opacity bottom `box-shadow` on `.fx-gui-frame::before` was too dull and
-  did not match the top Window glint.
-- A brighter multi-pixel gradient inside `.fx-gui-frame::before` matched some
-  colors but rendered as a separate horizontal bar.
-- Moving the shared top gradient into an enlarged bottom border/background made
-  the Frame edge physically larger and still looked detached from the bevel.
-- Computed-style tests that checked for a color, a shadow value, or a shared
-  token were insufficient because they did not prove the visual effect was part
-  of the border geometry.
-
-Root cause: the work treated "same effect" as color or token reuse instead of
-as a rendering/geometry requirement. The correct acceptance target is visual:
-the bottom inner edge must look like the same bevel/glint shader used by the
-outer Window edge, integrated into the edge material rather than overlaid on the
-panel surface.
-
-Rules for the next attempt:
-
-- Start from the reference crop and describe the exact edge geometry before
-  editing CSS.
-- Do not use an inset shadow or inner background stripe as the completion
-  mechanism unless a screenshot proves it reads as border geometry.
-- Prefer an explicit edge layer or pseudo-element whose bounds are the edge
-  itself, not the content face.
-- Keep the shadow-disabled review path mandatory; if the crop shows a detached
-  line, the attempt failed regardless of passing tests.
-- Do not commit or hand off visual styling as complete without including the
-  accepted crop next to the reference crop.
-
-## Reverted Frame Edge Shader Failure Audit
-
-Issue: <https://github.com/atyrode/factorio-gui-web-editor/issues/20>
-
-Reverted implementation commits:
-
-- `42f5f6a Add reusable frame edge shader`
-- `1bd7946 Match inner frame edges to sampled window rows`
-
-Revert commits:
-
-- `4581172 Revert "Match inner frame edges to sampled window rows"`
-- `407a238 Revert "Add reusable frame edge shader"`
-
-This pass also failed. It looked more rigorous because it introduced a shared
-`fx-frame-edge` vocabulary, fresh screenshots, and a Playwright pixel-row
-comparison. It still did not satisfy the request because it did not reuse the
-exact rendering/composition logic of the accepted Window top border. It only
-reused increasingly narrow proxies for that logic.
-
-Specific mistakes:
-
-- The first shader pass reused Window color stops and edge-size variables, but
-  placed them in different geometry on the child Frame. Same tokens did not mean
-  same rendered result.
-- The second pass inverted the bands under a "hollow square" interpretation
-  even though the user's request was to apply the same top/bottom styling inside
-  the box, not reinterpret it.
-- The third pass sampled the central 60 x 6 pixel rows from the Window edge and
-  forced the Frame edge to match those rows. That proved only a narrow strip
-  matched. It did not prove the full crop, corner, side join, border placement,
-  containing block, anti-aliasing, or surrounding substrate matched.
-- The comparison target was partially self-referential: browser output from the
-  current Window CSS was treated as source truth, but the user's target was a
-  Factorio-like inner border crop. A row-level match against the local Window did
-  not prove a match against the requested visual.
-- The implementation changed the child Frame rendering before the exact Window
-  edge primitive had been isolated as a reusable composition. The work again
-  treated a visual/compositional requirement as a code-token extraction task.
-
-Expert review incorporated after the revert:
-
-- The model hierarchy change to `Window body Flow -> child Frames` is probably
-  useful and is not the main failure.
-- The visual failure is specifically the CSS rendering of `.fx-gui-frame`.
-- `inside_deep_frame` must not be rendered as a generic CSS card made from
-  `background: #403f40`, a `1px` border, one full-rectangle `::before`, or inset
-  `box-shadow` bands.
-- Factorio's GUI frame should be treated as a pixel-art graphical set: separate
-  corner pieces, separate top/right/bottom/left edge strips, and a center fill.
-- The expected image has hard 1-4 px bands, square stepped joins, no broad
-  blurred shadow, no diagonal chamfer, no smooth vector bevel, and no single
-  full-rect inset shadow acting as the bevel.
-- Acceptance tests should assert pixel/corner geometry: hard square joins, no
-  large diagonal wedges, no broad gradients, bottom edge only a few pixels tall,
-  and inner notch/edge intersections as stepped L-shaped joins.
-- The project currently has the Factorio style name `inside_deep_frame`, but it
-  does not implement the graphical-set pixels for that style.
-
-Why this proved difficult:
-
-- The visible effect is only a few pixels wide. A one-pixel offset, a different
-  clipping box, or a different adjacent fill color changes the perceived result.
-- CSS gradients are not sprites. Reusing the same stops on another element does
-  not reproduce the same raster output when the element has different bounds,
-  clipping, positioning, background, z-index, or subpixel placement.
-- The current Window edge is not a generic primitive. It is a Window-specific
-  construction: transparent border width, absolute spans, negative offsets,
-  trapezoid clips, gradients, panel fill, and shadow context all compose
-  together.
-- The requested "same styling and logic from the top border" was never converted
-  into a complete, testable contract. Partial contracts kept passing while the
-  crop still looked wrong.
-- The implementation path assumed ordinary browser border/shadow/gradient tools
-  could approximate a Factorio graphical set. That assumption was wrong for this
-  atom.
-
-Narrowed task before any future implementation:
-
-- Do not modify production child Frame styling for this issue until the
-  `inside_deep_frame` graphical set has been specified from the reference crop.
-- The next deliverable is a source-of-truth 9-slice-style specification, not CSS
-  implementation: fixed-size corner pieces, top/right/bottom/left edge strips,
-  center fill, geometry, bounds, offsets, clipping, background/fill interaction,
-  corner/join behavior, shadow-disabled behavior, and expected raster output for
-  full corner crops.
-- The specification must explicitly reject the failed rendering family:
-  `background: #403f40`, `border: 1px solid`, one full-rectangle `::before`, and
-  inset `box-shadow` bands as the bevel mechanism.
-- The comparison must use full fresh crops: accepted source Window edge,
-  requested inner-border target crop, and any prototype result, shown side by
-  side. A central-row or computed-style comparison is insufficient.
-- The acceptance check must compare the whole relevant crop, including corner
-  and side join pixels, not only the straight horizontal strip. It must check for
-  hard square joins, stepped L-shaped intersections, no broad gradients, no
-  large diagonal wedges, and bottom/side bands constrained to the few-pixel
-  thickness visible in the reference.
-- Any prototype must live in an isolated visual fixture first. It should not be
-  applied to production Frame rendering until the fixture crop is accepted.
-- If the existing Window CSS cannot be moved inward without changing the visual,
-  the correct next step is to replace the Window edge with a genuinely reusable
-  9-slice/raster-style edge primitive, then prove the Window itself remains
-  unchanged.
 
 ## Component Translation Targets
 

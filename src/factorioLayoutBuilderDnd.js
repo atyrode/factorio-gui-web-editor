@@ -1,4 +1,4 @@
-export const HORIZONTAL_FLOW_BUILDER_DND_TYPE = "horizontal-flow-builder";
+export const LAYOUT_BUILDER_DND_TYPE = "layout-builder";
 
 const VALID_DROP_SURFACES = new Set(["list", "canvas"]);
 const VALID_PALETTE_ATOMS = new Set(["frame", "horizontal-flow"]);

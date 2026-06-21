@@ -605,7 +605,7 @@ export const factorioAtomRegistry = Object.freeze([
       field("generic editor-created variant", "implemented", "The no-code builder creates empty Horizontal Flow specs inside Frames when inner horizontal layout is needed. They hydrate to `style = horizontal_flow` with authored Settings panel values for spacing, padding, and stretch flags. Body-level visible splits use Frame children instead.", {
         type: styleName,
         example: "generic-horizontal-flow",
-        source: "no-code-horizontal-flow-builder"
+        source: "no-code-layout-builder"
       }),
       field("relative", "captured", "Captured relative position is role-dependent: the header starts at the Window content origin, while the inset content row starts after the 48 px header.", {
         type: vector2i,

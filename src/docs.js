@@ -1,7 +1,7 @@
 import styleSourcesMarkdown from "../docs/factorio-style-sources.md?raw";
 import atomSpecsMarkdown from "../docs/atom-specs.md?raw";
 import modelSchemaMarkdown from "../docs/model-schema.md?raw";
-import noCodeHorizontalFlowBuilderMarkdown from "../docs/no-code-horizontal-flow-builder.md?raw";
+import noCodeLayoutBuilderMarkdown from "../docs/no-code-layout-builder.md?raw";
 import roadmapMarkdown from "../docs/roadmap.md?raw";
 import specFactoryMarkdown from "../docs/spec-factory.md?raw";
 
@@ -19,10 +19,10 @@ export const docPages = [
     markdown: roadmapMarkdown
   },
   {
-    path: "/no-code-horizontal-flow-builder",
+    path: "/no-code-layout-builder",
     title: "No-Code Builder",
-    summary: "Product spec for nested Horizontal Flow insertion.",
-    markdown: noCodeHorizontalFlowBuilderMarkdown
+    summary: "Product spec for constrained Frame and Flow insertion.",
+    markdown: noCodeLayoutBuilderMarkdown
   },
   {
     path: "/atom-specs",

@@ -212,6 +212,33 @@ async function dragPaletteToBodyStart(page) {
   await page.waitForTimeout(220);
 }
 
+async function dragHorizontalFlowPaletteToFrame(page) {
+  const paletteBox = await page.locator('[data-anchor="horizontal_flow_palette_item"]').boundingBox();
+  const frameBox = await page.locator('[data-anchor="gui_frame_1"]').boundingBox();
+
+  expect(paletteBox).not.toBeNull();
+  expect(frameBox).not.toBeNull();
+
+  await page.mouse.move(
+    paletteBox.x + paletteBox.width / 2,
+    paletteBox.y + paletteBox.height / 2
+  );
+  await page.mouse.down();
+  await page.mouse.move(paletteBox.x + paletteBox.width / 2 + 12, paletteBox.y + 12, {
+    steps: 4
+  });
+  await expect(page.locator('[data-anchor="builder_drag_preview"]')).toBeVisible();
+
+  await page.mouse.move(
+    frameBox.x + frameBox.width / 2,
+    frameBox.y + frameBox.height / 2,
+    { steps: 16 }
+  );
+  await expect(page.locator('[data-anchor="gui_frame_1"] > .fx-gui-flow-drop-preview-slot'))
+    .toHaveCount(1);
+  await page.mouse.up();
+}
+
 async function measureHover(page) {
   return page.evaluate(() => {
     function rect(selector) {
@@ -286,7 +313,43 @@ function expectSharedFlowSize(actual, expected, label) {
   });
 }
 
-test.describe("Frame builder canvas preview", () => {
+test.describe("Layout builder canvas preview", () => {
+  test("component tree shows the generated Window shell and authored body children", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    const tree = page.locator('[data-anchor="builder_body_tree"]');
+    await expect(tree.getByText("Window Frame")).toBeVisible();
+    await expect(tree.getByText("gui_window", { exact: true })).toBeVisible();
+    await expect(tree.getByText("Titlebar Horizontal Flow")).toBeVisible();
+    await expect(tree.getByText("gui_window_titlebar", { exact: true })).toBeVisible();
+    await expect(tree.getByText("Title Label")).toBeVisible();
+    await expect(tree.getByText("gui_window_title", { exact: true })).toBeVisible();
+    await expect(tree.getByText("Header Filler")).toBeVisible();
+    await expect(tree.getByText("gui_window_drag_handle", { exact: true })).toBeVisible();
+    await expect(tree.getByText("Window body Horizontal Flow")).toBeVisible();
+    await expect(tree.getByText("gui_window_body", { exact: true })).toBeVisible();
+    await expect(tree.getByRole("button", { name: "Frame gui_frame_1", exact: true }))
+      .toBeVisible();
+    await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
+  });
+
+  test("palette can insert a Horizontal Flow inside a Frame", async ({ page }) => {
+    await seedOneFrameWindow(page);
+    await expect(page.locator('[data-anchor="frame_palette_item"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="horizontal_flow_palette_item"]')).toBeVisible();
+
+    await dragHorizontalFlowPaletteToFrame(page);
+
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
+    await expect(
+      page.locator('[data-anchor="gui_frame_1"] > [data-anchor="gui_horizontal_flow_2"]')
+    ).toHaveCount(1);
+    await expect(page.locator('[data-anchor="builder_body_tree"]').getByText(
+      "gui_horizontal_flow_2",
+      { exact: true }
+    )).toBeVisible();
+  });
+
   test("GUI shadow toggle disables only the Window cast shadow", async ({ page }) => {
     await seedOneFrameWindow(page);
 

@@ -133,7 +133,7 @@ export const horizontalFlowStyleVariants = Object.freeze({
   }),
   generic: freezeStyleVariant({
     id: GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
-    role: "builder-horizontal-flow",
+    role: "layout-horizontal-flow",
     className: "agui::HorizontalFlow",
     style: "horizontal_flow",
     styleDescription: "Editor-created Horizontal Flow",

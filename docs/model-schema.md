@@ -149,7 +149,7 @@ layoutSettings.horizontalFlowPadding:
 The Settings panel lets those values be edited and reset to authored defaults.
 Renderer CSS reads the hydrated model style facts through custom properties; it
 does not store separate layout truth. Lua export writes the same supported
-`LuaStyle` assignments so the current Frame/Horizontal Flow builder slice remains
+`LuaStyle` assignments so the current constrained layout builder slice remains
 structurally compatible with the generated Lua skeleton.
 
 Legacy cached windows normalize to an empty `layoutChildren` array with

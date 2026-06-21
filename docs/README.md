@@ -6,8 +6,8 @@ remain the source of truth.
 
 - [spec-factory.md](spec-factory.md): how to write implementation-ready GUI
   specs before changing renderer or export code.
-- [no-code-horizontal-flow-builder.md](no-code-horizontal-flow-builder.md):
-  product spec for the first no-code Horizontal Flow insertion slice.
+- [no-code-layout-builder.md](no-code-layout-builder.md):
+  product spec for constrained Frame and Flow insertion.
 - [roadmap.md](roadmap.md): constrained builder, shared renderer, export, and
   graphical Factorio style-dump roadmap.
 - [atom-specs.md](atom-specs.md): completion contract for reconstructing

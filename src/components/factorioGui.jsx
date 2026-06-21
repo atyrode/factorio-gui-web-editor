@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 import { useDroppable } from "@dnd-kit/react";
 import {
-  HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+  LAYOUT_BUILDER_DND_TYPE,
   dropTargetData
-} from "../factorioBuilderDnd.js";
+} from "../factorioLayoutBuilderDnd.js";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -350,7 +350,7 @@ function createHorizontalFlowPreviewNode(parentStyleReference = {}) {
     style: "horizontal_flow",
     derivedFrom: "horizontal_flow",
     direction: "horizontal",
-    role: "builder-horizontal-flow-preview",
+    role: "layout-horizontal-flow-preview",
     styleReference: {
       variantId: "generic-horizontal-flow",
       horizontalSpacing: reference.childHorizontalSpacing,
@@ -465,8 +465,8 @@ function CanvasDropTarget({
 }) {
   const { ref, isDropTarget } = useDroppable({
     id: `builder-canvas-slot-${parentId}-${index}`,
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
-    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    type: LAYOUT_BUILDER_DND_TYPE,
+    accept: LAYOUT_BUILDER_DND_TYPE,
     disabled: !dragActive,
     collisionPriority: 3,
     data: dropTargetData({ parentId, index, surface: "canvas" })
@@ -647,8 +647,8 @@ export function GuiFrame({
   const isDraggingSource = builderDraggingId === node.id;
   const { ref: dropRef, isDropTarget } = useDroppable({
     id: `builder-canvas-parent-${node.id}`,
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
-    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    type: LAYOUT_BUILDER_DND_TYPE,
+    accept: LAYOUT_BUILDER_DND_TYPE,
     disabled: !builderDragActive,
     collisionPriority: 1,
     data: dropTargetData({
@@ -718,8 +718,8 @@ export function GuiHorizontalFlow({
   const isDraggingSource = builderDraggingId === node.id;
   const { ref: dropRef, isDropTarget } = useDroppable({
     id: `builder-canvas-parent-${node.id}`,
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
-    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    type: LAYOUT_BUILDER_DND_TYPE,
+    accept: LAYOUT_BUILDER_DND_TYPE,
     disabled: !builderDragActive,
     collisionPriority: 1,
     data: dropTargetData({
@@ -845,8 +845,8 @@ export function GuiWindow({
   });
   const { ref: bodyDropRef, isDropTarget: isBodyDropTarget } = useDroppable({
     id: `builder-canvas-parent-${bodyAnchor}`,
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
-    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    type: LAYOUT_BUILDER_DND_TYPE,
+    accept: LAYOUT_BUILDER_DND_TYPE,
     disabled: !builderDragActive,
     collisionPriority: 1,
     data: dropTargetData({

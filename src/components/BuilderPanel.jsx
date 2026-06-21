@@ -2,11 +2,11 @@ import { Fragment } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/react";
 
 import {
-  HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+  LAYOUT_BUILDER_DND_TYPE,
   dropTargetData,
   nodeDragData,
   paletteDragData
-} from "../factorioBuilderDnd.js";
+} from "../factorioLayoutBuilderDnd.js";
 import {
   BODY_LAYOUT_ROOT_ID,
   FRAME_ATOM_ID,
@@ -22,6 +22,10 @@ function bodyFlowLabel(currentWindow) {
 
 function atomLabel(atom) {
   return atom === HORIZONTAL_FLOW_ATOM_ID ? "Horizontal Flow" : "Frame";
+}
+
+function atomCode(atom) {
+  return atom === HORIZONTAL_FLOW_ATOM_ID ? "flow.horizontal" : "frame";
 }
 
 function childLabel(node, locked) {
@@ -40,6 +44,26 @@ function removeLabel(node) {
   return `Remove ${atomLabel(node.atom)} subtree`;
 }
 
+function shellNodeLabel(node) {
+  if (node?.id === "gui_window") {
+    return "Window Frame";
+  }
+
+  if (node?.id === "gui_window_titlebar") {
+    return "Titlebar Horizontal Flow";
+  }
+
+  if (node?.id === "gui_window_title") {
+    return "Title Label";
+  }
+
+  if (node?.id === "gui_window_drag_handle") {
+    return "Header Filler";
+  }
+
+  return node?.className ?? "GUI Element";
+}
+
 function BuilderDropSlot({
   parentId,
   index,
@@ -49,8 +73,8 @@ function BuilderDropSlot({
 }) {
   const { ref, isDropTarget } = useDroppable({
     id: `builder-${surface}-slot-${parentId}-${index}`,
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
-    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    type: LAYOUT_BUILDER_DND_TYPE,
+    accept: LAYOUT_BUILDER_DND_TYPE,
     disabled: !dragActive,
     data: dropTargetData({ parentId, index, surface })
   });
@@ -91,7 +115,7 @@ function BuilderNodeRow({
 }) {
   const { ref, handleRef, isDragSource } = useDraggable({
     id: `builder-node-${node.id}`,
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    type: LAYOUT_BUILDER_DND_TYPE,
     disabled: !draggable,
     data: nodeDragData(node.id, node.atom)
   });
@@ -122,14 +146,16 @@ function BuilderNodeRow({
         <code>{code}</code>
       </button>
       <div className="fx-builder-row__actions" aria-label={`${node.id} actions`}>
-        <FxActionButton
-          icon="add-child"
-          label={childLabel(node, locked)}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddChild(node.id);
-          }}
-        />
+        {onAddChild ? (
+          <FxActionButton
+            icon="add-child"
+            label={childLabel(node, locked)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddChild(node.id);
+            }}
+          />
+        ) : null}
         {onAddAfter ? (
           <FxActionButton
             icon="add-after"
@@ -220,8 +246,8 @@ function BuilderBodyTree({
 }) {
   const { ref, isDropTarget } = useDroppable({
     id: "builder-body-tree-drop-end",
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
-    accept: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    type: LAYOUT_BUILDER_DND_TYPE,
+    accept: LAYOUT_BUILDER_DND_TYPE,
     disabled: !dragActive,
     data: dropTargetData({
       parentId: BODY_LAYOUT_ROOT_ID,
@@ -251,63 +277,134 @@ function BuilderBodyTree({
   );
 }
 
-function BuilderBodyRoot({
-  children,
-  currentWindow,
-  inspectedAnchor,
-  onAddChild,
-  onSelect
-}) {
-  if (!currentWindow) {
-    return children;
-  }
-
-  return (
-    <ul className="fx-builder-tree fx-builder-tree--body-root">
-      <li className="fx-builder-tree__item">
-        <BuilderNodeRow
-          code="gui_window_body"
-          draggable={false}
-          inspectedAnchor={inspectedAnchor}
-          label={bodyFlowLabel(currentWindow)}
-          locked
-          node={{ id: BODY_LAYOUT_ROOT_ID }}
-          onAddChild={onAddChild}
-          onSelect={onSelect}
-        />
-        {children}
-      </li>
-    </ul>
-  );
-}
-
 function BuilderPaletteItem({
+  atom,
   currentWindow,
-  paletteDragging
+  paletteDraggingAtom
 }) {
   const { ref, isDragSource } = useDraggable({
-    id: "builder-palette-frame",
-    type: HORIZONTAL_FLOW_BUILDER_DND_TYPE,
+    id: `builder-palette-${atom}`,
+    type: LAYOUT_BUILDER_DND_TYPE,
     disabled: !currentWindow,
-    data: paletteDragData(FRAME_ATOM_ID)
+    data: paletteDragData(atom)
   });
+  const anchor =
+    atom === HORIZONTAL_FLOW_ATOM_ID
+      ? "horizontal_flow_palette_item"
+      : "frame_palette_item";
 
   return (
     <button
       ref={ref}
       className={[
         "fx-builder-palette__item",
-        paletteDragging || isDragSource ? "is-dragging" : ""
+        paletteDraggingAtom === atom || isDragSource ? "is-dragging" : ""
       ]
         .filter(Boolean)
         .join(" ")}
-      data-anchor="frame_palette_item"
+      data-anchor={anchor}
       disabled={!currentWindow}
       type="button"
     >
-      <span>Frame</span>
-      <code>frame</code>
+      <span>{atomLabel(atom)}</span>
+      <code>{atomCode(atom)}</code>
     </button>
+  );
+}
+
+function BuilderShellTree({
+  currentWindow,
+  inspectedAnchor,
+  layoutChildren,
+  model,
+  dragActive,
+  draggingId,
+  dropTarget,
+  onAddAfter,
+  onAddChild,
+  onRemove,
+  onSelect
+}) {
+  const root = model?.root;
+  if (!currentWindow || !root) {
+    return null;
+  }
+
+  const titlebar = root.children?.[0];
+  const titleLabel = titlebar?.children?.[0];
+  const dragHandle = titlebar?.children?.[1];
+  const body = root.children?.[1];
+
+  return (
+    <ul className="fx-builder-tree fx-builder-tree--body-root">
+      <li className="fx-builder-tree__item">
+        <BuilderNodeRow
+          code={root.id}
+          draggable={false}
+          inspectedAnchor={inspectedAnchor}
+          label={shellNodeLabel(root)}
+          locked
+          node={{ id: root.id }}
+          onSelect={onSelect}
+        />
+        <ul className="fx-builder-tree">
+          {titlebar ? (
+            <li className="fx-builder-tree__item">
+              <BuilderNodeRow
+                code={titlebar.id}
+                draggable={false}
+                inspectedAnchor={inspectedAnchor}
+                label={shellNodeLabel(titlebar)}
+                locked
+                node={{ id: titlebar.id }}
+                onSelect={onSelect}
+              />
+              <ul className="fx-builder-tree">
+                {[titleLabel, dragHandle].filter(Boolean).map((node) => (
+                  <li className="fx-builder-tree__item" key={node.id}>
+                    <BuilderNodeRow
+                      code={node.id}
+                      draggable={false}
+                      inspectedAnchor={inspectedAnchor}
+                      label={shellNodeLabel(node)}
+                      locked
+                      node={{ id: node.id }}
+                      onSelect={onSelect}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ) : null}
+          {body ? (
+            <li className="fx-builder-tree__item">
+              <BuilderNodeRow
+                code={body.id}
+                draggable={false}
+                inspectedAnchor={inspectedAnchor}
+                label={bodyFlowLabel(currentWindow)}
+                locked
+                node={{ id: BODY_LAYOUT_ROOT_ID, atom: HORIZONTAL_FLOW_ATOM_ID }}
+                onAddChild={onAddChild}
+                onSelect={onSelect}
+              />
+              <BuilderNodeList
+                dragActive={dragActive}
+                dropTarget={dropTarget}
+                draggingId={draggingId}
+                inspectedAnchor={inspectedAnchor}
+                nodes={layoutChildren}
+                onAddAfter={onAddAfter}
+                onAddChild={onAddChild}
+                onRemove={onRemove}
+                onSelect={onSelect}
+                parentId={BODY_LAYOUT_ROOT_ID}
+              />
+            </li>
+          ) : null}
+        </ul>
+      </li>
+    </ul>
   );
 }
 
@@ -315,23 +412,28 @@ export function BuilderPanel({
   currentWindow,
   inspectedAnchor,
   draggingId = null,
-  paletteDragging = false,
+  paletteDraggingAtom = null,
   dropTarget,
+  model,
   onAddAfter,
   onAddChild,
   onRemove,
   onSelect
 }) {
   const layoutChildren = currentWindow?.layoutChildren ?? [];
-  const dragActive = Boolean(draggingId || paletteDragging);
+  const dragActive = Boolean(draggingId || paletteDraggingAtom);
 
   return (
     <FxFrame title="Builder" className="fx-editor-panel fx-builder-panel" data-anchor="builder_panel">
       <div className="fx-builder-palette" aria-label="Builder palette">
-        <BuilderPaletteItem
-          currentWindow={currentWindow}
-          paletteDragging={paletteDragging}
-        />
+        {[FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID].map((atom) => (
+          <BuilderPaletteItem
+            atom={atom}
+            currentWindow={currentWindow}
+            key={atom}
+            paletteDraggingAtom={paletteDraggingAtom}
+          />
+        ))}
       </div>
       <BuilderBodyTree
         childrenCount={layoutChildren.length}
@@ -341,25 +443,19 @@ export function BuilderPanel({
         <div className="fx-builder-body__header">
           <span>Component tree</span>
         </div>
-        <BuilderBodyRoot
+        <BuilderShellTree
           currentWindow={currentWindow}
+          dragActive={dragActive}
+          draggingId={draggingId}
+          dropTarget={dropTarget}
           inspectedAnchor={inspectedAnchor}
+          layoutChildren={layoutChildren}
+          model={model}
+          onAddAfter={onAddAfter}
           onAddChild={onAddChild}
+          onRemove={onRemove}
           onSelect={onSelect}
-        >
-          <BuilderNodeList
-            dragActive={dragActive}
-            dropTarget={dropTarget}
-            draggingId={draggingId}
-            inspectedAnchor={inspectedAnchor}
-            nodes={layoutChildren}
-            onAddAfter={onAddAfter}
-            onAddChild={onAddChild}
-            onRemove={onRemove}
-            onSelect={onSelect}
-            parentId={BODY_LAYOUT_ROOT_ID}
-          />
-        </BuilderBodyRoot>
+        />
       </BuilderBodyTree>
     </FxFrame>
   );

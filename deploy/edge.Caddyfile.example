@@ -4,7 +4,7 @@ labtorio.tyrode.dev {
 	}
 
 	basicauth @protected {
-		{$LABTORIO_BASIC_AUTH_USER} {$LABTORIO_BASIC_AUTH_HASH}
+		{$LABTORIO_BASIC_AUTH_USER} {$LABTORIO_BASIC_AUTH_GENERATED_HASH}
 	}
 
 	reverse_proxy labtorio:8080

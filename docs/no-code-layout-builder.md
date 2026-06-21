@@ -1,8 +1,8 @@
-# No-Code Frame And Horizontal Flow Builder Spec
+# No-Code Layout Builder Spec
 
 This product spec covers the first no-code engine slice in the editor. It
-implements constrained Frame insertion inside the current top-level Window body
-flow, with Horizontal Flow insertion available inside Frames for nested layout.
+implements constrained Frame and Flow insertion inside the current top-level
+Window body flow.
 
 ## Problem Frame
 
@@ -14,8 +14,9 @@ is not a general page builder. It is a Factorio-safe no-code surface that
 mutates the shared GUI model with approved primitives.
 
 The real-game split reference is a Window body `agui::HorizontalFlow` whose
-direct children are `agui::Frame` elements. The editor therefore treats Flow as
-layout structure and Frame as the visible split/container atom.
+direct children are `agui::Frame` elements. The editor therefore treats Flow and
+Frame as separate Factorio GUI element atoms: Flow owns ordered child layout and
+spacing, while Frame owns the visible split/container surface.
 
 Freeform pixel dragging remains out of scope. Drag/drop in this slice means
 choosing a parent flow and ordered insertion index.
@@ -49,8 +50,10 @@ The editor rail contains three pinned sections:
   title, width, height, create/recreate, body-flow toggle, reset
 
 [Builder]
-  [Palette: drag-only Frame]
-  [Scroll: Window body tree]
+  [Palette: drag-only Frame, Horizontal Flow]
+  [Scroll: full generated component tree]
+    [Non-deletable Window frame root]
+    [Non-deletable titlebar flow, title label, header filler]
     [Non-deletable Window body flow root]
     [Drop slots and ghost blocks under the root]
     [Child rows with add child, add after, remove]
@@ -66,12 +69,15 @@ The editor rail contains three pinned sections:
   Reset defaults
 ```
 
-The canvas remains the visual preview. It accepts drops into the Window body
-and into user-created Horizontal Flows. The Window header/titlebar is locked and
-is not a builder drop target.
+The canvas remains the visual preview. It accepts legal drops into the Window
+body, user-created Frames, and user-created Horizontal Flows. The Window
+root/header/titlebar shell is visible in the component tree but locked.
 
-The Builder tree is the only structure navigator. It has a bounded height and
-scrolls when nested flows would otherwise crowd the Inspector.
+The Builder tree is the structure navigator for the generated Lua hierarchy. It
+shows locked shell nodes such as `gui_window`, `gui_window_titlebar`,
+`gui_window_title`, `gui_window_drag_handle`, and `gui_window_body`, followed by
+editable authored layout specs under the body flow. It has a bounded height and
+scrolls when nested layout would otherwise crowd the Inspector.
 
 The Settings panel is the last section in the editor rail and is collapsed by
 default. It owns authored Horizontal Flow assumptions until Factorio defaults
@@ -118,8 +124,9 @@ this slice without treating CSS as source of truth.
 
 ## Drop Rules
 
-- Palette drops create a new `frame` spec.
-- The palette tile does not append on click; creation requires an explicit drop
+- Palette drops create either a new `frame` spec or a new `horizontal-flow`
+  spec, based on the dragged tile.
+- Palette tiles do not append on click; creation requires an explicit drop
   target.
 - Row drops move an existing spec.
 - Legal parents alternate by primitive: `gui_window_body` and user-created
@@ -127,9 +134,10 @@ this slice without treating CSS as source of truth.
   Flows.
 - Illegal parents include the Window root, titlebar, title label, drag filler,
   self, and descendants of the moved source.
-- The Builder tree shows `gui_window_body` as the fixed Window body flow root.
-  It can be selected and can receive children, but it cannot be dragged,
-  deleted, or reordered because the Window shell owns that Factorio flow.
+- The Builder tree shows the generated Window shell. Shell nodes can be
+  selected for inspection but cannot be dragged, deleted, or reordered.
+  `gui_window_body` is the one locked shell node that can receive authored
+  children, because the Window shell owns that Factorio body flow.
 - `gui_window_body` is horizontal or vertical based on the Window creation
   action. Editor-created body children are Frames in this slice.
 - Drop placement is an ordered index in the parent, represented by ghost blocks.
@@ -155,6 +163,7 @@ this slice without treating CSS as source of truth.
 | `empty-window-horizontal` | Window exists with `bodyDirection: "horizontal"`, no `layoutChildren` | Builder palette enabled, non-deletable horizontal `gui_window_body` root visible, body/canvas accepts first child Frame. |
 | `empty-window-vertical` | Window exists with `bodyDirection: "vertical"`, no `layoutChildren` | Builder palette enabled, non-deletable vertical `gui_window_body` root visible, body/canvas accepts first child Frame. |
 | `one-frame` | One root Frame | Row selects the same canvas/inspector node, Lua exports one nested `frame`. |
+| `full-shell-tree` | Window exists | Builder tree shows Window Frame -> titlebar Flow -> Label/Filler and Window body Flow -> authored children. |
 | `frame-with-flow` | Root Frame with one child Horizontal Flow | Child is visible in tree and canvas, inspector has rows for both. |
 | `nested-split` | Frame -> Horizontal Flow -> Frame | Nested split remains model-consistent and exportable. |
 | `cross-parent-move` | Two root Frames, one nested Frame | Drag can move a Frame between body and another compatible flow, preserving order. |
@@ -166,6 +175,7 @@ this slice without treating CSS as source of truth.
 - `layout_settings_panel`
 - `layout_settings_toggle`
 - `frame_palette_item`
+- `horizontal_flow_palette_item`
 - `builder_body_tree`
 - `builder_ghost_marker`
 - `gui_window_body`
@@ -174,7 +184,8 @@ this slice without treating CSS as source of truth.
 
 ## Visual Gate
 
-Before expanding to Label, Frame, or Action Button insertion, verify:
+Before expanding to Label, Action Button, or additional Frame-style insertion,
+verify:
 
 - ghost placement is visible in both the builder list and canvas;
 - canvas ghost placement expands smoothly so affected sibling flows slide into

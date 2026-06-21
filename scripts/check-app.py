@@ -38,11 +38,11 @@ REQUIRED_FILES = [
     "scripts/copy-static-docs.mjs",
     "scripts/check-hover-drop-geometry.mjs",
     "scripts/check-layout-tree.mjs",
-    "tests/browser/horizontal-flow-builder.spec.js",
+    "tests/browser/layout-builder.spec.js",
     "README.md",
     "AGENTS.md",
     "docs/README.md",
-    "docs/no-code-horizontal-flow-builder.md",
+    "docs/no-code-layout-builder.md",
     "docs/atom-specs.md",
     "docs/hosting.md",
     "docs/spec-factory.md",
@@ -53,6 +53,7 @@ REQUIRED_FILES = [
     "deploy/labtorio.Caddyfile",
     "deploy/edge-compose.yaml.example",
     "deploy/edge.Caddyfile.example",
+    "deploy/edge-basic-auth-entrypoint.sh",
 ]
 
 REQUIRED_ANCHORS = [
@@ -68,6 +69,7 @@ REQUIRED_ANCHORS = [
     "layout_settings_toggle",
     "layout_setting_horizontal_flow_min_width",
     "frame_palette_item",
+    "horizontal_flow_palette_item",
     "builder_ghost_marker",
     "gui_shadow_toggle",
 ]
@@ -115,11 +117,11 @@ def main() -> int:
             "scripts/copy-static-docs.mjs",
             "scripts/check-hover-drop-geometry.mjs",
             "scripts/check-layout-tree.mjs",
-            "tests/browser/horizontal-flow-builder.spec.js",
+            "tests/browser/layout-builder.spec.js",
             "README.md",
             "AGENTS.md",
             "docs/README.md",
-            "docs/no-code-horizontal-flow-builder.md",
+            "docs/no-code-layout-builder.md",
             "docs/atom-specs.md",
             "docs/hosting.md",
             "docs/spec-factory.md",
@@ -130,6 +132,7 @@ def main() -> int:
             "deploy/labtorio.Caddyfile",
             "deploy/edge-compose.yaml.example",
             "deploy/edge.Caddyfile.example",
+            "deploy/edge-basic-auth-entrypoint.sh",
     ]
     scanned_files.extend(
         str(path.relative_to(ROOT))

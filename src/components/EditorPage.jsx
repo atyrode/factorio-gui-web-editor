@@ -38,7 +38,7 @@ import {
 import {
   readBuilderDrag,
   readBuilderDropTarget
-} from "../factorioBuilderDnd.js";
+} from "../factorioLayoutBuilderDnd.js";
 import {
   DEFAULT_LAYOUT_SETTINGS,
   LAYOUT_SETTING_LIMITS,
@@ -1573,8 +1573,9 @@ export function EditorPage() {
             onAddAfter={addLayoutNodeAfter}
             onAddChild={addLayoutNodeChild}
             onRemove={removeLayoutSubtree}
-            paletteDragging={builderDrag?.kind === "palette"}
+            paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
             onSelect={selectBuilderNode}
+            model={currentModel}
           />
 
           <FxFrame title="Inspector" className="fx-editor-panel fx-editor-panel--inspector">
