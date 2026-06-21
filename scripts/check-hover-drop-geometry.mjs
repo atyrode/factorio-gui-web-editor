@@ -51,13 +51,73 @@ function flexWidths({ parentWidth, gap, minimumWidth, previewBasis }) {
 }
 
 const realFlowRule = ruleFor(".fx-gui-horizontal-flow");
+const realFrameRule = ruleFor(".fx-gui-frame");
+const realFrameBevelRule = ruleFor(".fx-gui-frame::before");
+const bodyRule = ruleFor(".fx-gui-window__body");
+const shadowDisabledWindowRule = ruleFor('.fx-gui-window[data-fx-shadows="hidden"]');
 const previewRule = ruleFor(".fx-gui-flow-drop-preview-slot.is-expanded");
+const previewFrameRule = ruleFor(".fx-gui-frame.fx-gui-flow-drop-preview-slot.is-expanded");
 const targetedDropRule = ruleFor(".fx-gui-flow-drop-target.is-targeted");
 
 assert.equal(
   declaration(realFlowRule, "flex"),
   "1 1 0",
   "real Horizontal Flow sizing contract changed; update hover/drop preview tests with the new model"
+);
+assert.match(
+  declaration(realFlowRule, "background"),
+  /transparent/,
+  "real Horizontal Flow must remain a layout container, not the visible body Frame skin"
+);
+assert.equal(
+  declaration(realFlowRule, "box-shadow"),
+  "none",
+  "real Horizontal Flow must not paint the inset Frame surface"
+);
+assert.equal(
+  declaration(realFrameRule, "flex"),
+  "1 1 0",
+  "real Frame sizing contract changed; update hover/drop preview tests with the new model"
+);
+assert.equal(
+  declaration(realFrameRule, "box-shadow"),
+  "none",
+  "real Frame bevel must be painted by its graphical edge pseudo-element, not by layout shadow"
+);
+assert.match(
+  declaration(realFrameRule, "background"),
+  /#403f40/,
+  "real Frame fill must stay lighter than the parent body substrate"
+);
+assert.match(
+  declaration(realFrameRule, "border"),
+  /1px solid #0a0909/,
+  "real Frame must keep a hard dark outer edge for the inset surface"
+);
+assert.match(
+  declaration(realFrameBevelRule, "box-shadow"),
+  /inset 0 -1px 0 rgba\(255, 255, 255, 0\.20\)/,
+  "real Frame bevel must include the bottom inner glint visible with GUI shadows disabled"
+);
+assert.match(
+  declaration(realFrameBevelRule, "box-shadow"),
+  /inset 0 2px 2px rgba\(0, 0, 0, 0\.58\)/,
+  "real Frame bevel must include a dark top recessed lip"
+);
+assert.doesNotMatch(
+  declaration(realFrameBevelRule, "box-shadow"),
+  /inset 0 1px 0 rgba\(255/,
+  "real Frame must not add the extra top highlight line under its border"
+);
+assert.doesNotMatch(
+  declaration(realFrameRule, "box-shadow"),
+  /1px 1px 0/,
+  "real Frame must not use the old raised bottom/right drop shadow"
+);
+assert.doesNotMatch(
+  declaration(realFrameRule, "box-shadow"),
+  /(?:^|,)\s*-?\d+px 0 2px -2px/,
+  "real Frame must not cast external side shadows onto the parent substrate"
 );
 assert.equal(
   declaration(previewRule, "flex-grow"),
@@ -75,14 +135,34 @@ assert.equal(
   "hover preview must not add a nonzero base width before flex distribution"
 );
 assert.equal(
-  declaration(previewRule, "min-width"),
-  "var(--fx-horizontal-flow-min-width, 168px)",
-  "hover preview must use the same atom min-width variable as a real Horizontal Flow"
+  declaration(previewFrameRule, "min-width"),
+  "var(--fx-gui-frame-min-width, 168px)",
+  "hover preview must use the same Frame min-width variable as a real Frame"
 );
 assert.equal(
   declaration(targetedDropRule, "background"),
   "transparent",
   "drop hit targets are collision geometry and must not paint over previews"
+);
+assert.equal(
+  ruleFor(".fx-gui-window__body::before"),
+  null,
+  "Window body must not use a fake top rail or overlay above child flows"
+);
+assert.doesNotMatch(
+  declaration(bodyRule, "box-shadow"),
+  /(?:0 -1px 0|inset 0 [1-9])/,
+  "Window body must not draw a continuous top stroke over body child split gaps"
+);
+assert.match(
+  declaration(bodyRule, "box-shadow"),
+  /^none$/,
+  "Window body must act as substrate only; child Frames own top and bottom split edges"
+);
+assert.equal(
+  declaration(shadowDisabledWindowRule, "box-shadow"),
+  "none",
+  "GUI shadow toggle must disable only the Window cast shadow through data-fx-shadows"
 );
 
 for (const selector of [
@@ -105,13 +185,38 @@ assert.match(
 );
 assert.match(
   guiSource,
-  /function CanvasDropPreviewSlot[\s\S]*<GuiHorizontalFlowShell/,
-  "canvas preview must render through the same Horizontal Flow shell as the dropped node"
+  /function GuiFrameShell/,
+  "Frame rendering must expose a shared atom shell"
+);
+assert.match(
+  guiSource,
+  /function windowBodyStyleVariables[\s\S]*--fx-window-body-horizontal-spacing[\s\S]*reference\.horizontalSpacing/,
+  "Window body rendering must bind horizontal spacing from the generated body flow style reference"
+);
+assert.match(
+  guiSource,
+  /function windowBodyStyleVariables[\s\S]*--fx-window-body-vertical-spacing[\s\S]*reference\.verticalSpacing/,
+  "Window body rendering must bind vertical spacing from the generated body flow style reference"
+);
+assert.match(
+  guiSource,
+  /function CanvasDropPreviewSlot[\s\S]*const PreviewShell[\s\S]*<PreviewShell/,
+  "canvas preview must render through the same atom shell as the dropped node"
 );
 assert.match(
   guiSource,
   /export function GuiHorizontalFlow[\s\S]*<GuiHorizontalFlowShell/,
   "real Horizontal Flow nodes must render through the shared atom shell"
+);
+assert.match(
+  guiSource,
+  /export function GuiFrame[\s\S]*<GuiFrameShell/,
+  "real Frame nodes must render through the shared atom shell"
+);
+assert.match(
+  guiSource,
+  /function GuiLayoutNode[\s\S]*props\.node\?\.primitive === "frame"[\s\S]*<GuiFrame/,
+  "layout node rendering must dispatch Frame primitives to the Frame atom"
 );
 assert.doesNotMatch(
   guiSource,
@@ -145,7 +250,7 @@ const widths = flexWidths({
 assert.equal(
   Math.round(widths.preview),
   Math.round(widths.existing),
-  "one-flow insert-left hover preview must split width exactly like the final two-flow layout"
+  "one-frame insert-left hover preview must split width exactly like the final two-frame layout"
 );
 
 console.log("Hover/drop geometry checks passed.");

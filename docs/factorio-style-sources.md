@@ -142,7 +142,7 @@ The current CSS is split by responsibility:
 | `fx-window-titlebar-*` | inspected `frame_header_flow`: `48` height, `42` content height, `6` bottom padding, `12` spacing |
 | `fx-window-drag-handle-*` | inspected `draggable_space_header`: `36` height and `6` left/right margins |
 | `fx-window-body-horizontal-spacing` | inspected `inset_frame_container_horizontal_flow` spacing of `18` |
-| `fx-window-body-vertical-spacing` | inspected `inside_deep_frame` vertical spacing of `0`, retained for vertical body variants |
+| `fx-window-body-vertical-spacing` | editor-authored vertical body split gutter; currently mirrors the horizontal body split spacing until graphical Factorio captures prove a separate vertical value |
 | `fx-gold` | headings and active primary labels |
 | `fx-orange` | selected tab/button accent |
 | `fx-blue` | links and secondary info values |
@@ -193,14 +193,49 @@ generic vanilla top-level window class, not `MapEditorGui`.
 | Header action slots | `SearchBar`, browse-arrow `agui::HorizontalFlow`, `CloseButton` | SearchBar relative `[1272, 0]`, size `36 x 36`, content `24 x 24`, style `frame_action_button`; CloseButton relative `[1404, 0]`, size `36 x 36`, content `24 x 24`, style `close_button`; the browse-arrow group occupies the `72 x 36` gap between them |
 | Body flow | `agui::HorizontalFlow`, part of `inset_frame_container_frame` and derived from `inset_frame_container_horizontal_flow` | current reference size `1440 x 792`, content `1440 x 792`, horizontal spacing `18` with inherited horizontal flow spacing `6`, maximum vertical squash `540` |
 
-The official Factorio API docs list `flow` as the runtime primitive for
-horizontal or vertical child layout. The editor therefore treats
-`agui::HorizontalFlow` as one reusable atom whose direction is fixed to
-`horizontal`; `frame_header_flow`, `inset_frame_container_horizontal_flow`, and
-the compact header action group are role/style variants of that atom. The
-captured header/body numbers above are evidence fixtures. They are not product
-defaults, and they are not exported as general style formulas until additional
-captures or an in-game validation harness prove the rule.
+The body split reference shows the content `agui::HorizontalFlow` with direct
+visible `agui::Frame` children. That distinction matters for the browser
+renderer and Lua export: Flow owns ordered layout and spacing, while Frame owns
+the visible deep/inset surface. A body split should therefore be modeled as
+`HorizontalFlow -> Frame, Frame`, not as sibling Horizontal Flows that paint
+their own visible container chrome. Keeping the split gutter in the parent flow also better
+matches Factorio's shared-border/T-junction style behavior, where the separator
+reads as part of the surrounding frame material rather than as a capped child
+overlay.
+
+The browser renderer follows a substrate rule for these splits: the parent body
+or parent flow supplies the panel material visible through spacing gaps, while
+the child Frames own the top, bottom, and side edge strokes. The parent body
+must not draw continuous top or bottom rim shadows across split gaps, because
+those strokes visually cap the separator instead of letting it connect into the
+surrounding frame material.
+
+The same substrate rule applies to vertical Window bodies in the editor. Even
+though one captured `inside_deep_frame` reference reported zero vertical
+spacing, the authored vertical body split uses an explicit gutter so stacked
+sibling Frames do not visually merge into one surface. Treat this as an editor
+split rule until a graphical Factorio capture establishes a more precise
+vertical body-flow style.
+
+The editor's GUI shadow toggle mirrors the purpose of Factorio's `Ctrl+F7`
+shadow inspection: it disables cast shadows for review without removing bevel
+or inset edge styling. A disabled shadow state should make external depth easier
+to inspect while preserving the Window and Frame graphical-set edge rules above.
+
+Exact `inside_deep_frame` pixel parity is deferred. The current browser Frame
+renderer is a bounded approximation that keeps the model/export structure
+honest, but it should not be treated as a completed reproduction of Factorio's
+graphical-set edge pixels.
+
+The official Factorio API docs list `flow` and `frame` as distinct runtime
+element types. The editor therefore treats `agui::HorizontalFlow` and
+`agui::Frame` as separate atoms. Horizontal and vertical are directions on
+layout-capable elements; style names such as `frame_header_flow`,
+`inset_frame_container_horizontal_flow`, and `inside_deep_frame` are style or
+role variants, not atom identities. The captured header/body numbers above are
+evidence fixtures. They are not product defaults, and they are not exported as
+general style formulas until additional captures or an in-game validation
+harness prove the rule.
 
 The current Window captures in this section were taken with Factorio UI scale
 set to Manual (pixels) `150%`. That is capture metadata, not a completed scale

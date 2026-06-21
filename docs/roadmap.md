@@ -49,9 +49,9 @@ offer constrained operations that preserve translatability.
 
 ## Accepted Builder Operations
 
-The first implemented no-code slice is the Horizontal Flow builder described in
-[no-code-horizontal-flow-builder.md](no-code-horizontal-flow-builder.md). It
-adds a Builder panel, a draggable Horizontal Flow palette item, ordered
+The first implemented no-code slice is the constrained layout builder described
+in [no-code-layout-builder.md](no-code-layout-builder.md). It
+adds a Builder panel, draggable Frame and Horizontal Flow palette items, ordered
 body/nested insertion, subtree removal, ghost drop blocks, recursive preview,
 inspector projection, authored layout settings with reset, and Lua export. It
 still edits only the constrained Factorio GUI model. Browser geometry
@@ -234,7 +234,8 @@ Factorio headless through the normal mod API.
 Status: current seed scope.
 
 - Start with an empty canvas.
-- Create one Factorio-like window shell on command.
+- Create one Factorio-like window shell on command with a chosen Horizontal
+  Flow or Vertical Flow body.
 - Render a title bar, drag-handle strip, and empty body.
 - Use Factorio-inspired local tokens without copying Wube assets.
 - Validate that no bundled domain example is required by the app.

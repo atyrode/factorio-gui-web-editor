@@ -3,7 +3,10 @@ export {
   DEFAULT_WINDOW_SIZE,
   frameStyleReference,
   getWindowInspectorRows,
+  HORIZONTAL_FLOW_DIRECTION,
+  normalizeWindowBodyDirection,
   normalizeWindowSize,
+  VERTICAL_FLOW_DIRECTION,
   WINDOW_SIZE_LIMITS
 } from "./factorioModel.js";
 
@@ -15,7 +18,7 @@ function luaName(value) {
   return String(value).replace(/[^a-zA-Z0-9_]/g, "_");
 }
 
-function flowStyleAssignmentLines(variableName, node) {
+function styleAssignmentLines(variableName, node) {
   const styleReference = node?.styleReference ?? {};
   const lines = [];
 
@@ -64,21 +67,23 @@ function flowStyleAssignmentLines(variableName, node) {
   return lines;
 }
 
-function renderFlowNodeLua(parentVariableName, node, depth = 1) {
+function renderLayoutNodeLua(parentVariableName, node, depth = 1) {
   const indent = "  ".repeat(depth);
   const variableName = luaName(node.id);
-  const styleLines = flowStyleAssignmentLines(variableName, node)
+  const styleLines = styleAssignmentLines(variableName, node)
     .map((line) => `${indent}${line.trimStart()}`)
     .join("\n");
   const childLines = (node.children ?? [])
-    .map((child) => renderFlowNodeLua(variableName, child, depth))
+    .map((child) => renderLayoutNodeLua(variableName, child, depth))
     .join("\n");
+  const directionLine = node.direction
+    ? `${indent}  direction = ${luaString(node.direction)},\n`
+    : "";
 
   return `${indent}local ${variableName} = ${parentVariableName}.add{
-${indent}  type = "flow",
+${indent}  type = ${luaString(node.primitive)},
 ${indent}  name = ${luaString(node.id)},
-${indent}  direction = ${luaString(node.direction)},
-${indent}  style = ${luaString(node.style)}
+${directionLine}${indent}  style = ${luaString(node.style)}
 ${indent}}
 ${styleLines}${childLines ? `\n${childLines}` : ""}`;
 }
@@ -98,10 +103,10 @@ export function renderWindowLua(model) {
   const dragHandle = luaName(dragNode.id);
   const body = luaName(bodyNode.id);
   const style = root.styleReference;
-  const titlebarStyleLines = flowStyleAssignmentLines(titlebar, root.children[0]);
-  const bodyStyleLines = flowStyleAssignmentLines(body, bodyNode);
+  const titlebarStyleLines = styleAssignmentLines(titlebar, root.children[0]);
+  const bodyStyleLines = styleAssignmentLines(body, bodyNode);
   const bodyChildLines = (bodyNode.children ?? [])
-    .map((child) => renderFlowNodeLua(body, child))
+    .map((child) => renderLayoutNodeLua(body, child))
     .join("\n");
 
   const locationLua = root.location

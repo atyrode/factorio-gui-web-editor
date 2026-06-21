@@ -70,7 +70,7 @@ proxy, but serves Vite with HMR configured for
 It stores container `node_modules` and Vite cache data in Docker named volumes
 so hot reload does not leave host checkout files owned by the container user.
 Public deployments require Basic Auth credentials in a local `.env`; see
-[docs/hosting.md](docs/hosting.md) for the hash generation and edge proxy
+[docs/hosting.md](docs/hosting.md) for the `.env` shape and edge proxy
 boundary.
 
 ## Design Direction

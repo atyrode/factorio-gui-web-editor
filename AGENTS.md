@@ -65,6 +65,19 @@ These instructions apply to the whole repository.
   Script-visible GUI/style fields can be dumped by a graphical companion mod,
   but renderer-computed overlay fields still need graphical inspection.
 
+## Visual Work Tracking
+
+- For nuanced visual work with overlapping model, styling, shadow, or layout
+  concerns, create or update a tracked issue or owning doc section with explicit
+  acceptance criteria before implementation.
+- Keep acceptance criteria tied to the user's visual language and reference
+  crops, not only to inferred technical abstractions.
+- Treat inspection toggles and structural checks as aids, not completion, unless
+  the tracked criteria explicitly define them as the deliverable.
+- Do not mark visual work complete without fresh screenshot evidence for the
+  requested states, including shadow-disabled captures when Factorio `Ctrl+F7`
+  behavior is part of the request.
+
 ## Validation
 
 - Run the narrowest meaningful checks before committing.

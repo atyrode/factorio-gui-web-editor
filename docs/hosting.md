@@ -31,45 +31,43 @@ http://labtorio:8080
 
 Keep the public Caddy container in a neutral directory such as
 `~/edge-proxy`, not inside either app repository. The examples in
-`deploy/edge-compose.yaml.example` and `deploy/edge.Caddyfile.example` can be
-copied there.
+`deploy/edge-compose.yaml.example`, `deploy/edge.Caddyfile.example`, and
+`deploy/edge-basic-auth-entrypoint.sh` can be copied there.
 
 Before starting or recreating the edge proxy, create this repository's local
 `.env` and set Basic Auth credentials. Keep the file local; it is ignored by
-git. The recommended setup command is:
-
-```sh
-scripts/setup-basic-auth-env.sh
-docker compose -f /home/alex/edge-proxy/compose.yaml restart caddy
-```
-
-The script prompts for the password without echoing it, generates a Caddy
-bcrypt hash, and writes `.env` with this shape:
+git:
 
 ```dotenv
 LABTORIO_BASIC_AUTH_USER=labtorio
-LABTORIO_BASIC_AUTH_HASH='<bcrypt-hash-from-caddy-hash-password>'
+LABTORIO_BASIC_AUTH_PASSWORD='<choose-a-password>'
 ```
 
-The hash must be the exact Caddy bcrypt output. It should start like `$2a$`,
-`$2b$`, or `$2y$` and contain three `$` separators. A raw password, SHA-256
-digest, or base64 value will not work.
+Use those same username and password values in the browser Basic Auth prompt.
+The quotes are only `.env` syntax for Docker Compose; they are not part of the
+browser password.
 
-If you generate the hash manually, run Caddy in prompt mode so the plaintext
-password does not land in shell history:
+Restart the proxy after editing `.env`:
 
 ```sh
-docker run --rm -it caddy:2.9-alpine caddy hash-password
+docker compose -f /home/alex/edge-proxy/compose.yaml restart caddy
 ```
 
 When the edge proxy lives in `~/edge-proxy`, point its compose file at the repo
-`.env` so the secret source stays in one ignored file:
+`.env` so the secret source stays in one ignored file. The compose file also
+mounts the copied entrypoint script that turns the password into the internal
+Caddy auth value at container startup:
 
 ```yaml
 services:
   caddy:
     env_file:
       - /home/alex/factorio-gui-web-editor/.env
+    entrypoint:
+      - /bin/sh
+      - /usr/local/bin/edge-basic-auth-entrypoint
+    volumes:
+      - ./edge-basic-auth-entrypoint.sh:/usr/local/bin/edge-basic-auth-entrypoint:ro
 ```
 
 The Labtorio route is:
@@ -81,7 +79,7 @@ labtorio.tyrode.dev {
 	}
 
 	basicauth @protected {
-		{$LABTORIO_BASIC_AUTH_USER} {$LABTORIO_BASIC_AUTH_HASH}
+		{$LABTORIO_BASIC_AUTH_USER} {$LABTORIO_BASIC_AUTH_GENERATED_HASH}
 	}
 
 	reverse_proxy labtorio:8080
