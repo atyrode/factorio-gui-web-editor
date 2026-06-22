@@ -1,7 +1,7 @@
 # No-Code Layout Builder Spec
 
-This product spec covers the first no-code engine slice in the editor. It
-implements constrained Frame and Flow insertion inside the current top-level
+This product spec covers the current no-code engine slice in the editor. It
+implements constrained Factorio atom insertion inside the current top-level
 Window body flow.
 
 ## Problem Frame
@@ -14,9 +14,10 @@ is not a general page builder. It is a Factorio-safe no-code surface that
 mutates the shared GUI model with approved primitives.
 
 The real-game split reference is a Window body `agui::HorizontalFlow` whose
-direct children are `agui::Frame` elements. The editor therefore treats Flow and
-Frame as separate Factorio GUI element atoms: Flow owns ordered child layout and
-spacing, while Frame owns the visible split/container surface.
+direct children are `agui::Frame` elements. The editor therefore treats Flow,
+Frame, and Filler as separate Factorio GUI element atoms: Flow owns ordered
+child layout and spacing, Frame owns the visible split/container surface, and
+Filler owns generic `empty-widget` spacer behavior.
 
 Freeform pixel dragging remains out of scope. Drag/drop in this slice means
 choosing a parent flow and ordered insertion index.
@@ -39,13 +40,15 @@ under a proposed parent in the constrained recursive layout model.
 - Add a Frame to the Window body.
 - Add a nested Horizontal Flow inside a user-created Frame.
 - Add a Frame inside a user-created Horizontal Flow.
-- Reorder Frames across the body and compatible nested flows.
-- Remove a Frame or Horizontal Flow subtree.
+- Add a Filler spacer to the Window body, user-created Frame, or user-created
+  Horizontal Flow.
+- Reorder authored atoms across the body and compatible nested containers.
+- Remove a Frame, Horizontal Flow, or Filler subtree.
 - Select a builder row and inspect the same model node in the inspector,
   Builder tree, canvas, and Lua output.
-- Navigate implemented Frame and Horizontal Flow children from the Inspector.
-  Child rows display `frame` or `flow.horizontal` and target the child node
-  instead of using a missing placeholder.
+- Navigate implemented Frame, Horizontal Flow, and Filler children from the
+  Inspector. Child rows display `frame`, `flow.horizontal`, or `empty-widget`
+  and target the child node instead of using a missing placeholder.
 
 ## Information Architecture
 
@@ -56,7 +59,7 @@ The editor rail contains three pinned sections:
   title, width, height, create/recreate, body-flow toggle, reset
 
 [Builder]
-  [Palette: drag-only Frame, Horizontal Flow]
+  [Palette: drag/drop Frame, Horizontal Flow, Filler]
   [Scroll: component tree, starting at Window body flow by default]
     [Optional non-deletable Window frame root]
     [Optional non-deletable titlebar flow, title label, header filler]
@@ -77,7 +80,8 @@ The editor rail contains three pinned sections:
 ```
 
 The canvas remains the visual preview. It accepts legal drops into the Window
-body, user-created Frames, and user-created Horizontal Flows. The Window
+body, user-created Frames, and user-created Horizontal Flows. Filler is a leaf
+and does not expose child drop targets. The Window
 root/header/titlebar shell can be shown in the component tree when the Settings
 toggle is enabled; those generated shell rows are locked.
 
@@ -140,15 +144,17 @@ The model hydrates these specs into Factorio nodes only when rendering,
 inspecting, or exporting. `bodyDirection` selects the generated
 `gui_window_body` flow direction and style: horizontal bodies use
 `inset_frame_container_horizontal_flow`, while vertical bodies use
-`inside_deep_frame`. Direct body children are editor-created Frames with
-`type = "frame"` and `style = "inside_deep_frame"`. A Frame can contain a
-Horizontal Flow with `type = "flow"`, `direction = "horizontal"`, and
-`style = "horizontal_flow"` when nested horizontal layout is needed.
+`inside_deep_frame`. Direct body children are authored atom specs validated by
+capability metadata. Frame hydrates to `type = "frame"` and
+`style = "inside_deep_frame"`. Horizontal Flow hydrates to `type = "flow"`,
+`direction = "horizontal"`, and `style = "horizontal_flow"`. Filler hydrates to
+`type = "empty-widget"`, `style = "draggable_space"`, `role: spacer`, stretch
+flags, and `ignored_by_interaction = true`.
 
 Renderer CSS reads those hydrated style facts through custom properties. Lua
-export writes the same supported style assignments onto editor-created Frames
-and Horizontal Flows, preserving current 1:1 editor-to-Lua compatibility for
-this slice without treating CSS as source of truth.
+export writes the same supported style/add assignments onto editor-created
+Frames, Horizontal Flows, and Fillers, preserving current 1:1 editor-to-Lua
+compatibility for this slice without treating CSS as source of truth.
 
 The optional `size` object is authored per layout node. `minimalWidth` and
 `minimalHeight` override the corresponding global layout setting for that node
@@ -168,17 +174,17 @@ Inspector.
 
 ## Drop Rules
 
-- Canvas palette drops create either a new `frame` spec or a new
-  `horizontal-flow` spec, based on the dragged tile.
+- Canvas palette drops create a new spec from the dragged atom metadata.
 - Component-tree palette drops use the same full palette tile and Headless
   Tree foreign drag-object support to create the same constrained specs. Canvas
   and tree drops share the same browser `DataTransfer` payload.
 - Palette tiles do not append on click; creation requires an explicit drop
   target.
 - Tree row drops move an existing spec through Headless Tree's ordered target.
-- Legal parents alternate by primitive: `gui_window_body` and user-created
-  Horizontal Flow nodes accept Frames; user-created Frames accept Horizontal
-  Flows.
+- Legal parents are declared by atom capability metadata. `gui_window_body`
+  accepts implemented authored atoms. User-created Frames and Horizontal Flows
+  accept Frame, Horizontal Flow, and Filler children. Filler is a leaf and
+  accepts no children.
 - Illegal parents include the Window root, titlebar, title label, drag filler,
   self, and descendants of the moved source.
 - The Builder tree starts from `gui_window_body` by default. When the generated
@@ -187,10 +193,15 @@ Inspector.
   locked shell node that can receive authored children, because the Window
   shell owns that Factorio body flow.
 - `gui_window_body` is horizontal or vertical based on the Window creation
-  action. Editor-created body children are Frames in this slice.
+  action. The body can contain authored Frame, Horizontal Flow, and Filler
+  nodes.
 - Frames are vertical containers in this model. Multiple Horizontal Flow
   children inside the same Frame stack vertically; each Horizontal Flow lays out
   its own children left-to-right.
+- The old Frame -> Horizontal Flow -> Frame alternation was an implementation
+  slice, not a Factorio rule. The current rule system remains Factorio-model
+  driven, but it is expressed as atom capabilities rather than one hardcoded
+  alternating parent gate.
 - Tree drop placement is an ordered index in the parent represented by the
   Headless Tree drag line. Tree hover feedback must not insert flow-affecting
   placeholders under the pointer, because that can cause drop-target
@@ -207,9 +218,8 @@ Inspector.
   feedback only. Canvas hit/collision geometry must not paint layout feedback.
 - Canvas hover previews must use the same flex sizing contract as the atom that
   will exist after drop. Highlight paint must not extend the future node's
-  bounds. Previews are atom render states: a Frame preview renders through the
-  same Frame shell as a real Frame, and a nested Horizontal Flow preview renders
-  through the same Horizontal Flow shell as a real Horizontal Flow.
+  bounds. Previews are atom render states: Frame, Horizontal Flow, and Filler
+  previews render through the same shells as their real nodes.
 - Removing a row removes its subtree in this slice.
 
 ## Resize Rules
@@ -233,12 +243,13 @@ Inspector.
 
 | Fixture | State | Expected behavior |
 | --- | --- | --- |
-| `empty-window-horizontal` | Window exists with `bodyDirection: "horizontal"`, no `layoutChildren` | Builder palette enabled, non-deletable horizontal `gui_window_body` root visible, body/canvas accepts first child Frame. |
-| `empty-window-vertical` | Window exists with `bodyDirection: "vertical"`, no `layoutChildren` | Builder palette enabled, non-deletable vertical `gui_window_body` root visible, body/canvas accepts first child Frame. |
+| `empty-window-horizontal` | Window exists with `bodyDirection: "horizontal"`, no `layoutChildren` | Builder palette enabled, non-deletable horizontal `gui_window_body` root visible, body/canvas accepts implemented authored atoms. |
+| `empty-window-vertical` | Window exists with `bodyDirection: "vertical"`, no `layoutChildren` | Builder palette enabled, non-deletable vertical `gui_window_body` root visible, body/canvas accepts implemented authored atoms. |
 | `one-frame` | One root Frame | Row selects the same canvas/inspector node, Lua exports one nested `frame`. |
 | `full-shell-tree` | Window exists | Builder tree shows Window Frame -> titlebar Flow -> Label/Filler and Window body Flow -> authored children. |
 | `frame-with-flow` | Root Frame with one child Horizontal Flow | Child is visible in tree and canvas, inspector has rows for both. |
 | `nested-split` | Frame -> Horizontal Flow -> Frame | Nested split remains model-consistent and exportable. |
+| `filler-spacer` | Authored Filler in body, Frame, or Horizontal Flow | Filler is visible, selectable, movable, removable, exports as `empty-widget`, and rejects children. |
 | `cross-parent-move` | Two root Frames, one nested Frame | Tree drag can move a Frame between body and another compatible flow, preserving order. |
 | `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and keeps the model unchanged. |
 | `resize-frame` | Selected root Frame with resize mode enabled | Handles resize authored `minimal_width`/`minimal_height`, update preview, persist `size`, and export Lua style fields. |
@@ -252,6 +263,7 @@ Inspector.
 - `component_tree_shell_toggle`
 - `frame_palette_item`
 - `horizontal_flow_palette_item`
+- `filler_palette_item`
 - `builder_body_tree`
 - `builder_tree_drag_line`
 - `builder_tree_item_<node_id>`
@@ -260,6 +272,7 @@ Inspector.
 - `gui_window_body`
 - `gui_frame_N` for editor-created Frame nodes
 - `gui_horizontal_flow_N` for editor-created Horizontal Flow nodes
+- `gui_filler_N` for editor-created Filler nodes
 
 ## Visual Gate
 

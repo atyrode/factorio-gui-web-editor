@@ -1,7 +1,9 @@
+import { BUILDER_PALETTE_ATOMS } from "./factorioLayoutTree.js";
+
 export const LAYOUT_BUILDER_DND_TYPE = "application/x-factorio-gui-builder-palette";
 
 const VALID_DROP_SURFACES = new Set(["list", "canvas"]);
-const VALID_PALETTE_ATOMS = new Set(["frame", "horizontal-flow"]);
+const VALID_PALETTE_ATOMS = new Set(BUILDER_PALETTE_ATOMS);
 
 function dataTransferTypes(dataTransfer) {
   return Array.from(dataTransfer?.types ?? []);

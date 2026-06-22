@@ -11,6 +11,7 @@ import {
   Unlock
 } from "lucide-react";
 import { createBuilderDropTarget } from "../factorioLayoutBuilderDnd.js";
+import { FILLER_ATOM_ID, FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID } from "../factorioLayoutTree.js";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -293,6 +294,15 @@ function frameStyleVariables(styleReference = {}) {
   };
 }
 
+function fillerStyleVariables(styleReference = {}) {
+  const reference = styleReference ?? {};
+
+  return {
+    "--fx-gui-filler-min-width": pixelStyleValue(reference.minimalWidth),
+    "--fx-gui-filler-min-height": pixelStyleValue(reference.minimalHeight)
+  };
+}
+
 function windowBodyStyleVariables(styleReference = {}) {
   const reference = styleReference ?? {};
 
@@ -363,10 +373,35 @@ function createHorizontalFlowPreviewNode(parentStyleReference = {}) {
   };
 }
 
-function createPreviewNode(parentPrimitive, parentStyleReference = {}) {
-  return parentPrimitive === "frame"
-    ? createHorizontalFlowPreviewNode(parentStyleReference)
-    : createFramePreviewNode(parentStyleReference);
+function createFillerPreviewNode() {
+  return {
+    id: "builder_ghost_marker",
+    atom: FILLER_ATOM_ID,
+    primitive: "empty-widget",
+    className: "agui::Filler",
+    style: "draggable_space",
+    derivedFrom: "draggable_space",
+    role: "spacer-preview",
+    styleReference: {
+      variantId: "draggable-space",
+      horizontallyStretchable: true,
+      verticallyStretchable: true,
+      ignoredByInteraction: true
+    },
+    children: []
+  };
+}
+
+function createPreviewNode(previewAtom, parentStyleReference = {}) {
+  if (previewAtom === HORIZONTAL_FLOW_ATOM_ID) {
+    return createHorizontalFlowPreviewNode(parentStyleReference);
+  }
+
+  if (previewAtom === FILLER_ATOM_ID) {
+    return createFillerPreviewNode(parentStyleReference);
+  }
+
+  return createFramePreviewNode(parentStyleReference);
 }
 
 function GuiHorizontalFlowShell({
@@ -449,6 +484,39 @@ function GuiFrameShell({
     >
       {children}
     </div>
+  );
+}
+
+function GuiFillerShell({
+  node,
+  className = "",
+  shellRef,
+  style,
+  ...props
+}) {
+  const fillerStyle = {
+    ...fillerStyleVariables(node.styleReference),
+    ...style
+  };
+
+  return (
+    <div
+      ref={shellRef}
+      className={["fx-gui-filler", className].filter(Boolean).join(" ")}
+      data-anchor={node.id}
+      data-fx-atom={node.atom ?? FILLER_ATOM_ID}
+      data-fx-primitive="empty-widget"
+      data-fx-class={node.className}
+      data-fx-style={node.style}
+      data-fx-derived-from={node.derivedFrom}
+      data-fx-style-variant={node.styleReference?.variantId ?? undefined}
+      data-fx-role={node.role ?? undefined}
+      data-fx-horizontally-stretchable={node.styleReference?.horizontallyStretchable ?? undefined}
+      data-fx-vertically-stretchable={node.styleReference?.verticallyStretchable ?? undefined}
+      data-fx-ignored-by-interaction={node.styleReference?.ignoredByInteraction ?? undefined}
+      style={fillerStyle}
+      {...props}
+    />
   );
 }
 
@@ -581,15 +649,19 @@ function CanvasDropPreviewSlot({
   slotCount = 0,
   emptyParent = false,
   parentPrimitive = "flow",
-  parentStyleReference = {}
+  parentStyleReference = {},
+  previewAtom = FRAME_ATOM_ID
 }) {
   const [expanded, setExpanded] = useState(false);
   const isStartEdge = !emptyParent && index === 0;
   const isEndEdge = !emptyParent && index === slotCount;
   const isMiddle = !emptyParent && !isStartEdge && !isEndEdge;
-  const previewNode = createPreviewNode(parentPrimitive, parentStyleReference);
-  const PreviewShell =
-    previewNode.primitive === "frame" ? GuiFrameShell : GuiHorizontalFlowShell;
+  const previewNode = createPreviewNode(previewAtom, parentStyleReference);
+  const PreviewShell = previewNode.primitive === "frame"
+    ? GuiFrameShell
+    : previewNode.primitive === "flow"
+      ? GuiHorizontalFlowShell
+      : GuiFillerShell;
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setExpanded(true));
@@ -627,7 +699,8 @@ function FlowChildren({
   onBuilderDropTargetOver,
   builderDragActive,
   builderDropTarget,
-  parentStyleReference
+  parentStyleReference,
+  builderDragAtom = null
 }) {
   const ghostIndex =
     builderDropTarget?.surface === "canvas" && builderDropTarget.parentId === parentId
@@ -658,6 +731,7 @@ function FlowChildren({
           key={`${parentId}-preview-0`}
           parentPrimitive={parentPrimitive}
           parentStyleReference={parentStyleReference}
+          previewAtom={builderDragAtom ?? FRAME_ATOM_ID}
           slotCount={nodes.length}
         />
     );
@@ -666,6 +740,7 @@ function FlowChildren({
   nodes.forEach((node, index) => {
     renderedChildren.push(
       <GuiLayoutNode
+        builderDragAtom={builderDragAtom}
         builderDragActive={builderDragActive}
         builderDropTarget={builderDropTarget}
         inspectedAnchor={inspectedAnchor}
@@ -687,6 +762,7 @@ function FlowChildren({
           key={`${parentId}-preview-${index + 1}`}
           parentPrimitive={parentPrimitive}
           parentStyleReference={parentStyleReference}
+          previewAtom={builderDragAtom ?? FRAME_ATOM_ID}
           slotCount={nodes.length}
         />
       );
@@ -701,7 +777,41 @@ function GuiLayoutNode(props) {
     return <GuiFrame {...props} />;
   }
 
-  return <GuiHorizontalFlow {...props} />;
+  if (props.node?.primitive === "flow") {
+    return <GuiHorizontalFlow {...props} />;
+  }
+
+  return <GuiFiller {...props} />;
+}
+
+export function GuiFiller({
+  node,
+  inspectorActive = false,
+  inspectorLocked = false,
+  inspectedAnchor = node.id,
+  onInspect,
+  onInspectLock
+}) {
+  const fillerInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: node.id,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+
+  return (
+    <GuiFillerShell
+      node={node}
+      className={fillerInspector.className}
+      tabIndex={fillerInspector.tabIndex}
+      onClick={fillerInspector.onClick}
+      onFocus={fillerInspector.onFocus}
+      onMouseEnter={fillerInspector.onMouseEnter}
+      onMouseMove={fillerInspector.onMouseMove}
+    />
+  );
 }
 
 export function GuiFrame({
@@ -714,7 +824,8 @@ export function GuiFrame({
   onInspect,
   onInspectLock,
   builderDragActive = false,
-  builderDropTarget = null
+  builderDropTarget = null,
+  builderDragAtom = null
 }) {
   const frameInspector = inspectorProps({
     active: inspectorActive,
@@ -759,6 +870,7 @@ export function GuiFrame({
     >
       <FlowChildren
         builderDragActive={builderDragActive}
+        builderDragAtom={builderDragAtom}
         builderDropTarget={builderDropTarget}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
@@ -786,7 +898,8 @@ export function GuiHorizontalFlow({
   onInspect,
   onInspectLock,
   builderDragActive = false,
-  builderDropTarget = null
+  builderDropTarget = null,
+  builderDragAtom = null
 }) {
   const flowInspector = inspectorProps({
     active: inspectorActive,
@@ -831,6 +944,7 @@ export function GuiHorizontalFlow({
     >
       <FlowChildren
         builderDragActive={builderDragActive}
+        builderDragAtom={builderDragAtom}
         builderDropTarget={builderDropTarget}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
@@ -870,6 +984,7 @@ export function GuiWindow({
   onTitlebarPointerCancel,
   builderDragActive = false,
   builderDropTarget = null,
+  builderDragAtom = null,
   styleReference = frameStyleReference,
   shadowsVisible = true
 }) {
@@ -1042,7 +1157,9 @@ export function GuiWindow({
             .filter(Boolean)
             .join(" ")}
           data-anchor={dragAnchor}
+          data-fx-atom="filler"
           data-fx-primitive="empty-widget"
+          data-fx-class="agui::Filler"
           data-fx-style={styleReference.dragHandleStyle}
           data-fx-role="header-filler"
           data-fx-height={styleReference.dragHandleHeight}
@@ -1051,6 +1168,7 @@ export function GuiWindow({
           data-fx-right-margin={styleReference.dragHandleRightMargin}
           data-fx-horizontally-stretchable="true"
           data-fx-vertically-stretchable="true"
+          data-fx-ignored-by-search={String(styleReference.dragHandleIgnoredBySearch)}
           tabIndex={dragInspector.tabIndex}
           onMouseEnter={dragInspector.onMouseEnter}
           onMouseMove={dragInspector.onMouseMove}
@@ -1099,6 +1217,7 @@ export function GuiWindow({
       >
         <FlowChildren
           builderDragActive={builderDragActive}
+          builderDragAtom={builderDragAtom}
           builderDropTarget={builderDropTarget}
           inspectedAnchor={inspectedAnchor}
           inspectorActive={inspectorActive}

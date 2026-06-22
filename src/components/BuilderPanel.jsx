@@ -16,8 +16,12 @@ import {
 } from "../factorioLayoutBuilderDnd.js";
 import {
   BODY_LAYOUT_ROOT_ID,
+  BUILDER_PALETTE_ATOMS,
+  builderAtomCode,
+  builderAtomLabel,
+  canLayoutAtomHaveChildren,
   canDropLayoutNode,
-  FRAME_ATOM_ID,
+  FILLER_ATOM_ID,
   HORIZONTAL_FLOW_ATOM_ID
 } from "../factorioLayoutTree.js";
 import { FxActionButton, FxFrame } from "./factorioGui.jsx";
@@ -31,19 +35,19 @@ function bodyFlowLabel(currentWindow) {
 }
 
 function atomLabel(atom) {
-  return atom === HORIZONTAL_FLOW_ATOM_ID ? "Horizontal Flow" : "Frame";
+  return builderAtomLabel(atom);
 }
 
 function atomCode(atom) {
-  return atom === HORIZONTAL_FLOW_ATOM_ID ? "flow.horizontal" : "frame";
+  return builderAtomCode(atom);
 }
 
-function childLabel(node, locked) {
-  if (locked || node.atom === HORIZONTAL_FLOW_ATOM_ID) {
-    return "Add Frame";
+function childLabel(node) {
+  if (!canLayoutAtomHaveChildren(node.atom)) {
+    return "Add child";
   }
 
-  return "Add Horizontal Flow";
+  return "Add Frame";
 }
 
 function addAfterLabel(node) {
@@ -209,7 +213,7 @@ function buildBuilderTreeData({ currentWindow, layoutChildren, model, showGenera
       label: atomLabel(node.atom),
       atom: node.atom,
       draggable: true,
-      canReceiveChildren: true,
+      canReceiveChildren: canLayoutAtomHaveChildren(node.atom),
       childrenIds: (node.children ?? []).map((child) => child.id),
       luaVariableName: modelNode?.luaVariableName ?? node.id
     }));
@@ -471,10 +475,10 @@ function BuilderPaletteItem({
   onPaletteDragStart,
   paletteDraggingAtom
 }) {
-  const anchor =
-    atom === HORIZONTAL_FLOW_ATOM_ID
-      ? "horizontal_flow_palette_item"
-      : "frame_palette_item";
+  const anchor = {
+    [FILLER_ATOM_ID]: "filler_palette_item",
+    [HORIZONTAL_FLOW_ATOM_ID]: "horizontal_flow_palette_item"
+  }[atom] ?? "frame_palette_item";
 
   function handlePaletteDragStart(event) {
     if (!currentWindow) {
@@ -732,7 +736,7 @@ export function BuilderPanel({
   return (
     <FxFrame title="Builder" className="fx-editor-panel fx-builder-panel" data-anchor="builder_panel">
       <div className="fx-builder-palette" aria-label="Builder palette">
-        {[FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID].map((atom) => (
+        {BUILDER_PALETTE_ATOMS.map((atom) => (
           <BuilderPaletteItem
             atom={atom}
             currentWindow={currentWindow}

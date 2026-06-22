@@ -52,13 +52,13 @@ offer constrained operations that preserve translatability.
 
 The first implemented no-code slice is the constrained layout builder described
 in [no-code-layout-builder.md](no-code-layout-builder.md). It
-adds a Builder panel, draggable Frame and Horizontal Flow palette items, ordered
-body/nested insertion, subtree removal, Headless Tree-backed component-tree
-drag/drop, canvas ghost previews, recursive preview, inspector projection,
-authored layout settings with reset, and Lua export. It still edits only the
-constrained Factorio GUI model. Browser geometry regressions are part of this
-slice's acceptance gate: objective hover/drop layout bugs become Playwright
-checks run by `scripts/check.sh` and CI.
+adds a Builder panel, draggable Frame, Horizontal Flow, and Filler palette
+items, ordered body/nested insertion, subtree removal, Headless Tree-backed
+component-tree drag/drop, canvas ghost previews, recursive preview, inspector
+projection, authored layout settings with reset, and Lua export. It still edits
+only the constrained Factorio GUI model. Browser geometry regressions are part
+of this slice's acceptance gate: objective hover/drop layout bugs become
+Playwright checks run by `scripts/check.sh` and CI.
 
 Future builder operations SHOULD include:
 

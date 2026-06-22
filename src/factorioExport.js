@@ -20,6 +20,29 @@ function nodeVariableName(node) {
   return node?.luaVariableName ?? luaDefaultVariableName(node?.id);
 }
 
+function luaValue(value) {
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return luaString(value);
+}
+
+function addOptionLines(node, indent) {
+  const addOptions = node?.addOptions ?? {};
+  const lines = [];
+
+  if (addOptions.ignoredByInteraction != null) {
+    lines.push(`${indent}  ignored_by_interaction = ${luaValue(addOptions.ignoredByInteraction)},`);
+  }
+
+  return lines;
+}
+
 function styleAssignmentLines(variableName, node) {
   const styleReference = node?.styleReference ?? {};
   const lines = [];
@@ -81,11 +104,15 @@ function renderLayoutNodeLua(parentVariableName, node, depth = 1) {
   const directionLine = node.direction
     ? `${indent}  direction = ${luaString(node.direction)},\n`
     : "";
+  const addOptionsLines = addOptionLines(node, indent);
+  const addOptionsBlock = addOptionsLines.length
+    ? `${addOptionsLines.join("\n")}\n`
+    : "";
 
   return `${indent}local ${variableName} = ${parentVariableName}.add{
 ${indent}  type = ${luaString(node.primitive)},
 ${indent}  name = ${luaString(node.id)},
-${directionLine}${indent}  style = ${luaString(node.style)}
+${directionLine}${addOptionsBlock}${indent}  style = ${luaString(node.style)}
 ${indent}}
 ${styleLines}${childLines ? `\n${childLines}` : ""}`;
 }

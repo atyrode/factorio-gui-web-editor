@@ -18,6 +18,9 @@ renderer and future Factorio exports:
 - <https://codeberg.org/raiguard?q=&tab=repositories&sort=recentupdate>
 - <https://github.com/JanSharp/FactorioGUIEditor>
 - <https://github.com/ClaudeMetz/UntitledGuiGuide/wiki>
+- <https://github.com/Refactorio/RedMew/blob/develop/utils/gui.lua#L205-L223>
+- <https://github.com/pyanodon/pycoalprocessing/blob/master/scripts/wiki/wiki.lua#L66-L75>
+- <https://github.com/galgtonold/ai_combinator/blob/main/src/gui/dialogs/set_task_dialog.lua#L60-L67>
 
 The editor uses these sources as style references. It MUST NOT vendor large Wube
 CSS files, copy minified page styles wholesale, or bundle Wube image assets. It
@@ -42,6 +45,16 @@ Concrete rules should still be cited to the specific page, repository, or file
 that was inspected. Editor Extensions is especially relevant to future testing
 workflow research because its Mod Portal page describes a separate editor lab
 used to design and test away from the main factory.
+
+For the Filler atom specifically, the official `GuiElementType` docs identify
+`empty-widget` as an empty GUI element, `LuaStyle` exposes stretch and margin
+fields, and `LuaGuiElement.drag_target` explicitly supports `empty-widget`
+drag handles. Public mod sources were inspected to confirm this is idiomatic:
+RedMew has separate helper paths for generic stretch pushers and draggable
+header space, Pyanodons uses `draggable_space_header` as title/caption spacing,
+and `ai_combinator` uses `draggable_space` as a stretch filler inside a flow.
+That evidence makes `header-filler` a local role of the generic Filler atom,
+not the atom identity.
 
 The style guide's in-game inspection workflow should be treated as part of the
 source pipeline. Use graphical Factorio, not headless Factorio, to collect:
@@ -357,6 +370,14 @@ raised half, approximated locally as `#2a2a2a`, `#2d2c2d`, `#2b2a2b`,
 `#383738`, `#3b3a3b`, `#383738` across each repeat. The filler should not have
 its own border, drop shadow, or inset top/bottom glaze; it is a flat groove
 texture inside the header flow.
+
+The generic Filler model should remain broader than that header texture.
+`draggable_space_header` is the captured titlebar/header style variant;
+`draggable_space` is a generic spacer or drag-area style used by mods. The
+no-code builder exposes authored Fillers as `empty-widget` leaves using
+`draggable_space`, stretch flags, `role: spacer`, and
+`ignored_by_interaction = true`; the generated titlebar Filler remains the
+separate `header-filler` role using `draggable_space_header`.
 
 These values are not only visual measurements. They are layout-model facts that
 the browser DOM, JSON model, and Lua skeleton should preserve until a later

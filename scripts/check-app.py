@@ -72,6 +72,7 @@ REQUIRED_ANCHORS = [
     "layout_setting_horizontal_flow_min_width",
     "frame_palette_item",
     "horizontal_flow_palette_item",
+    "filler_palette_item",
     "builder_ghost_marker",
     "gui_shadow_toggle",
 ]
@@ -157,7 +158,9 @@ def main() -> int:
     assert_contains(source_blob, "canDrag: (dragItems)", "app source")
     assert_contains(source_blob, "fx-builder-row__drag-handle", "app source")
     assert_contains(source_blob, "GuiFrameShell", "app source")
+    assert_contains(source_blob, "GuiFillerShell", "app source")
     assert_contains(source_blob, "FRAME_ATOM_ID", "app source")
+    assert_contains(source_blob, "FILLER_ATOM_ID", "app source")
     assert_contains(source_blob, "data-fx-class={styleReference.bodyClassName}", "app source")
     assert_contains(source_blob, "data-fx-role=\"window-body\"", "app source")
     assert_contains(source_blob, "factorio_mod_download", "app source")

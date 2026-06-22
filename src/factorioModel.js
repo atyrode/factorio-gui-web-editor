@@ -1,5 +1,7 @@
 import {
+  FILLER_ATOM_ID,
   FRAME_ATOM_ID,
+  GENERIC_FILLER_STYLE_VARIANT,
   INSIDE_DEEP_FRAME_STYLE_VARIANT,
   GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
   HORIZONTAL_FLOW_ATOM_ID,
@@ -800,6 +802,12 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     titleLabelTopMargin: -4,
     titleLabelBottomPadding: 4,
     dragHandleStyle: "draggable_space_header",
+    dragHandleStyleDescription: "Part of frame definition",
+    dragHandleDerivedFrom: "draggable_space_header",
+    dragHandleBaseStyle: "draggable_space",
+    dragHandlePrimitiveStyle: "empty_widget",
+    dragHandleGraphicalSet: "redefined",
+    dragHandleIgnoredBySearch: true,
     dragHandleCapturedSize: reference.header.dragHandle?.capturedSize,
     dragHandleCapturedContentSize: reference.header.dragHandle?.capturedContentSize,
     dragHandleCapturedClipSize: reference.header.dragHandle?.capturedClipSize,
@@ -1052,6 +1060,13 @@ function getFlowStyleProperties(flowStyleReference) {
     });
   }
 
+  if (flowStyleReference.ignoredByInteraction != null) {
+    properties.push({
+      label: "ignored_by_interaction",
+      value: flowStyleReference.ignoredByInteraction
+    });
+  }
+
   if (flowStyleReference.horizontalSpacing != null) {
     properties.push({
       label: "horizontal_spacing",
@@ -1215,9 +1230,9 @@ function createLayoutFrameNode(spec, layoutSettings, luaVariableNames = {}, dept
       verticallyStretchable: true,
       ignoredBySearch: false
     },
-    children: spec.children.map((child) =>
-      createLayoutHorizontalFlowNode(child, layoutSettings, luaVariableNames, depth)
-    )
+    children: spec.children
+      .map((child) => createLayoutNode(child, layoutSettings, luaVariableNames, depth + 1))
+      .filter(Boolean)
   });
 }
 
@@ -1254,22 +1269,51 @@ function createLayoutHorizontalFlowNode(spec, layoutSettings, luaVariableNames =
       verticallyStretchable: true,
       ignoredBySearch: false
     },
-    children: spec.children.map((child) =>
-      createLayoutFrameNode(child, layoutSettings, luaVariableNames, depth + 1)
-    )
+    children: spec.children
+      .map((child) => createLayoutNode(child, layoutSettings, luaVariableNames, depth + 1))
+      .filter(Boolean)
   });
 }
 
+function createLayoutFillerNode(spec, _layoutSettings, luaVariableNames = {}) {
+  return {
+    id: spec.id,
+    luaVariableName: luaVariableNameForNode(spec.id, luaVariableNames),
+    atom: FILLER_ATOM_ID,
+    primitive: "empty-widget",
+    className: "agui::Filler",
+    style: "draggable_space",
+    styleDescription: "Editor-created Filler",
+    derivedFrom: "draggable_space",
+    role: "spacer",
+    styleReference: Object.freeze({
+      variantId: GENERIC_FILLER_STYLE_VARIANT,
+      baseStyle: "empty_widget",
+      horizontallyStretchable: true,
+      verticallyStretchable: true,
+      ignoredByInteraction: true,
+      ignoredBySearch: false
+    }),
+    addOptions: Object.freeze({
+      ignoredByInteraction: true
+    }),
+    children: []
+  };
+}
+
+const LAYOUT_ATOM_HYDRATORS = Object.freeze({
+  [FRAME_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutFrameNode }),
+  [HORIZONTAL_FLOW_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutHorizontalFlowNode }),
+  [FILLER_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutFillerNode })
+});
+
 function createLayoutNode(spec, layoutSettings, luaVariableNames = {}, depth = 0) {
-  if (spec.atom === FRAME_ATOM_ID) {
-    return createLayoutFrameNode(spec, layoutSettings, luaVariableNames, depth);
-  }
-
-  if (spec.atom === HORIZONTAL_FLOW_ATOM_ID) {
-    return createLayoutHorizontalFlowNode(spec, layoutSettings, luaVariableNames, depth);
-  }
-
-  return null;
+  return LAYOUT_ATOM_HYDRATORS[spec.atom]?.hydrateSpec(
+    spec,
+    layoutSettings,
+    luaVariableNames,
+    depth
+  ) ?? null;
 }
 
 function createLayoutInspectorRows(node) {
@@ -1471,20 +1515,27 @@ export function createWindowModel({
                 "gui_window_drag_handle",
                 luaVariableNames
               ),
+              atom: "filler",
               primitive: "empty-widget",
               className: "agui::Filler",
               style: styleReference.dragHandleStyle,
+              styleDescription: styleReference.dragHandleStyleDescription,
+              derivedFrom: styleReference.dragHandleDerivedFrom,
               referenceSize: {
                 width: dragHandleWidth,
                 height: styleReference.dragHandleHeight,
                 naturalHeight: styleReference.dragHandleHeight
               },
               styleReference: {
+                variantId: "draggable-space-header",
+                baseStyle: styleReference.dragHandleBaseStyle,
+                primitiveStyle: styleReference.dragHandlePrimitiveStyle,
+                graphicalSet: styleReference.dragHandleGraphicalSet,
                 leftMargin: styleReference.dragHandleLeftMargin,
                 rightMargin: styleReference.dragHandleRightMargin,
                 horizontallyStretchable: true,
                 verticallyStretchable: true,
-                ignoredBySearch: true
+                ignoredBySearch: styleReference.dragHandleIgnoredBySearch
               },
               role: "header-filler"
             }
@@ -1688,8 +1739,8 @@ export function getWindowInspectorRows(model) {
     {
       id: dragHandle.id,
       title: "class agui::Filler",
-      style: "Part of frame definition",
-      derivedFrom: "draggable_space_header",
+      style: dragHandle.styleDescription ?? "Part of frame definition",
+      derivedFrom: dragHandle.derivedFrom ?? dragHandle.style,
       relative: `[${dragHandleRelative.x}, ${dragHandleRelative.y}]`,
       size: `{${dragHandleWidth}, 36}`,
       contentSize: `{${dragHandleWidth}, 36}`,
@@ -1711,7 +1762,8 @@ export function getWindowInspectorRows(model) {
           value: onOff(dragHandle.styleReference.verticallyStretchable)
         },
         { label: "left_margin", value: dragHandle.styleReference.leftMargin },
-        { label: "ignored_by_search", value: true }
+        { label: "graphical_set", value: dragHandle.styleReference.graphicalSet, indent: 1 },
+        { label: "ignored_by_search", value: dragHandle.styleReference.ignoredBySearch }
       ]
     },
     {
