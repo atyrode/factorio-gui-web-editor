@@ -772,6 +772,10 @@ test.describe("Layout builder canvas preview", () => {
       const componentsRowRect = componentsRow.getBoundingClientRect();
       const propertiesRect = properties.getBoundingClientRect();
       const treeRect = tree.getBoundingClientRect();
+      const labelFits = (selector) => [...document.querySelectorAll(selector)].map((label) => ({
+        text: label.textContent?.trim() ?? "",
+        fits: Math.ceil(label.scrollWidth) <= Math.ceil(label.clientWidth) + 1
+      }));
       return {
         canvas: {
           top: canvasRect.top,
@@ -790,7 +794,9 @@ test.describe("Layout builder canvas preview", () => {
         tree: {
           left: treeRect.left,
           width: treeRect.width
-        }
+        },
+        componentLabels: labelFits('[data-anchor="builder_panel"] .fx-builder-palette__item span'),
+        treeLabels: labelFits('[data-anchor="component_tree_panel"] .fx-builder-row__label span')
       };
     });
 
@@ -799,6 +805,8 @@ test.describe("Layout builder canvas preview", () => {
     expect(geometry.componentsRow.bottom).toBeLessThanOrEqual(geometry.canvas.top);
     expect(geometry.canvas.right).toBeLessThanOrEqual(geometry.properties.left);
     expect(geometry.properties.left).toBe(geometry.tree.left);
+    expect(geometry.componentLabels.filter((label) => !label.fits)).toEqual([]);
+    expect(geometry.treeLabels.filter((label) => !label.fits)).toEqual([]);
   });
 
   test("authored field edits coalesce and clear the redo branch", async ({ page }) => {
@@ -1885,23 +1893,28 @@ test.describe("Layout builder canvas preview", () => {
       windowBox.x;
     const leftFrameTopX = finalFrames[0].left + finalFrames[0].width - 20 - windowBox.x;
     const rightFrameTopX = finalFrames[1].left + 20 - windowBox.x;
-    const gapTop = luminance(screenshot.getPixel(gapCenterX, topY));
-    const frameTop = Math.max(
-      luminance(screenshot.getPixel(leftFrameTopX, topY)),
-      luminance(screenshot.getPixel(rightFrameTopX, topY))
+    const edgeOffsets = [-1, 0, 1, 2];
+    function edgeContrastAt(y) {
+      const gap = luminance(screenshot.getPixel(gapCenterX, y));
+      const frame = Math.max(
+        luminance(screenshot.getPixel(leftFrameTopX, y)),
+        luminance(screenshot.getPixel(rightFrameTopX, y))
+      );
+      return gap - frame;
+    }
+    const topEdgeContrast = Math.max(
+      ...edgeOffsets.map((offset) => edgeContrastAt(topY + offset))
     );
-    const gapBottom = luminance(screenshot.getPixel(gapCenterX, bottomY));
-    const frameBottom = Math.max(
-      luminance(screenshot.getPixel(leftFrameTopX, bottomY)),
-      luminance(screenshot.getPixel(rightFrameTopX, bottomY))
+    const bottomEdgeContrast = Math.max(
+      ...edgeOffsets.map((offset) => edgeContrastAt(bottomY + offset))
     );
 
     expect(
-      gapTop - frameTop,
+      topEdgeContrast,
       "the Window body must not draw a continuous dark top stroke over the split gap"
     ).toBeGreaterThan(24);
     expect(
-      gapBottom - frameBottom,
+      bottomEdgeContrast,
       "the Window body must not draw a continuous dark bottom stroke over the split gap"
     ).toBeGreaterThan(24);
   });

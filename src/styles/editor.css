@@ -397,15 +397,18 @@
 }
 
 .fx-builder-palette--bar .fx-builder-palette__item {
-  width: clamp(130px, 16vw, 190px);
-  height: 36px;
+  flex: 0 1 auto;
+  inline-size: max-content;
+  min-inline-size: min(154px, 100%);
+  max-inline-size: 100%;
   padding-block: 5px;
+  padding-inline: 10px 14px;
 }
 
 .fx-builder-palette__item {
   min-width: 0;
-  height: 42px;
   display: grid;
+  grid-template-rows: auto auto;
   align-content: center;
   gap: 1px;
   padding: 6px 8px;
@@ -444,7 +447,6 @@
   cursor: grabbing;
 }
 
-.fx-builder-palette__item span,
 .fx-builder-palette__item code {
   min-width: 0;
   overflow: hidden;
@@ -453,13 +455,19 @@
 }
 
 .fx-builder-palette__item span {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 800;
+  line-height: 1.15;
 }
 
 .fx-builder-palette__item code {
   color: var(--fx-blue);
   font-size: 11px;
+  line-height: 1.15;
 }
 
 .fx-editor-output__bar {
@@ -785,7 +793,6 @@
   cursor: grabbing;
 }
 
-.fx-builder-row__label span,
 .fx-builder-row__variable code,
 .fx-builder-row__variable-input,
 .fx-builder-row__variable-error {
@@ -796,8 +803,15 @@
 }
 
 .fx-builder-row__label span {
+  min-width: 0;
+  display: block;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.15;
 }
 
 .fx-builder-row__variable {
