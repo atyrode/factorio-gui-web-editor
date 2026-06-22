@@ -36,7 +36,9 @@ import {
   LAYOUT_NODE_SIZE_LIMITS,
   moveLayoutNode,
   normalizeLayoutState,
+  pasteLayoutSubtree,
   removeLayoutNode,
+  resolveLayoutPasteTarget,
   updateLayoutNodeSize
 } from "../factorioLayoutTree.js";
 import {
@@ -196,6 +198,17 @@ function writeCachedEditorState(editorState) {
   } catch {
     // Local storage can be unavailable in private or locked-down browser contexts.
   }
+}
+
+function isEditableShortcutTarget(target) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(
+    target.isContentEditable ||
+    target.closest("input, textarea, select, [contenteditable='true']")
+  );
 }
 
 function currentWindowWithResizeDraft(currentWindow, draft) {
@@ -1278,6 +1291,7 @@ export function EditorPage() {
   const [editorState, setEditorState] = useState(readCachedEditorState);
   const [inspectorHistory, setInspectorHistory] = useState({ back: [], forward: [] });
   const [inspectorPreview, setInspectorPreview] = useState(null);
+  const [layoutClipboard, setLayoutClipboard] = useState(null);
   const [builderDrag, setBuilderDrag] = useState(null);
   const [builderDropTarget, setBuilderDropTarget] = useState(null);
   const [resizeDraft, setResizeDraft] = useState(null);
@@ -1703,6 +1717,119 @@ export function EditorPage() {
     selectInspectorComponent(nodeId);
   }
 
+  function copyLayoutSubtree(nodeId = inspectedAnchor) {
+    const match = findLayoutNode(currentWindow?.layoutChildren ?? [], nodeId);
+    if (!match) {
+      return false;
+    }
+
+    const copiedState = normalizeLayoutState({
+      layoutChildren: [match.node],
+      nextLayoutNodeNumber: 1
+    });
+    const copiedNode = copiedState.layoutChildren[0];
+    if (!copiedNode) {
+      return false;
+    }
+
+    setLayoutClipboard({
+      node: copiedNode
+    });
+    return true;
+  }
+
+  function cutLayoutSubtree(nodeId = inspectedAnchor) {
+    const match = findLayoutNode(currentWindow?.layoutChildren ?? [], nodeId);
+    if (!match) {
+      return false;
+    }
+
+    const copiedState = normalizeLayoutState({
+      layoutChildren: [match.node],
+      nextLayoutNodeNumber: 1
+    });
+    const copiedNode = copiedState.layoutChildren[0];
+    if (!copiedNode) {
+      return false;
+    }
+
+    setLayoutClipboard({
+      node: copiedNode
+    });
+    applyLayoutUpdate((layoutState) => {
+      const removal = removeLayoutNode(layoutState.layoutChildren, nodeId);
+      return {
+        ...removal,
+        selectedAnchor: BODY_LAYOUT_ROOT_ID,
+        nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+      };
+    });
+    return true;
+  }
+
+  function canPasteLayoutClipboard(targetAnchor = inspectedAnchor) {
+    if (!currentWindow || !layoutClipboard?.node) {
+      return false;
+    }
+
+    return Boolean(
+      resolveLayoutPasteTarget(
+        currentWindow.layoutChildren ?? [],
+        targetAnchor ?? BODY_LAYOUT_ROOT_ID,
+        layoutClipboard.node.atom
+      )
+    );
+  }
+
+  function pasteLayoutClipboard(targetAnchor = inspectedAnchor) {
+    if (!canPasteLayoutClipboard(targetAnchor)) {
+      return false;
+    }
+
+    applyLayoutUpdate((layoutState) => {
+      const paste = pasteLayoutSubtree(
+        layoutState.layoutChildren,
+        layoutClipboard.node,
+        targetAnchor ?? BODY_LAYOUT_ROOT_ID,
+        layoutState.nextLayoutNodeNumber
+      );
+
+      return {
+        ...paste,
+        selectedAnchor: paste.pastedNode?.id,
+        nextLayoutNodeNumber: paste.nextLayoutNodeNumber
+      };
+    });
+    return true;
+  }
+
+  useEffect(() => {
+    function handleClipboardShortcut(event) {
+      if (
+        event.defaultPrevented ||
+        isEditableShortcutTarget(event.target) ||
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === "c" && copyLayoutSubtree()) {
+        event.preventDefault();
+      } else if (key === "x" && cutLayoutSubtree()) {
+        event.preventDefault();
+      } else if (key === "v" && pasteLayoutClipboard()) {
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener("keydown", handleClipboardShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleClipboardShortcut);
+    };
+  }, [currentWindow, inspectedAnchor, layoutClipboard]);
+
   function normalizeDropTarget(
     target,
     drag = builderDrag,
@@ -2080,13 +2207,16 @@ export function EditorPage() {
           </FxFrame>
 
           <BuilderPanel
+            canPaste={canPasteLayoutClipboard}
             currentWindow={currentWindow}
             inspectedAnchor={inspectedAnchor}
             onAddAfter={addLayoutNodeAfter}
             onAddChild={addLayoutNodeChild}
+            onCopy={copyLayoutSubtree}
             onEditLuaVariableName={updateLuaVariableName}
             onInsertPalette={insertPaletteLayoutNode}
             onMoveNode={moveLayoutNodeFromTree}
+            onPaste={pasteLayoutClipboard}
             onPaletteDragEnd={clearBuilderDrag}
             onPaletteDragStart={handlePaletteDragStart}
             onRemove={removeLayoutSubtree}

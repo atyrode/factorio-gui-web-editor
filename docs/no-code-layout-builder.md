@@ -44,6 +44,8 @@ under a proposed parent in the constrained recursive layout model.
   Horizontal Flow.
 - Reorder authored atoms across the body and compatible nested containers.
 - Remove a Frame, Horizontal Flow, or Filler subtree.
+- Copy, cut, and paste an authored atom subtree using visible Builder row
+  copy/paste actions or `Ctrl/Cmd+C`, `Ctrl/Cmd+X`, and `Ctrl/Cmd+V`.
 - Select a builder row and inspect the same model node in the inspector,
   Builder tree, canvas, and Lua output.
 - Navigate implemented Frame, Horizontal Flow, and Filler children from the
@@ -65,7 +67,7 @@ The editor rail contains three pinned sections:
     [Optional non-deletable titlebar flow, title label, header filler]
     [Non-deletable Window body flow root]
     [Headless Tree drag line for ordered placement]
-    [Child rows with add child, add after, remove]
+    [Child rows with copy, paste, add child, add after, remove]
 
 [Inspector]
   Ctrl+F6 style inspector toggle
@@ -91,7 +93,8 @@ authored layout specs under the body flow. A Settings toggle can expose the full
 generated shell, including locked nodes such as `gui_window`,
 `gui_window_titlebar`, `gui_window_title`, and `gui_window_drag_handle`. It has
 a bounded height and scrolls when nested layout would otherwise crowd the
-Inspector.
+Inspector. The scroll area reserves a right-side gutter so the vertical scrollbar
+does not cover row labels or actions.
 
 Tree row rendering remains Factorio-styled local UI, but tree interaction logic
 is not custom. Headless Tree supplies flat visible items, ARIA tree props,
@@ -171,6 +174,31 @@ stable node id. Invalid Lua identifiers, Lua reserved words, and duplicates are
 rejected inline. Empty input removes the override and returns to the generated
 default. This control intentionally does not appear in the Ctrl+F6-style
 Inspector.
+
+Copy/cut/paste does not add persisted clipboard schema. The clipboard is
+session-local React state that stores one normalized authored subtree snapshot.
+Pasting duplicates that subtree into `layoutChildren` with fresh stable ids and
+then normalizes Lua variable names from the current Window. Copied Lua variable
+name overrides stay on the original nodes only; cut nodes are removed with their
+overrides. Pasted nodes use generated defaults unless the user edits them after
+paste.
+
+## Clipboard Rules
+
+- Copy is available only for authored Frame, Horizontal Flow, and Filler rows.
+  Generated shell rows and `gui_window_body` cannot be copied.
+- Paste is available on `gui_window_body` and authored rows only when the copied
+  subtree atom can be placed according to the same parent capability rules as
+  drag/drop.
+- Paste target resolution is selected-aware: paste into a selected compatible
+  parent, otherwise paste after a selected authored node when its parent accepts
+  the copied atom, otherwise append to the Window body.
+- Keyboard shortcuts operate on the selected/locked anchor and are ignored while
+  focus is in text inputs, textareas, selects, or contenteditable controls.
+- `Ctrl/Cmd+X` cuts only authored nodes: it copies the selected subtree to the
+  in-app clipboard, removes the original subtree, and selects `gui_window_body`.
+- The browser system clipboard is not read or written in this slice, so copied
+  subtrees do not transfer across tabs, sessions, or reloads.
 
 ## Drop Rules
 
@@ -252,6 +280,7 @@ Inspector.
 | `filler-spacer` | Authored Filler in body, Frame, or Horizontal Flow | Filler is visible, selectable, movable, removable, exports as `empty-widget`, and rejects children. |
 | `cross-parent-move` | Two root Frames, one nested Frame | Tree drag can move a Frame between body and another compatible flow, preserving order. |
 | `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and keeps the model unchanged. |
+| `copy-paste-subtree` | Frame -> Horizontal Flow -> two Frames, copied from the root Frame | Paste creates a sibling subtree with fresh ids, selects the pasted root, updates Lua output/localStorage, and leaves copied Lua variable overrides behind. |
 | `resize-frame` | Selected root Frame with resize mode enabled | Handles resize authored `minimal_width`/`minimal_height`, update preview, persist `size`, and export Lua style fields. |
 | `resize-unsupported-shell-node` | Selected generated title label with resize mode enabled | Resize overlay reports unsupported and does not mutate Window or layout specs. |
 
@@ -267,6 +296,8 @@ Inspector.
 - `builder_body_tree`
 - `builder_tree_drag_line`
 - `builder_tree_item_<node_id>`
+- `builder_copy_<node_id>`
+- `builder_paste_<node_id>`
 - `resize_mode_toggle`
 - `resize_overlay`
 - `gui_window_body`

@@ -74,6 +74,8 @@ REQUIRED_ANCHORS = [
     "horizontal_flow_palette_item",
     "filler_palette_item",
     "builder_ghost_marker",
+    "builder_copy_",
+    "builder_paste_",
     "gui_shadow_toggle",
 ]
 
