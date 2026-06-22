@@ -127,20 +127,23 @@ Builder tree.
 
 The Factorio tab owns Ctrl+F6-style structured facts. Selecting a Builder row or
 navigating from inspector child rows switches to this tab so the selected model
-node can be checked precisely. The Select and Resize tools can still select
-canvas nodes without enabling hover inspection.
+node can be checked precisely. The Inspect tool owns canvas hover/click
+inspection, while the Resize tool can target canvas nodes for sizing without
+enabling hover inspection.
 
 The export drawer is closed by default. Opening it reveals generated `gui.lua`
 and the preview-mod download action. Lua output remains a generated export
 surface; it is not an always-visible editing surface.
 
 Select, Inspect, and Resize are exclusive canvas tools. Select is the default
-tool and supports canvas/tree selection. Inspect enables Ctrl+F6-style hover
-inspection and routes facts to the Factorio tab. Resize shows a measured overlay
-for the selected GUI node; supported nodes show side and corner handles, while
-unsupported nodes show a disabled resize state. The tools reuse the same
-selected anchor as the Builder tree and properties rail, so selecting a row,
-inspector item, or canvas element targets the same model node.
+passive pointer mode: canvas clicks do not change inspected selection or switch
+the properties tab, and the preview remains available for normal interactions
+such as Window dragging. Inspect enables Ctrl+F6-style hover/click inspection
+and routes facts to the Factorio tab. Resize shows a measured overlay for the
+selected GUI node; supported nodes show side and corner handles, while
+unsupported nodes show a disabled resize state. Inspect, Resize, Builder rows,
+and inspector navigation reuse the same selected anchor, so precision operations
+target the same model node.
 
 ## Data Contract
 

@@ -720,7 +720,7 @@ test.describe("Layout builder canvas preview", () => {
   });
 
   test("Inspect tool opens the Factorio properties tab", async ({ page }) => {
-    await seedEditorState(page, stateWithSelection(ONE_FRAME_STATE, "gui_frame_1"));
+    await seedOneFrameWindow(page);
 
     await page.locator('[data-anchor="editor_tool_inspect"]').click();
     await expect(page.locator('[data-anchor="editor_tool_inspect"]')).toHaveAttribute(
@@ -731,10 +731,31 @@ test.describe("Layout builder canvas preview", () => {
       "aria-selected",
       "true"
     );
+    await page.locator('[data-anchor="gui_frame_1"]').click();
     await expect(page.locator('[data-anchor="style_inspector_panel"]')).toBeVisible();
     await expect(page.locator('[data-anchor="style_inspector_panel"]')).toContainText(
       "class agui::Frame"
     );
+  });
+
+  test("Select tool leaves canvas clicks passive", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await expect(page.locator('[data-anchor="editor_tool_select"]')).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await page.locator('[data-anchor="gui_frame_1"]').click();
+    await expect(page.locator('[data-anchor="properties_tab_properties"]')).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expect(page.locator('[data-anchor="style_inspector_panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).not.toHaveClass(/is-inspected/);
+
+    const state = await readStoredEditorState(page);
+    expect(state.inspectedAnchor).toBeNull();
+    expect(state.inspectorLocked).toBe(false);
   });
 
   test("canvas is the dominant desktop work area without a closed export drawer", async ({ page }) => {

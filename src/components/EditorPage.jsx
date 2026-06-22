@@ -2690,7 +2690,7 @@ export function EditorPage() {
               currentWindow={previewWindow}
               model={currentModel}
               inspectorActive={inspectToolActive}
-              selectionActive={Boolean(currentWindow)}
+              selectionActive={resizeToolActive}
               inspectorLocked={inspectToolActive ? inspectorLocked : true}
               inspectedAnchor={inspectedAnchor}
               inspectorPreview={inspectorPreview}
