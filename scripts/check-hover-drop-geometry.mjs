@@ -52,11 +52,13 @@ function flexWidths({ parentWidth, gap, minimumWidth, previewBasis }) {
 
 const realFlowRule = ruleFor(".fx-gui-horizontal-flow");
 const realFrameRule = ruleFor(".fx-gui-frame");
+const realFillerRule = ruleFor(".fx-gui-filler");
 const realFrameBevelRule = ruleFor(".fx-gui-frame::before");
 const bodyRule = ruleFor(".fx-gui-window__body");
 const shadowDisabledWindowRule = ruleFor('.fx-gui-window[data-fx-shadows="hidden"]');
 const previewRule = ruleFor(".fx-gui-flow-drop-preview-slot.is-expanded");
 const previewFrameRule = ruleFor(".fx-gui-frame.fx-gui-flow-drop-preview-slot.is-expanded");
+const previewFillerRule = ruleFor(".fx-gui-filler.fx-gui-flow-drop-preview-slot.is-expanded");
 const targetedDropRule = ruleFor(".fx-gui-flow-drop-target.is-targeted");
 
 assert.equal(
@@ -93,6 +95,21 @@ assert.match(
   declaration(realFrameRule, "border"),
   /1px solid #0a0909/,
   "real Frame must keep a hard dark outer edge for the inset surface"
+);
+assert.equal(
+  declaration(realFillerRule, "flex"),
+  "1 1 0",
+  "real Filler sizing contract changed; update capability-model preview tests with the new model"
+);
+assert.match(
+  declaration(realFillerRule, "background"),
+  /repeating-linear-gradient/,
+  "real Filler must remain visible as a Factorio empty-widget spacer in the browser editor"
+);
+assert.equal(
+  declaration(realFillerRule, "box-shadow"),
+  "none",
+  "real Filler must not paint Frame-style shadows"
 );
 assert.match(
   declaration(realFrameBevelRule, "box-shadow"),
@@ -138,6 +155,11 @@ assert.equal(
   declaration(previewFrameRule, "min-width"),
   "var(--fx-gui-frame-min-width, 168px)",
   "hover preview must use the same Frame min-width variable as a real Frame"
+);
+assert.equal(
+  declaration(previewFillerRule, "min-width"),
+  "var(--fx-gui-filler-min-width, 36px)",
+  "Filler hover preview must use the same min-width variable as a real Filler"
 );
 assert.equal(
   declaration(targetedDropRule, "background"),
@@ -190,6 +212,11 @@ assert.match(
 );
 assert.match(
   guiSource,
+  /function GuiFillerShell/,
+  "Filler rendering must expose a shared atom shell"
+);
+assert.match(
+  guiSource,
   /function windowBodyStyleVariables[\s\S]*--fx-window-body-horizontal-spacing[\s\S]*reference\.horizontalSpacing/,
   "Window body rendering must bind horizontal spacing from the generated body flow style reference"
 );
@@ -205,6 +232,11 @@ assert.match(
 );
 assert.match(
   guiSource,
+  /function CanvasDropPreviewSlot[\s\S]*GuiFillerShell/,
+  "canvas preview must be able to render Filler through the shared atom shell"
+);
+assert.match(
+  guiSource,
   /export function GuiHorizontalFlow[\s\S]*<GuiHorizontalFlowShell/,
   "real Horizontal Flow nodes must render through the shared atom shell"
 );
@@ -212,6 +244,11 @@ assert.match(
   guiSource,
   /export function GuiFrame[\s\S]*<GuiFrameShell/,
   "real Frame nodes must render through the shared atom shell"
+);
+assert.match(
+  guiSource,
+  /export function GuiFiller[\s\S]*<GuiFillerShell/,
+  "real Filler nodes must render through the shared atom shell"
 );
 assert.match(
   guiSource,

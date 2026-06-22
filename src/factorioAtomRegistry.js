@@ -25,6 +25,7 @@ const {
   guiPrimitive,
   integer,
   nodeList,
+  nodeReference,
   size2i,
   string,
   styleName,
@@ -1067,27 +1068,156 @@ export const factorioAtomRegistry = Object.freeze([
     id: "filler",
     name: "Filler",
     primitive: "empty-widget",
-    style: "draggable_space_header",
-    availability: "Editor seed",
-    summary: "Filler component; current capture covers the draggable header filler style variant.",
+    style: "empty_widget",
+    availability: "Official / Editor seed / public mod sources",
+    summary: "Generic empty-widget spacer/filler component; implemented as both the generated Window header filler and an authored builder spacer.",
     className: "agui::Filler",
-    derivedFrom: "draggable_space_header",
-    progress: {
-      evidence: 80,
-      model: 62,
-      renderer: 55,
-      luaExport: 55,
-      behavior: 65
-    },
+    derivedFrom: "empty_widget",
     fields: [
-      field("className", "captured", "`agui::Filler`."),
-      field("style", "captured", "`draggable_space_header`."),
-      field("height", "captured", "36."),
-      field("naturalHeight", "captured", "36."),
-      field("left/right margin", "captured", "6 each."),
-      field("stretch flags", "captured", "Horizontally and vertically stretchable."),
-      field("visual cadence", "hardcoded", "CSS repeating stripe approximates the captured groove."),
-      field("optional right controls", "missing", "No model field for search/close/header actions yet.")
+      field("className", "captured", "`agui::Filler`.", {
+        type: className,
+        example: "agui::Filler",
+        source: "header-filler-captures"
+      }),
+      field("primitive", "official", "Mapped to Factorio `empty-widget`, which the official runtime docs describe as an empty element that just exists.", {
+        type: guiPrimitive,
+        example: "empty-widget",
+        source: "factorio-runtime-docs-2.0.77"
+      }),
+      field("style variants", "implemented", "`empty_widget`, `draggable_space`, and `draggable_space_header` are treated as variants of the Filler atom rather than separate atoms.", {
+        type: styleName,
+        example: "draggable_space_header / draggable_space",
+        source: "factorio-runtime-docs-and-public-mod-sources"
+      }),
+      field("role", "implemented", "Local roles describe why a filler exists without replacing the Factorio style name. The generated Window titlebar uses `header-filler`; authored builder Fillers currently use `spacer`.", {
+        type: string,
+        example: "header-filler / pusher / spacer",
+        source: "editor-model"
+      }),
+      field("height", "captured", "Captured titlebar/header filler height is 36.", {
+        type: integer,
+        example: 36,
+        source: "header-filler-captures"
+      }),
+      field("naturalHeight", "captured", "Captured titlebar/header filler natural height is 36.", {
+        type: integer,
+        example: 36,
+        source: "header-filler-captures"
+      }),
+      field("left/right margin", "captured", "Captured `draggable_space_header` left and right margins are 6 each.", {
+        type: integer,
+        example: "left_margin=6, right_margin=6",
+        source: "header-filler-captures"
+      }),
+      field("stretch flags", "implemented", "Header Filler model, renderer, inspector, and Lua export preserve horizontal and vertical stretch flags. Public mod pushers commonly set the relevant axis stretch explicitly.", {
+        type: boolean,
+        example: "horizontally_stretchable=on, vertically_stretchable=on",
+        source: "header-filler-captures-and-public-mod-sources"
+      }),
+      field("drag target", "implemented", "The generated titlebar Filler exports `drag_target` to the top-level Window frame. Factorio docs allow `drag_target` on `empty-widget` children of a top-level screen frame.", {
+        type: nodeReference,
+        example: "drag_target = gui_window",
+        source: "factorio-runtime-docs-2.0.77"
+      }),
+      field("ignored_by_interaction", "implemented", "Authored builder Fillers export `ignored_by_interaction = true`, matching public generic pusher/spacer usage where the empty widget should not intercept interaction.", {
+        type: boolean,
+        example: true,
+        source: "public-mod-empty-widget-usage"
+      }),
+      field("ignored_by_search", "captured", "Captured `draggable_space_header` reports `ignored_by_search=true`; this remains inspector evidence, not an exported Lua assignment.", {
+        type: boolean,
+        example: true,
+        source: "header-filler-captures"
+      }),
+      field("visual cadence", "hardcoded", "CSS repeating stripe approximates the captured 6 px titlebar groove for `draggable_space_header`.", {
+        type: string,
+        example: "6 px repeating groove",
+        source: "header-filler-closeup"
+      }),
+      field("builder availability", "implemented", "Filler is exposed in the builder palette through atom capability metadata. It is a leaf atom insertable into the Window body, Frame, and Horizontal Flow authored containers.", {
+        type: string,
+        source: "no-code-layout-builder"
+      })
+    ],
+    progressChecks: [
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Official `empty-widget` primitive checked",
+        note: "Factorio Runtime Docs 2.0.77 list `empty-widget` as an empty GUI element."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Official `drag_target` behavior checked",
+        note: "`drag_target` can be used on `empty-widget` children of a top-level screen frame."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Header filler captures transcribed",
+        note: "Blueprint Library and Tips and tricks captures agree on class, style chain, height, margins, stretch flags, and ignored-by-search behavior."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Public spacer and dragger usage inspected",
+        note: "Public Factorio mod sources use `empty-widget` as generic pushers/spacers and as draggable titlebar/header space."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Filler identity separated from role",
+        note: "`empty-widget` is the atom primitive; `header-filler`, `pusher`, and `spacer` are local roles."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Style variants represented",
+        note: "`draggable_space_header` and `draggable_space` are tracked as Filler variants without changing the atom identity."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Generated Window titlebar uses Filler",
+        note: "The generated titlebar drag handle is modeled as a Filler atom instance with stable id, Lua variable name, primitive, style, role, and style-reference facts."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Header Filler renders from structured data",
+        note: "The browser preview exposes primitive, class, style, role, size, margin, stretch, and ignored-by-search data attributes for the generated header Filler."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Inspector projection is structured",
+        note: "Header Filler geometry, style, margins, natural height, stretch flags, and ignored-by-search rows come from model data."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Header Filler exports as `empty-widget`",
+        note: "Lua export emits stable name, `draggable_space_header`, margins, height, stretch flags, and `drag_target`."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Capture-only fields stay out of Lua",
+        note: "`size_before_stretching`, clip size, squash size, graphical_set, and ignored_by_search remain inspector/evidence data until an export rule is proven."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Window dragging uses Filler drag target",
+        note: "The generated titlebar Filler participates in browser dragging and exports the matching Factorio `drag_target`."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Authored Filler palette support implemented",
+        note: "Filler uses the builder capability model as a leaf atom insertable into Window body, Frame, and Horizontal Flow containers."
+      })
     ],
     captures: [
       atomCapture({
@@ -1116,8 +1246,63 @@ export const factorioAtomRegistry = Object.freeze([
           captureRow("Derived from", styleName, "empty_widget"),
           captureRow("ignored_by_search", boolean, true)
         ]
+      }),
+      atomCapture({
+        id: "tips-and-tricks-header-filler",
+        label: "Tips and tricks header Filler",
+        source: "Ctrl+F6 screenshot",
+        screenTitle: "Tips and tricks",
+        className: "agui::Filler",
+        style: "draggable_space_header",
+        rows: [
+          captureRow("relative", vector2i, "[188, 0]"),
+          captureRow("size", size2i, "{2206, 36}"),
+          captureRow("content_size", size2i, "{2206, 36}"),
+          captureRow("clip_size", rectangle2i, "{{0, 0}, {2206, 36}}"),
+          captureRow("size_before_stretching", size2i, "{0, 36}"),
+          captureRow("maximum_horizontal_squash_size", integer, 2206),
+          captureRow("maximum_vertical_squash_size", integer, 0),
+          captureRow("right_margin", integer, 6),
+          captureRow("Style", string, "Part of frame definition"),
+          captureRow("height", integer, 36),
+          captureRow("natural_height", integer, 36),
+          captureRow("horizontally_stretchable", boolean, "on"),
+          captureRow("vertically_stretchable", boolean, "on"),
+          captureRow("Derived from", styleName, "draggable_space_header"),
+          captureRow("left_margin", integer, 6),
+          captureRow("Derived from", styleName, "draggable_space"),
+          captureRow("graphical_set", string, "redefined"),
+          captureRow("Derived from", styleName, "empty_widget"),
+          captureRow("ignored_by_search", boolean, true)
+        ]
       })
-    ]
+    ],
+    tracking: {
+      implemented: [
+        "Filler is modeled as the generic Factorio `empty-widget` atom, with style/role variants kept as data.",
+        "The generated Window titlebar drag handle is a Filler instance using `draggable_space_header` and `role: header-filler`.",
+        "The header Filler renderer preserves the captured 36 px height, 6 px side margins, stretch flags, and groove texture.",
+        "Inspector rows expose captured header Filler geometry and style facts from structured model data.",
+        "Lua export emits the generated header Filler as `empty-widget` with style, margins, height, stretch flags, and drag target.",
+        "Authored Filler palette support is implemented through builder capability metadata.",
+        "Authored Filler exports as `empty-widget` with `draggable_space`, stretch flags, and `ignored_by_interaction = true`."
+      ],
+      assumptions: [
+        "`draggable_space_header` and `draggable_space` are style variants of one generic spacer/filler primitive.",
+        "`ignored_by_search` is captured inspector evidence until a supported export assignment is proven."
+      ],
+      hardcoded: [
+        "The browser `draggable_space_header` groove uses a local 6 px repeating CSS approximation."
+      ],
+      missing: [],
+      deferred: [
+        "Generic `pusher` role variants wait for authored layout use cases beyond the current `spacer` default.",
+        "Additional non-header visual variants need fresh captures before renderer claims."
+      ],
+      notes: [
+        "Public mod sources show generic `empty-widget` pushers and draggable titlebar space, so `header-filler` is a role, not the atom identity."
+      ]
+    }
   }),
   atomDefinition({
     id: "vertical-flow",

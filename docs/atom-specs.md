@@ -24,6 +24,7 @@ An atom is not complete until these surfaces agree:
 | Inspector | The in-app inspector exposes captured and inferred fields from structured data, with unknown values marked as planned or unresolved. |
 | Lua export | The atom exports immediately to a Factorio Lua skeleton using the closest valid primitive, style, direction, names, and supported style assignments. |
 | Behavior | Any runtime interaction that belongs to the atom is modeled or explicitly deferred with stable hook names. |
+| Builder availability | The atom is explicitly evaluated for no-code builder palette/tree insertion. If it is not exposed, the registry and docs state why and what unlocks it. |
 | Validation | `scripts/check.sh` and any atom-specific checks pass; visual review gaps are documented. |
 | Tracking | The atom registry, owning docs, issue, and draft PR say what is implemented, hardcoded, assumed, and missing. |
 
@@ -85,9 +86,15 @@ Build each atom through the same sequence:
 4. Expose inspector rows from structured data, not parsed DOM text.
 5. Extend `src/factorioExport.js` so the atom has valid Lua output in the same
    pass that makes it visible in the editor.
-6. Update owning docs when model schema, assumptions, exported format, style
+6. Decide builder availability explicitly. Add or defer builder capability
+   metadata for the atom: stable atom id, id prefix, default style variant,
+   palette label/code, child capability, allowed children, `createSpec`, and
+   model-layer `hydrateSpec`/export behavior. If the atom should not appear in
+   the palette or tree insertion UI yet, document the model/product reason and
+   the future rules needed to expose it.
+7. Update owning docs when model schema, assumptions, exported format, style
    rules, or user-visible behavior change.
-7. Run `scripts/check.sh`; add narrower checks when the atom gets behavior or
+8. Run `scripts/check.sh`; add narrower checks when the atom gets behavior or
    nontrivial export logic.
 
 An implementation can be partial, but the partial state must be honest. Prefer

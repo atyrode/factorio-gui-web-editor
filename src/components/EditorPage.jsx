@@ -23,10 +23,11 @@ import {
 import { createFactorioModDownload } from "../factorioModExport.js";
 import {
   BODY_LAYOUT_ROOT_ID,
-  acceptedLayoutChildAtom,
+  builderAtomCode,
+  builderAtomLabel,
   canDropLayoutNode,
-  createFrameSpec,
-  createHorizontalFlowSpec,
+  createLayoutSpec,
+  defaultLayoutChildAtom,
   FRAME_ATOM_ID,
   findLayoutNode,
   findLayoutParentChildren,
@@ -491,6 +492,7 @@ function EditorCanvas({
   onResizeDraft,
   onWindowLocationChange,
   builderDragActive,
+  builderDragAtom = null,
   builderDropTarget,
   resizeMode = false,
   shadowsVisible = true
@@ -658,6 +660,7 @@ function EditorCanvas({
           bodyChildren={bodyChildren}
           bodyStyleReference={bodyStyleReference}
           builderDragActive={builderDragActive}
+          builderDragAtom={builderDragAtom}
           builderDropTarget={builderDropTarget}
           shadowsVisible={shadowsVisible}
         />
@@ -740,29 +743,15 @@ function LuaOutput({ model }) {
 }
 
 function atomLabel(atom) {
-  if (atom === HORIZONTAL_FLOW_ATOM_ID) {
-    return "Horizontal Flow";
-  }
-  if (atom === FRAME_ATOM_ID) {
-    return "Frame";
-  }
-  return "Component";
+  return builderAtomLabel(atom);
 }
 
 function atomCode(atom) {
-  if (atom === HORIZONTAL_FLOW_ATOM_ID) {
-    return "flow.horizontal";
-  }
-  if (atom === FRAME_ATOM_ID) {
-    return "frame";
-  }
-  return "layout";
+  return builderAtomCode(atom);
 }
 
 function createSpecForAtom(atom, nodeNumber) {
-  return atom === HORIZONTAL_FLOW_ATOM_ID
-    ? createHorizontalFlowSpec(nodeNumber)
-    : createFrameSpec(nodeNumber);
+  return createLayoutSpec(atom, nodeNumber);
 }
 
 function dragAtom(drag) {
@@ -1826,9 +1815,12 @@ export function EditorPage() {
     applyLayoutUpdate((layoutState) => {
       const atom =
         requestedAtom ??
-        acceptedLayoutChildAtom(layoutState.layoutChildren, parentId) ??
+        defaultLayoutChildAtom(layoutState.layoutChildren, parentId) ??
         FRAME_ATOM_ID;
       const node = createSpecForAtom(atom, layoutState.nextLayoutNodeNumber);
+      if (!node) {
+        return { changed: false };
+      }
       const insertion = insertLayoutNode(layoutState.layoutChildren, parentId, index, node);
       return {
         ...insertion,
@@ -1903,6 +1895,9 @@ export function EditorPage() {
 
       if (drag.kind === "palette") {
         const node = createSpecForAtom(drag.atom, layoutState.nextLayoutNodeNumber);
+        if (!node) {
+          return { changed: false };
+        }
         const insertion = insertLayoutNode(
           layoutState.layoutChildren,
           currentTarget.parentId,
@@ -2195,6 +2190,7 @@ export function EditorPage() {
               onResizeDraft={setResizeDraft}
               onWindowLocationChange={updateWindowLocation}
               builderDragActive={Boolean(builderDrag)}
+              builderDragAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
               builderDropTarget={builderDropTarget}
               resizeMode={resizeMode}
               shadowsVisible={showGuiShadows}

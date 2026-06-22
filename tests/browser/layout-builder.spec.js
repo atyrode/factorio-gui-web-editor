@@ -97,6 +97,28 @@ const NESTED_TREE_STATE = {
     nextLayoutNodeNumber: 5
   }
 };
+const BODY_FILLER_STATE = {
+  ...ONE_FRAME_STATE,
+  currentWindow: {
+    ...ONE_FRAME_STATE.currentWindow,
+    layoutChildren: [
+      {
+        id: "gui_filler_1",
+        atom: "filler",
+        styleVariant: "draggable-space",
+        children: [
+          {
+            id: "gui_frame_99",
+            atom: "frame",
+            styleVariant: "inside-deep-frame",
+            children: []
+          }
+        ]
+      }
+    ],
+    nextLayoutNodeNumber: 2
+  }
+};
 
 function stateWithSelection(state, anchor, overrides = {}) {
   return {
@@ -482,6 +504,20 @@ async function previewPaletteTileOverTreeRow(page, paletteAnchor, targetId) {
   );
 }
 
+async function dropPaletteTileOverTreeRow(page, paletteAnchor, targetId) {
+  await startNativePaletteDrag(page, paletteAnchor);
+  await dragActiveNativePaletteOver(
+    page,
+    `[data-anchor="builder_tree_item_${targetId}"]`,
+    { x: 56, y: 18 }
+  );
+  await dropActiveNativePalette(
+    page,
+    `[data-anchor="builder_tree_item_${targetId}"]`,
+    { x: 56, y: 18 }
+  );
+}
+
 async function endNativeDrag(page) {
   await page.evaluate(() => {
     const drag = window.__layoutBuilderNativeDrag ?? window.__layoutBuilderTreeDrag;
@@ -633,6 +669,9 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
       .toBeVisible();
     await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-anchor="frame_palette_item"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="horizontal_flow_palette_item"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="filler_palette_item"]')).toBeVisible();
   });
 
   test("component tree can show the generated Window shell", async ({ page }) => {
@@ -650,6 +689,19 @@ test.describe("Layout builder canvas preview", () => {
     await expect(tree.getByText("gui_window_title", { exact: true })).toBeVisible();
     await expect(tree.getByText("Header Filler")).toBeVisible();
     await expect(tree.getByText("gui_window_drag_handle", { exact: true })).toBeVisible();
+    const headerFiller = page.locator('[data-anchor="gui_window_drag_handle"]');
+    await expect(headerFiller).toHaveAttribute("data-fx-atom", "filler");
+    await expect(headerFiller).toHaveAttribute("data-fx-primitive", "empty-widget");
+    await expect(headerFiller).toHaveAttribute("data-fx-class", "agui::Filler");
+    await expect(headerFiller).toHaveAttribute("data-fx-style", "draggable_space_header");
+    await expect(headerFiller).toHaveAttribute("data-fx-role", "header-filler");
+    await expect(headerFiller).toHaveAttribute("data-fx-height", "36");
+    await expect(headerFiller).toHaveAttribute("data-fx-natural-height", "36");
+    await expect(headerFiller).toHaveAttribute("data-fx-left-margin", "6");
+    await expect(headerFiller).toHaveAttribute("data-fx-right-margin", "6");
+    await expect(headerFiller).toHaveAttribute("data-fx-horizontally-stretchable", "true");
+    await expect(headerFiller).toHaveAttribute("data-fx-vertically-stretchable", "true");
+    await expect(headerFiller).toHaveAttribute("data-fx-ignored-by-search", "true");
     await expect(tree.getByText("Window body Horizontal Flow")).toBeVisible();
     await expect(tree.getByText("gui_window_body", { exact: true })).toBeVisible();
     await expect(tree.getByRole("button", { name: "Frame", exact: true }))
@@ -657,6 +709,7 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
       .toBeVisible();
     await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-anchor="filler_palette_item"]')).toBeVisible();
   });
 
   test("settings toggle switches component tree between body flow and generated shell", async ({ page }) => {
@@ -824,6 +877,7 @@ test.describe("Layout builder canvas preview", () => {
     await seedOneFrameWindow(page);
     await expect(page.locator('[data-anchor="frame_palette_item"]')).toBeVisible();
     await expect(page.locator('[data-anchor="horizontal_flow_palette_item"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="filler_palette_item"]')).toBeVisible();
 
     await dragHorizontalFlowPaletteToFrame(page);
 
@@ -837,18 +891,99 @@ test.describe("Layout builder canvas preview", () => {
     )).toBeVisible();
   });
 
+  test("palette can insert authored Filler into body, Frame, and Horizontal Flow", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showLuaOutput: true
+    });
+
+    await dropPaletteTileOverTreeRow(page, "filler_palette_item", "gui_window_body");
+    await dropPaletteTileOverTreeRow(page, "filler_palette_item", "gui_frame_1");
+    await dropPaletteTileOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+    await dropPaletteTileOverTreeRow(page, "filler_palette_item", "gui_horizontal_flow_4");
+
+    const bodyFiller = page.locator(
+      '[data-anchor="gui_window_body"] > [data-anchor="gui_filler_2"]'
+    );
+    const frameFiller = page.locator(
+      '[data-anchor="gui_frame_1"] > [data-anchor="gui_filler_3"]'
+    );
+    const flowFiller = page.locator(
+      '[data-anchor="gui_horizontal_flow_4"] > [data-anchor="gui_filler_5"]'
+    );
+    for (const filler of [bodyFiller, frameFiller, flowFiller]) {
+      await expect(filler).toBeVisible();
+      await expect(filler).toHaveAttribute("data-fx-atom", "filler");
+      await expect(filler).toHaveAttribute("data-fx-primitive", "empty-widget");
+      await expect(filler).toHaveAttribute("data-fx-class", "agui::Filler");
+      await expect(filler).toHaveAttribute("data-fx-style", "draggable_space");
+      await expect(filler).toHaveAttribute("data-fx-role", "spacer");
+      await expect(filler).toHaveAttribute("data-fx-horizontally-stretchable", "true");
+      await expect(filler).toHaveAttribute("data-fx-vertically-stretchable", "true");
+      await expect(filler).toHaveAttribute("data-fx-ignored-by-interaction", "true");
+    }
+
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_filler_5"]'))
+      .toHaveClass(/is-selected/);
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText('local gui_filler_2 = gui_window_body.add{');
+    await expect(luaOutput).toContainText('local gui_filler_3 = gui_frame_1.add{');
+    await expect(luaOutput).toContainText('local gui_filler_5 = gui_horizontal_flow_4.add{');
+    await expect(luaOutput).toContainText('type = "empty-widget"');
+    await expect(luaOutput).toContainText('style = "draggable_space"');
+    await expect(luaOutput).toContainText("ignored_by_interaction = true");
+    await expect(luaOutput).toContainText("gui_filler_5.style.horizontally_stretchable = true");
+    await expect(luaOutput).toContainText("gui_filler_5.style.vertically_stretchable = true");
+  });
+
+  test("authored Filler is selectable, movable, removable, and not a drop parent", async ({ page }) => {
+    await seedEditorState(page, {
+      ...BODY_FILLER_STATE,
+      showInspector: true,
+      showLuaOutput: true
+    });
+
+    const fillerRow = page.locator('[data-anchor="builder_tree_item_gui_filler_1"]');
+    await expect(page.locator('[data-anchor="gui_filler_1"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="gui_filler_1"] > .fx-gui-flow-drop-target'))
+      .toHaveCount(0);
+    await expect(page.locator('[data-anchor="gui_frame_99"]')).toHaveCount(0);
+    await fillerRow.click();
+    await expect(fillerRow).toHaveClass(/is-selected/);
+    await expect(page.locator('[data-anchor="inspector_gui_filler_1"]')).toBeVisible();
+    await expect(fillerRow.getByRole("button", { name: "Add child" })).toHaveCount(0);
+
+    await dropPaletteTileOverTreeRow(page, "frame_palette_item", "gui_filler_1");
+    await expect(page.locator('[data-anchor="gui_frame_2"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="gui_filler_1"] > [data-anchor="gui_frame_2"]'))
+      .toHaveCount(0);
+    await expect(page.locator('[data-anchor="gui_window_body"] > [data-anchor="gui_frame_2"]'))
+      .toHaveCount(1);
+    await expect(page.locator('[data-anchor="gui_filler_1"] > .fx-gui-flow-drop-target'))
+      .toHaveCount(0);
+
+    await dragTreeNodeToRow(page, "gui_filler_1", "gui_frame_2");
+    await expect(
+      page.locator('[data-anchor="gui_frame_2"] > [data-anchor="gui_filler_1"]')
+    ).toHaveCount(1);
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "local gui_filler_1 = gui_frame_2.add{"
+    );
+
+    await page
+      .locator('[data-anchor="builder_tree_item_gui_filler_1"]')
+      .getByRole("button", { name: "Remove Filler subtree" })
+      .click();
+    await expect(page.locator('[data-anchor="gui_filler_1"]')).toHaveCount(0);
+    await expect(page.locator(".fx-editor-output__code")).not.toContainText("gui_filler_1");
+  });
+
   test("drag-created Horizontal Flow keeps horizontal child layout", async ({ page }) => {
     await seedOneFrameWindow(page);
 
     await dragHorizontalFlowPaletteToFrame(page);
-    await page.locator('[data-anchor="frame_palette_item"]').dragTo(
-      page.locator('[data-anchor="gui_horizontal_flow_2"]'),
-      { targetPosition: { x: 20, y: 24 } }
-    );
-    await page.locator('[data-anchor="frame_palette_item"]').dragTo(
-      page.locator('[data-anchor="gui_horizontal_flow_2"]'),
-      { targetPosition: { x: 120, y: 24 } }
-    );
+    await dropPaletteTileOverTreeRow(page, "frame_palette_item", "gui_horizontal_flow_2");
+    await dropPaletteTileOverTreeRow(page, "frame_palette_item", "gui_horizontal_flow_2");
 
     const flow = page.locator('[data-anchor="gui_horizontal_flow_2"]');
     await expect(flow).toHaveAttribute("data-fx-direction", "horizontal");

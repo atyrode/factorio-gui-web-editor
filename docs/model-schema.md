@@ -77,6 +77,10 @@ visible container atom used for body split children. Role-specific styles such
 as `frame_header_flow`, `inset_frame_container_horizontal_flow`,
 `inside_deep_frame`, and the captured 72 x 36 header action group are variant
 data on their real atoms, not separate atom identities.
+Filler maps to the official Factorio `empty-widget` primitive. The generated
+Window titlebar uses one Filler instance with `style: draggable_space_header`
+and `role: header-filler`; generic spacer roles such as `pusher` or `spacer`
+remain future authored layout variants, not separate atom identities.
 
 Current Horizontal Flow model nodes keep:
 
@@ -167,32 +171,40 @@ identifiers in `gui.lua`, while stable node ids, DOM anchors, Inspector targets,
 and Factorio element `name` fields stay unchanged.
 
 Legacy cached windows normalize to an empty `layoutChildren` array with
-`nextLayoutNodeNumber: 1`. Legacy root `horizontal-flow` specs normalize into
-root Frame specs because the real-game content split is `HorizontalFlow` body
-with direct `Frame` children. `gui_window_body` is still generated as the
-non-deletable Window body flow in the hydrated model and Lua export; it is not
-stored in `layoutChildren` because the Window shell owns that Factorio element.
-The Builder tree shows that fixed body flow root so the component list matches
-the Inspector and generated Lua structure. Editor-created root Frame specs
-hydrate to `primitive: frame`, `style: inside_deep_frame`, and stretch flags
-that make sibling Frames fill/split available space. Editor-created
-`generic-horizontal-flow` specs hydrate to `primitive: flow`, `direction:
-horizontal`, `style: horizontal_flow`, the current `layoutSettings` spacing and
-padding values, and ordered Frame children. Legal parents alternate by primitive:
-the Window body and Horizontal Flow nodes accept Frames, while Frame nodes accept
-Horizontal Flows. The Window root, titlebar, title label, drag filler, a moved
-node itself, and descendants of the moved node are not legal drop parents.
-Headless Tree supplies component-tree drag/drop targets and accessibility
-state, but it does not change the persisted schema; accepted drops still commit
-only ordered mutations to `layoutChildren`.
+`nextLayoutNodeNumber: 1`. Existing Frame and Horizontal Flow specs keep their
+atom identity if their parent capability accepts them. Unknown atoms are
+pruned, not rewritten as a different implemented atom. `gui_window_body` is
+still generated as the non-deletable Window body flow in the hydrated model and
+Lua export; it is not stored in `layoutChildren` because the Window shell owns
+that Factorio element. The Builder tree shows that fixed body flow root so the
+component list matches the Inspector and generated Lua structure.
+Editor-created root Frame specs hydrate to `primitive: frame`,
+`style: inside_deep_frame`, and stretch flags that make sibling Frames
+fill/split available space. Editor-created `generic-horizontal-flow` specs
+hydrate to `primitive: flow`, `direction: horizontal`, `style:
+horizontal_flow`, the current `layoutSettings` spacing and padding values, and
+ordered implemented children. Editor-created Filler specs hydrate to
+`primitive: empty-widget`, `style: draggable_space`, `role: spacer`, stretch
+flags, and `ignored_by_interaction = true`.
+
+Legal parents are declared by builder atom capability metadata. The Window body
+accepts implemented authored atoms. Frame and Horizontal Flow accept Frame,
+Horizontal Flow, and Filler children. Filler is a leaf and accepts no children.
+The old Frame -> Horizontal Flow -> Frame alternation was a temporary
+implementation slice, not a Factorio rule. The Window root, titlebar, title
+label, generated header Filler, a moved node itself, and descendants of the
+moved node are not legal drop parents. Headless Tree supplies component-tree
+drag/drop targets and accessibility state, but it does not change the persisted
+schema; accepted drops still commit only ordered mutations to `layoutChildren`.
 
 Resize mode is a generic editor operation over explicit resize capabilities. It
 does not add arbitrary CSS sizing to the schema. `gui_window` resizes through
 `currentWindow.size` and exports root `.style.width` / `.style.height`.
 Editor-created Frames and Horizontal Flows resize through their optional
 `size.minimalWidth` / `size.minimalHeight` fields. Generated shell children such
-as the title label and header filler remain unsupported until their atom
-contracts define Factorio-exportable size fields.
+as the title label and header filler are not resize targets; the generated
+Filler preserves captured height, margins, stretch flags, and drag behavior from
+its atom contract rather than accepting authored resize fields.
 
 Window references are named records, not one anonymous hardcoded box. The
 editor-created default is authored for the web preview at `680 x 480`, so a new
@@ -258,6 +270,31 @@ CloseButton: [1404, 0], 36 x 36
 The filler position follows `191 title width + 12 header spacing + 6 left
 margin`. The SearchBar and CloseButton positions then follow the filler width,
 filler right margin, header spacing, and the browse-arrow group width.
+
+The Tips and tricks reference provides a second header filler sample without
+optional right-side header controls:
+
+```text
+title label: [0, -4], inferred 170 x 46 from filler offset
+filler: [188, 0], 2206 x 36
+```
+
+That sample reports the same `agui::Filler` style chain and constraints as the
+Blueprint Library capture: `draggable_space_header -> draggable_space ->
+empty_widget`, `size_before_stretching {0, 36}`, `maximum_vertical_squash_size
+0`, `height 36`, `natural_height 36`, `left_margin 6`, `right_margin 6`,
+horizontal and vertical stretch enabled, `graphical_set redefined`, and
+`ignored_by_search true`. Its wider final width is evidence of header filler
+stretching, not a separate authored size.
+
+Public Factorio mod sources also use `empty-widget` as a generic stretch
+pusher/spacer, commonly with `draggable_space` or `draggable_space_header`.
+The model therefore treats `Filler` as the reusable atom and keeps
+`header-filler`, `pusher`, and `spacer` as roles. Persisted no-code layout specs
+now include authored Filler nodes when the builder inserts them. The generated
+titlebar Filler keeps `role: header-filler` and `draggable_space_header`; the
+authored builder default uses `role: spacer`, `draggable_space`, stretch flags,
+and `ignored_by_interaction = true`.
 
 Each node should keep stable fields:
 

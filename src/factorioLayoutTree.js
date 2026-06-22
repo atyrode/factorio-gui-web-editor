@@ -5,10 +5,69 @@ export const FRAME_ID_PREFIX = "gui_frame_";
 export const HORIZONTAL_FLOW_ATOM_ID = "horizontal-flow";
 export const GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT = "generic-horizontal-flow";
 export const HORIZONTAL_FLOW_ID_PREFIX = "gui_horizontal_flow_";
+export const FILLER_ATOM_ID = "filler";
+export const GENERIC_FILLER_STYLE_VARIANT = "draggable-space";
+export const FILLER_ID_PREFIX = "gui_filler_";
 export const LAYOUT_NODE_SIZE_LIMITS = Object.freeze({
   minimalWidth: Object.freeze({ min: 48, max: 800 }),
   minimalHeight: Object.freeze({ min: 48, max: 600 })
 });
+
+function createLayoutSpecFromMetadata(metadata, nodeNumber) {
+  const safeNumber = normalizeNextNumber(nodeNumber);
+
+  return {
+    id: `${metadata.idPrefix}${safeNumber}`,
+    atom: metadata.atom,
+    styleVariant: metadata.defaultStyleVariant,
+    children: []
+  };
+}
+
+function defineBuilderAtomMetadata(config) {
+  return Object.freeze({
+    ...config,
+    createSpec: (nodeNumber) => createLayoutSpecFromMetadata(config, nodeNumber)
+  });
+}
+
+export const BUILDER_ATOM_METADATA = Object.freeze({
+  [FRAME_ATOM_ID]: defineBuilderAtomMetadata({
+    atom: FRAME_ATOM_ID,
+    idPrefix: FRAME_ID_PREFIX,
+    defaultStyleVariant: INSIDE_DEEP_FRAME_STYLE_VARIANT,
+    paletteLabel: "Frame",
+    paletteCode: "frame",
+    canHaveChildren: true,
+    defaultChildAtom: FRAME_ATOM_ID,
+    allowedChildren: Object.freeze([FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID, FILLER_ATOM_ID])
+  }),
+  [HORIZONTAL_FLOW_ATOM_ID]: defineBuilderAtomMetadata({
+    atom: HORIZONTAL_FLOW_ATOM_ID,
+    idPrefix: HORIZONTAL_FLOW_ID_PREFIX,
+    defaultStyleVariant: GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
+    paletteLabel: "Horizontal Flow",
+    paletteCode: "flow.horizontal",
+    canHaveChildren: true,
+    defaultChildAtom: FRAME_ATOM_ID,
+    allowedChildren: Object.freeze([FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID, FILLER_ATOM_ID])
+  }),
+  [FILLER_ATOM_ID]: defineBuilderAtomMetadata({
+    atom: FILLER_ATOM_ID,
+    idPrefix: FILLER_ID_PREFIX,
+    defaultStyleVariant: GENERIC_FILLER_STYLE_VARIANT,
+    paletteLabel: "Filler",
+    paletteCode: "empty-widget",
+    canHaveChildren: false,
+    defaultChildAtom: null,
+    allowedChildren: Object.freeze([])
+  })
+});
+export const BUILDER_PALETTE_ATOMS = Object.freeze([
+  FRAME_ATOM_ID,
+  HORIZONTAL_FLOW_ATOM_ID,
+  FILLER_ATOM_ID
+]);
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -42,30 +101,49 @@ function clampInteger(value, { min, max }) {
   return Math.min(max, Math.max(min, Math.round(numberValue)));
 }
 
+export function builderAtomMetadata(atom) {
+  return BUILDER_ATOM_METADATA[atom] ?? null;
+}
+
+export function builderAtomLabel(atom) {
+  return builderAtomMetadata(atom)?.paletteLabel ?? "Component";
+}
+
+export function builderAtomCode(atom) {
+  return builderAtomMetadata(atom)?.paletteCode ?? "layout";
+}
+
+export function isKnownLayoutAtom(atom) {
+  return Boolean(builderAtomMetadata(atom));
+}
+
+export function canLayoutAtomHaveChildren(atom) {
+  return Boolean(builderAtomMetadata(atom)?.canHaveChildren);
+}
+
 function canonicalStyleVariant(atom) {
-  return atom === FRAME_ATOM_ID
-    ? INSIDE_DEEP_FRAME_STYLE_VARIANT
-    : GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT;
+  return builderAtomMetadata(atom)?.defaultStyleVariant ?? null;
 }
 
 function prefixForAtom(atom) {
-  return atom === FRAME_ATOM_ID
-    ? FRAME_ID_PREFIX
-    : HORIZONTAL_FLOW_ID_PREFIX;
+  return builderAtomMetadata(atom)?.idPrefix ?? null;
 }
 
-function normalizeAtom(atom, parentAtom) {
-  if (atom === FRAME_ATOM_ID || atom === HORIZONTAL_FLOW_ATOM_ID) {
-    return atom;
+function normalizeAtom(atom) {
+  return isKnownLayoutAtom(atom) ? atom : null;
+}
+
+function canParentAtomAcceptChildAtom(parentAtom, childAtom) {
+  if (!isKnownLayoutAtom(childAtom)) {
+    return false;
   }
 
-  if (atom != null) {
-    return null;
+  if (parentAtom === BODY_LAYOUT_ROOT_ID) {
+    return true;
   }
 
-  return parentAtom === FRAME_ATOM_ID
-    ? HORIZONTAL_FLOW_ATOM_ID
-    : FRAME_ATOM_ID;
+  const parent = builderAtomMetadata(parentAtom);
+  return Boolean(parent?.canHaveChildren && parent.allowedChildren.includes(childAtom));
 }
 
 function cloneNode(node) {
@@ -75,7 +153,9 @@ function cloneNode(node) {
     atom: node.atom,
     styleVariant: canonicalStyleVariant(node.atom),
     ...(size ? { size } : {}),
-    children: node.children.map(cloneNode)
+    children: canLayoutAtomHaveChildren(node.atom)
+      ? (node.children ?? []).map(cloneNode)
+      : []
   };
 }
 
@@ -88,15 +168,8 @@ function clampInsertionIndex(index, length) {
   return Math.min(Math.max(0, Math.round(numberValue)), length);
 }
 
-function createLayoutSpec(atom, nodeNumber) {
-  const safeNumber = normalizeNextNumber(nodeNumber);
-
-  return {
-    id: `${prefixForAtom(atom)}${safeNumber}`,
-    atom,
-    styleVariant: canonicalStyleVariant(atom),
-    children: []
-  };
+export function createLayoutSpec(atom, nodeNumber) {
+  return builderAtomMetadata(atom)?.createSpec(nodeNumber) ?? null;
 }
 
 export function createFrameSpec(nodeNumber) {
@@ -105,6 +178,10 @@ export function createFrameSpec(nodeNumber) {
 
 export function createHorizontalFlowSpec(nodeNumber) {
   return createLayoutSpec(HORIZONTAL_FLOW_ATOM_ID, nodeNumber);
+}
+
+export function createFillerSpec(nodeNumber) {
+  return createLayoutSpec(FILLER_ATOM_ID, nodeNumber);
 }
 
 export function normalizeLayoutNodeSize(value = null) {
@@ -143,24 +220,17 @@ export function normalizeLayoutState(value = {}) {
     return id;
   }
 
-  function normalizeNode(node, parentAtom = HORIZONTAL_FLOW_ATOM_ID) {
+  function normalizeNode(node, parentAtom = BODY_LAYOUT_ROOT_ID) {
     if (!isObject(node)) {
       return null;
     }
 
-    let atom = normalizeAtom(node.atom, parentAtom);
+    const atom = normalizeAtom(node.atom);
     if (atom == null) {
       return null;
     }
 
-    const acceptedAtom = parentAtom === FRAME_ATOM_ID
-      ? HORIZONTAL_FLOW_ATOM_ID
-      : FRAME_ATOM_ID;
-    if (acceptedAtom && atom !== acceptedAtom) {
-      atom = acceptedAtom;
-    }
-
-    if (atom !== FRAME_ATOM_ID && atom !== HORIZONTAL_FLOW_ATOM_ID) {
+    if (!canParentAtomAcceptChildAtom(parentAtom, atom)) {
       return null;
     }
 
@@ -174,7 +244,7 @@ export function normalizeLayoutState(value = {}) {
       id = allocateId(atom);
     }
 
-    const children = Array.isArray(node.children)
+    const children = canLayoutAtomHaveChildren(atom) && Array.isArray(node.children)
       ? node.children.map((child) => normalizeNode(child, atom)).filter(Boolean)
       : [];
 
@@ -191,7 +261,7 @@ export function normalizeLayoutState(value = {}) {
 
   const layoutChildren = Array.isArray(value?.layoutChildren)
     ? value.layoutChildren
-        .map((node) => normalizeNode(node, HORIZONTAL_FLOW_ATOM_ID))
+        .map((node) => normalizeNode(node, BODY_LAYOUT_ROOT_ID))
         .filter(Boolean)
     : [];
 
@@ -227,24 +297,24 @@ export function findLayoutParentChildren(layoutChildren = [], parentId) {
 
 export function findLayoutParentAtom(layoutChildren = [], parentId) {
   if (parentId === BODY_LAYOUT_ROOT_ID) {
-    return HORIZONTAL_FLOW_ATOM_ID;
+    return BODY_LAYOUT_ROOT_ID;
   }
 
   return findLayoutNode(layoutChildren, parentId)?.node.atom ?? null;
 }
 
-export function acceptedLayoutChildAtom(layoutChildren = [], parentId) {
+export function canParentAcceptAtom(layoutChildren = [], parentId, childAtom) {
   const parentAtom = findLayoutParentAtom(layoutChildren, parentId);
+  return canParentAtomAcceptChildAtom(parentAtom, childAtom);
+}
 
-  if (parentAtom === HORIZONTAL_FLOW_ATOM_ID) {
+export function defaultLayoutChildAtom(layoutChildren = [], parentId) {
+  const parentAtom = findLayoutParentAtom(layoutChildren, parentId);
+  if (parentAtom === BODY_LAYOUT_ROOT_ID) {
     return FRAME_ATOM_ID;
   }
 
-  if (parentAtom === FRAME_ATOM_ID) {
-    return HORIZONTAL_FLOW_ATOM_ID;
-  }
-
-  return null;
+  return builderAtomMetadata(parentAtom)?.defaultChildAtom ?? null;
 }
 
 export function isLayoutDescendant(layoutChildren = [], ancestorId, nodeId) {
@@ -270,7 +340,7 @@ export function canDropLayoutNode(
   const draggedAtom = sourceAtom ?? (
     sourceId ? findLayoutNode(layoutChildren, sourceId)?.node.atom : FRAME_ATOM_ID
   );
-  if (draggedAtom !== acceptedLayoutChildAtom(layoutChildren, targetParentId)) {
+  if (!canParentAcceptAtom(layoutChildren, targetParentId, draggedAtom)) {
     return false;
   }
 
