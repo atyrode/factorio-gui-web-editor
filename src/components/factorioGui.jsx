@@ -15,7 +15,12 @@ import {
   Unlock
 } from "lucide-react";
 import { createBuilderDropTarget } from "../factorioLayoutBuilderDnd.js";
-import { FILLER_ATOM_ID, FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID } from "../factorioLayoutTree.js";
+import {
+  FILLER_ATOM_ID,
+  FRAME_ATOM_ID,
+  HORIZONTAL_FLOW_ATOM_ID,
+  LABEL_ATOM_ID
+} from "../factorioLayoutTree.js";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -473,9 +478,35 @@ function createFillerPreviewNode() {
   };
 }
 
+function createLabelPreviewNode() {
+  return {
+    id: "builder_ghost_marker",
+    atom: LABEL_ATOM_ID,
+    primitive: "label",
+    className: "agui::Label",
+    style: "label",
+    caption: "Label",
+    derivedFrom: "label",
+    role: "text-label-preview",
+    styleReference: {
+      variantId: "label",
+      source: "wube-factorio-data-style-lua",
+      font: "default",
+      fontColor: "{1, 1, 1}",
+      browserColor: "#ffffff",
+      singleLine: true
+    },
+    children: []
+  };
+}
+
 function createPreviewNode(previewAtom, parentStyleReference = {}) {
   if (previewAtom === HORIZONTAL_FLOW_ATOM_ID) {
     return createHorizontalFlowPreviewNode(parentStyleReference);
+  }
+
+  if (previewAtom === LABEL_ATOM_ID) {
+    return createLabelPreviewNode();
   }
 
   if (previewAtom === FILLER_ATOM_ID) {
@@ -565,6 +596,28 @@ function GuiFrameShell({
     >
       {children}
     </div>
+  );
+}
+
+function GuiLabelShell({
+  node,
+  className = "",
+  style,
+  ...props
+}) {
+  return (
+    <FxLabel
+      variant={node.style}
+      className={["fx-gui-label", className].filter(Boolean).join(" ")}
+      data-anchor={node.id}
+      data-fx-atom={node.atom ?? LABEL_ATOM_ID}
+      data-fx-class={node.className}
+      data-fx-role={node.role ?? undefined}
+      style={style}
+      {...props}
+    >
+      {node.caption}
+    </FxLabel>
   );
 }
 
@@ -742,7 +795,9 @@ function CanvasDropPreviewSlot({
     ? GuiFrameShell
     : previewNode.primitive === "flow"
       ? GuiHorizontalFlowShell
-      : GuiFillerShell;
+      : previewNode.primitive === "label"
+        ? GuiLabelShell
+        : GuiFillerShell;
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setExpanded(true));
@@ -862,7 +917,41 @@ function GuiLayoutNode(props) {
     return <GuiHorizontalFlow {...props} />;
   }
 
+  if (props.node?.primitive === "label") {
+    return <GuiLabel {...props} />;
+  }
+
   return <GuiFiller {...props} />;
+}
+
+export function GuiLabel({
+  node,
+  inspectorActive = false,
+  inspectorLocked = false,
+  inspectedAnchor = node.id,
+  onInspect,
+  onInspectLock
+}) {
+  const labelInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: node.id,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+
+  return (
+    <GuiLabelShell
+      node={node}
+      className={labelInspector.className}
+      tabIndex={labelInspector.tabIndex}
+      onClick={labelInspector.onClick}
+      onFocus={labelInspector.onFocus}
+      onMouseEnter={labelInspector.onMouseEnter}
+      onMouseMove={labelInspector.onMouseMove}
+    />
+  );
 }
 
 export function GuiFiller({

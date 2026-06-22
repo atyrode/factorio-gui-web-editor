@@ -1009,8 +1009,8 @@ export const factorioAtomRegistry = Object.freeze([
     name: "Label",
     primitive: "label",
     style: "frame_title",
-    availability: "Editor seed",
-    summary: "Text label component; current capture covers the frame title style variant.",
+    availability: "Official / Editor seed / builder palette",
+    summary: "Text label component; implemented as the generated Window title and as an authored builder leaf atom.",
     className: "agui::Label",
     derivedFrom: "frame_title",
     fields: [
@@ -1029,7 +1029,7 @@ export const factorioAtomRegistry = Object.freeze([
         example: "label / frame_title / caption_label / heading_2_label / subheader_caption_label / clickable_label",
         source: "wube-factorio-data-style-lua"
       }),
-      field("caption", "implemented", "The generated Window title label owns editable caption text independently from the Window root.", {
+      field("caption", "implemented", "Generated Window title labels and authored builder Labels own editable caption text.", {
         type: string,
         example: "Untitled window",
         source: "editor-model"
@@ -1074,9 +1074,9 @@ export const factorioAtomRegistry = Object.freeze([
         example: true,
         source: "raiguard-style-guide-and-public-mods"
       }),
-      field("builder availability", "planned", "Label remains excluded from the builder palette until the no-code visual gate for Label expansion is completed.", {
+      field("builder availability", "implemented", "Label is exposed in the builder palette as a leaf atom with editable caption and base `label` style export.", {
         type: string,
-        example: "deferred",
+        example: "Label palette tile",
         source: "no-code-layout-builder"
       })
     ],
@@ -1115,9 +1115,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "model",
-        state: "partial",
+        state: "done",
         label: "Generic authored Label model",
-        note: "Builder insertion and per-node caption editing are deferred."
+        note: "Builder insertion and per-node caption editing are implemented for the base `label` style."
       }),
       progressCheck({
         dimension: "renderer",
@@ -1137,9 +1137,9 @@ export const factorioAtomRegistry = Object.freeze([
       }),
       progressCheck({
         dimension: "luaExport",
-        state: "partial",
+        state: "done",
         label: "Generic Label export",
-        note: "No authored generic Label node is exported in this pass."
+        note: "Authored Labels export as Factorio `label` nodes with captions and base `label` style."
       }),
       progressCheck({
         dimension: "behavior",

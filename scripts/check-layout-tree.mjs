@@ -9,9 +9,11 @@ import {
   FILLER_ATOM_ID,
   FRAME_ATOM_ID,
   GENERIC_FILLER_STYLE_VARIANT,
+  GENERIC_LABEL_STYLE_VARIANT,
   INSIDE_DEEP_FRAME_STYLE_VARIANT,
   GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
   HORIZONTAL_FLOW_ATOM_ID,
+  LABEL_ATOM_ID,
   builderAtomMetadata,
   canLayoutAtomHaveChildren,
   canDropLayoutNode,
@@ -19,6 +21,7 @@ import {
   createFillerSpec,
   createFrameSpec,
   createHorizontalFlowSpec,
+  createLabelSpec,
   duplicateLayoutSubtree,
   insertLayoutNode,
   moveLayoutNode,
@@ -26,6 +29,7 @@ import {
   pasteLayoutSubtree,
   removeLayoutNode,
   resolveLayoutPasteTarget,
+  updateLayoutNodeCaption,
   updateLayoutNodeSize
 } from "../src/factorioLayoutTree.js";
 import {
@@ -143,13 +147,18 @@ const normalized = normalizeLayoutState({
     }
   ]
 });
-assert.deepEqual(ids(normalized.layoutChildren), ["gui_frame_1", "gui_horizontal_flow_6"]);
+assert.deepEqual(ids(normalized.layoutChildren), [
+  "gui_frame_1",
+  "gui_horizontal_flow_6",
+  "gui_label_11"
+]);
 assert.equal(normalized.layoutChildren[0].atom, FRAME_ATOM_ID);
 assert.equal(normalized.layoutChildren[0].styleVariant, INSIDE_DEEP_FRAME_STYLE_VARIANT);
 assert.deepEqual(ids(normalized.layoutChildren[0].children), [
   "gui_frame_2",
   "gui_horizontal_flow_3",
-  "gui_filler_5"
+  "gui_filler_5",
+  "gui_label_10"
 ]);
 assert.equal(normalized.layoutChildren[0].children[0].atom, FRAME_ATOM_ID);
 assert.equal(normalized.layoutChildren[0].children[1].atom, HORIZONTAL_FLOW_ATOM_ID);
@@ -157,12 +166,23 @@ assert.equal(normalized.layoutChildren[0].children[1].children[0].atom, FILLER_A
 assert.deepEqual(normalized.layoutChildren[0].children[1].children[0].children, []);
 assert.equal(normalized.layoutChildren[0].children[2].atom, FILLER_ATOM_ID);
 assert.deepEqual(normalized.layoutChildren[0].children[2].children, []);
+assert.equal(normalized.layoutChildren[0].children[3].atom, LABEL_ATOM_ID);
+assert.equal(normalized.layoutChildren[0].children[3].caption, "Label");
 assert.equal(normalized.layoutChildren[1].atom, HORIZONTAL_FLOW_ATOM_ID);
 assert.deepEqual(ids(normalized.layoutChildren[1].children), ["gui_frame_7", "gui_filler_8"]);
-assert.equal(normalized.nextLayoutNodeNumber, 10);
+assert.equal(normalized.layoutChildren[2].atom, LABEL_ATOM_ID);
+assert.equal(normalized.nextLayoutNodeNumber, 12);
 assert.equal(canLayoutAtomHaveChildren(FRAME_ATOM_ID), true);
 assert.equal(canLayoutAtomHaveChildren(HORIZONTAL_FLOW_ATOM_ID), true);
+assert.equal(canLayoutAtomHaveChildren(LABEL_ATOM_ID), false);
 assert.equal(canLayoutAtomHaveChildren(FILLER_ATOM_ID), false);
+assert.deepEqual(builderAtomMetadata(LABEL_ATOM_ID).createSpec(41), {
+  id: "gui_label_41",
+  atom: LABEL_ATOM_ID,
+  styleVariant: GENERIC_LABEL_STYLE_VARIANT,
+  caption: "Label",
+  children: []
+});
 assert.deepEqual(builderAtomMetadata(FILLER_ATOM_ID).createSpec(42), {
   id: "gui_filler_42",
   atom: FILLER_ATOM_ID,
@@ -175,16 +195,20 @@ assert.equal(
   true
 );
 assert.equal(canParentAcceptAtom(normalized.layoutChildren, BODY_LAYOUT_ROOT_ID, FILLER_ATOM_ID), true);
+assert.equal(canParentAcceptAtom(normalized.layoutChildren, BODY_LAYOUT_ROOT_ID, LABEL_ATOM_ID), true);
 assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_frame_1", FRAME_ATOM_ID), true);
 assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_frame_1", HORIZONTAL_FLOW_ATOM_ID), true);
+assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_frame_1", LABEL_ATOM_ID), true);
 assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_frame_1", FILLER_ATOM_ID), true);
 assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_horizontal_flow_6", FRAME_ATOM_ID), true);
 assert.equal(
   canParentAcceptAtom(normalized.layoutChildren, "gui_horizontal_flow_6", HORIZONTAL_FLOW_ATOM_ID),
   true
 );
+assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_horizontal_flow_6", LABEL_ATOM_ID), true);
 assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_horizontal_flow_6", FILLER_ATOM_ID), true);
 assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_filler_5", FRAME_ATOM_ID), false);
+assert.equal(canParentAcceptAtom(normalized.layoutChildren, "gui_filler_5", LABEL_ATOM_ID), false);
 
 const normalizedSized = normalizeLayoutState({
   layoutChildren: [
@@ -209,6 +233,7 @@ const frame1 = createFrameSpec(1);
 const flow2 = createHorizontalFlowSpec(2);
 const frame3 = createFrameSpec(3);
 const filler4 = createFillerSpec(4);
+const label5 = createLabelSpec(5);
 let tree = [];
 
 let insertion = insertLayoutNode(tree, BODY_LAYOUT_ROOT_ID, 0, frame1);
@@ -231,9 +256,28 @@ assert.equal(insertion.changed, true);
 tree = insertion.layoutChildren;
 assert.deepEqual(ids(firstChild(tree).children), ["gui_horizontal_flow_2", "gui_filler_4"]);
 
-insertion = insertLayoutNode(tree, "gui_filler_4", 0, createFrameSpec(5));
+insertion = insertLayoutNode(tree, "gui_frame_1", 2, label5);
+assert.equal(insertion.changed, true);
+tree = insertion.layoutChildren;
+assert.deepEqual(ids(firstChild(tree).children), [
+  "gui_horizontal_flow_2",
+  "gui_filler_4",
+  "gui_label_5"
+]);
+assert.equal(tree[0].children[2].caption, "Label");
+
+const captionUpdate = updateLayoutNodeCaption(tree, "gui_label_5", "Power grid");
+assert.equal(captionUpdate.changed, true);
+tree = captionUpdate.layoutChildren;
+assert.equal(tree[0].children[2].caption, "Power grid");
+
+insertion = insertLayoutNode(tree, "gui_filler_4", 0, createFrameSpec(6));
 assert.equal(insertion.changed, false);
-assert.deepEqual(ids(firstChild(tree).children), ["gui_horizontal_flow_2", "gui_filler_4"]);
+assert.deepEqual(ids(firstChild(tree).children), [
+  "gui_horizontal_flow_2",
+  "gui_filler_4",
+  "gui_label_5"
+]);
 
 let sizeUpdate = updateLayoutNodeSize(tree, "gui_frame_3", {
   minimalWidth: 1000,
@@ -251,22 +295,26 @@ assert.equal(canDropLayoutNode(tree, "gui_frame_1", "gui_horizontal_flow_2"), fa
 assert.equal(canDropLayoutNode(tree, "gui_frame_3", BODY_LAYOUT_ROOT_ID), true);
 assert.equal(canDropLayoutNode(tree, "gui_horizontal_flow_2", BODY_LAYOUT_ROOT_ID), true);
 assert.equal(canDropLayoutNode(tree, null, BODY_LAYOUT_ROOT_ID, FILLER_ATOM_ID), true);
+assert.equal(canDropLayoutNode(tree, null, BODY_LAYOUT_ROOT_ID, LABEL_ATOM_ID), true);
 assert.equal(canDropLayoutNode(tree, null, "gui_frame_1", FILLER_ATOM_ID), true);
+assert.equal(canDropLayoutNode(tree, null, "gui_frame_1", LABEL_ATOM_ID), true);
 assert.equal(canDropLayoutNode(tree, null, "gui_horizontal_flow_2", FILLER_ATOM_ID), true);
+assert.equal(canDropLayoutNode(tree, null, "gui_horizontal_flow_2", LABEL_ATOM_ID), true);
 assert.equal(canDropLayoutNode(tree, null, "gui_filler_4", FRAME_ATOM_ID), false);
+assert.equal(canDropLayoutNode(tree, null, "gui_label_5", FRAME_ATOM_ID), false);
 
 let movement = moveLayoutNode(tree, "gui_frame_3", BODY_LAYOUT_ROOT_ID, 1);
 assert.equal(movement.changed, true);
 tree = movement.layoutChildren;
 assert.deepEqual(ids(tree), ["gui_frame_1", "gui_frame_3"]);
 assert.deepEqual(tree[1].size, { minimalWidth: 800, minimalHeight: 48 });
-assert.deepEqual(ids(tree[0].children), ["gui_horizontal_flow_2", "gui_filler_4"]);
+assert.deepEqual(ids(tree[0].children), ["gui_horizontal_flow_2", "gui_filler_4", "gui_label_5"]);
 
 movement = moveLayoutNode(tree, "gui_horizontal_flow_2", "gui_frame_3", 0);
 assert.equal(movement.changed, true);
 tree = movement.layoutChildren;
 assert.deepEqual(ids(tree), ["gui_frame_1", "gui_frame_3"]);
-assert.deepEqual(ids(tree[0].children), ["gui_filler_4"]);
+assert.deepEqual(ids(tree[0].children), ["gui_filler_4", "gui_label_5"]);
 assert.deepEqual(ids(tree[1].children), ["gui_horizontal_flow_2"]);
 
 const removal = removeLayoutNode(tree, "gui_frame_1");
@@ -348,7 +396,24 @@ assert.deepEqual(duplicatedFrame.node.children[0].children[0].size, {
 });
 assert.deepEqual(duplicatedFrame.node.children[0].children[1].children, []);
 assert.equal(duplicatedFrame.nextLayoutNodeNumber, 14);
-assert.equal(duplicateLayoutSubtree(clipboardState.layoutChildren, { atom: "label" }, 10).node, null);
+const duplicatedLabel = duplicateLayoutSubtree(
+  clipboardState.layoutChildren,
+  {
+    atom: LABEL_ATOM_ID,
+    caption: "Copied label",
+    children: [
+      {
+        atom: FRAME_ATOM_ID,
+        children: []
+      }
+    ]
+  },
+  20
+);
+assert.equal(duplicatedLabel.node.id, "gui_label_20");
+assert.equal(duplicatedLabel.node.caption, "Copied label");
+assert.deepEqual(duplicatedLabel.node.children, []);
+assert.equal(duplicatedLabel.nextLayoutNodeNumber, 21);
 assert.deepEqual(
   resolveLayoutPasteTarget(clipboardState.layoutChildren, "gui_frame_1", FRAME_ATOM_ID),
   {
@@ -370,9 +435,12 @@ assert.deepEqual(
     index: 2
   }
 );
-assert.equal(
-  resolveLayoutPasteTarget(clipboardState.layoutChildren, "gui_window_body", "label"),
-  null
+assert.deepEqual(
+  resolveLayoutPasteTarget(clipboardState.layoutChildren, "gui_window_body", LABEL_ATOM_ID),
+  {
+    parentId: BODY_LAYOUT_ROOT_ID,
+    index: 2
+  }
 );
 
 const pastedFrame = pasteLayoutSubtree(
@@ -390,11 +458,16 @@ assert.deepEqual(ids(pastedFrame.layoutChildren), [
 ]);
 assert.equal(pastedFrame.layoutChildren[2].children[0].id, "gui_horizontal_flow_11");
 assert.equal(pastedFrame.nextLayoutNodeNumber, 14);
-assert.equal(
-  pasteLayoutSubtree(clipboardState.layoutChildren, { atom: "label" }, "gui_window_body", 10)
-    .changed,
-  false
+const pastedLabel = pasteLayoutSubtree(
+  clipboardState.layoutChildren,
+  { atom: LABEL_ATOM_ID },
+  "gui_window_body",
+  10
 );
+assert.equal(pastedLabel.changed, true);
+assert.equal(pastedLabel.pastedNode.id, "gui_label_10");
+assert.equal(pastedLabel.pastedNode.caption, "Label");
+assert.equal(pastedLabel.nextLayoutNodeNumber, 11);
 
 const variableNodeIds = collectWindowLuaVariableNodeIds({
   layoutChildren: [
@@ -557,6 +630,48 @@ assert.equal(labelStyleVariant("clickable_label").font, "default");
 assert.equal(labelStyleVariant("clickable_label").hoveredFontColor, "{1, 0.74, 0.40}");
 assert.equal(labelStyleVariant("caption_label").ignoredBySearch, true);
 assert.equal(labelStyleVariant("subheader_caption_label").leftPadding, 8);
+const authoredLabelModel = createWindowModel({
+  title: "Authored label model",
+  layoutChildren: [
+    {
+      id: "gui_label_1",
+      atom: LABEL_ATOM_ID,
+      caption: "Power grid",
+      children: [
+        {
+          id: "gui_frame_99",
+          atom: FRAME_ATOM_ID,
+          children: []
+        }
+      ]
+    }
+  ]
+});
+const authoredLabel = authoredLabelModel.root.children[1].children[0];
+assert.equal(authoredLabel.id, "gui_label_1");
+assert.equal(authoredLabel.atom, LABEL_ATOM_ID);
+assert.equal(authoredLabel.primitive, "label");
+assert.equal(authoredLabel.className, "agui::Label");
+assert.equal(authoredLabel.caption, "Power grid");
+assert.equal(authoredLabel.style, "label");
+assert.equal(authoredLabel.styleReference.variantId, "label");
+assert.equal(authoredLabel.styleReference.font, "default");
+assert.equal(authoredLabel.styleReference.fontColor, "{1, 1, 1}");
+assert.deepEqual(authoredLabel.children, []);
+const authoredLabelInspectorRow = getWindowInspectorRows(authoredLabelModel)
+  .find((row) => row.id === "gui_label_1");
+assert.equal(authoredLabelInspectorRow.title, "class agui::Label");
+assert.equal(propertyValue(authoredLabelInspectorRow, "caption"), "Power grid");
+assert.deepEqual(
+  authoredLabelInspectorRow.properties.find((property) => property.label === "caption").editable,
+  { field: "layoutCaption", nodeId: "gui_label_1" }
+);
+const authoredLabelLua = renderWindowLua(authoredLabelModel);
+assert.match(
+  authoredLabelLua,
+  /local gui_label_1 = gui_window_body\.add\{\n    type = "label",\n    name = "gui_label_1",\n    caption = "Power grid",\n    style = "label"\n  \}/
+);
+assert.equal(authoredLabelLua.includes("gui_label_1.style.font"), false);
 assert.equal(model.root.luaVariableName, "main_window");
 assert.equal(titlebar.luaVariableName, "window_header");
 assert.equal(titleLabel.luaVariableName, "window_heading");
@@ -783,6 +898,14 @@ assert.ok(
   )
 );
 assert.ok(
+  labelAtom.fields.some(
+    (field) =>
+      field.name === "builder availability" &&
+      field.state === "implemented" &&
+      field.note.includes("builder palette")
+  )
+);
+assert.ok(
   labelAtom.progressChecks.some(
     (check) =>
       check.dimension === "evidence" &&
@@ -793,9 +916,9 @@ assert.ok(
 assert.ok(
   labelAtom.progressChecks.some(
     (check) =>
-      check.dimension === "renderer" &&
-      check.state === "partial" &&
-      check.label === "Label atlas variants render as source-backed approximations"
+      check.dimension === "model" &&
+      check.state === "done" &&
+      check.label === "Generic authored Label model"
   )
 );
 

@@ -5,6 +5,7 @@ import {
   INSIDE_DEEP_FRAME_STYLE_VARIANT,
   GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
   HORIZONTAL_FLOW_ATOM_ID,
+  LABEL_ATOM_ID,
   normalizeLayoutState
 } from "./factorioLayoutTree.js";
 import {
@@ -1401,9 +1402,40 @@ function createLayoutFillerNode(spec, _layoutSettings, luaVariableNames = {}) {
   };
 }
 
+function createLayoutLabelNode(spec, _layoutSettings, luaVariableNames = {}) {
+  const variant = labelStyleVariant(spec.styleVariant);
+
+  return {
+    id: spec.id,
+    luaVariableName: luaVariableNameForNode(spec.id, luaVariableNames),
+    atom: LABEL_ATOM_ID,
+    primitive: "label",
+    className: "agui::Label",
+    caption: spec.caption ?? "Label",
+    style: variant.style,
+    styleDescription: variant.styleDescription,
+    derivedFrom: variant.parent ?? variant.style,
+    role: "text-label",
+    styleReference: Object.freeze({
+      variantId: variant.id,
+      source: variant.source,
+      font: variant.font,
+      fontColor: variant.fontColor,
+      browserColor: variant.browserColor,
+      disabledFontColor: variant.disabledFontColor,
+      parentHoveredFontColor: variant.parentHoveredFontColor,
+      gameControllerHoveredFontColor: variant.gameControllerHoveredFontColor,
+      singleLine: variant.singleLine,
+      ignoredBySearch: variant.ignoredBySearch ?? false
+    }),
+    children: []
+  };
+}
+
 const LAYOUT_ATOM_HYDRATORS = Object.freeze({
   [FRAME_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutFrameNode }),
   [HORIZONTAL_FLOW_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutHorizontalFlowNode }),
+  [LABEL_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutLabelNode }),
   [FILLER_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutFillerNode })
 });
 
@@ -1414,6 +1446,38 @@ function createLayoutNode(spec, layoutSettings, luaVariableNames = {}, depth = 0
     luaVariableNames,
     depth
   ) ?? null;
+}
+
+function getLabelStyleProperties(node) {
+  const styleReference = node.styleReference ?? {};
+
+  return [
+    {
+      label: "caption",
+      value: node.caption ?? "",
+      editable: { field: "layoutCaption", nodeId: node.id },
+      tone: "default"
+    },
+    { label: "font", value: styleReference.font, indent: 1 },
+    { label: "font_color", value: styleReference.fontColor, indent: 1 },
+    {
+      label: "disabled_font_color",
+      value: styleReference.disabledFontColor,
+      indent: 1
+    },
+    {
+      label: "parent_hovered_font_color",
+      value: styleReference.parentHoveredFontColor,
+      indent: 1
+    },
+    {
+      label: "game_controller_hovered_font_color",
+      value: styleReference.gameControllerHoveredFontColor,
+      indent: 1
+    },
+    { label: "single_line", value: styleReference.singleLine, indent: 1 },
+    { label: "ignored_by_search", value: styleReference.ignoredBySearch, indent: 1 }
+  ].filter((property) => property.value != null);
 }
 
 function createLayoutInspectorRows(node) {
@@ -1432,7 +1496,10 @@ function createLayoutInspectorRows(node) {
       sizeBeforeStretching: FACTORIO_NOT_IMPLEMENTED,
       maximumHorizontalSquashSize: FACTORIO_NOT_IMPLEMENTED,
       maximumVerticalSquashSize: FACTORIO_NOT_IMPLEMENTED,
-      properties: getFlowStyleProperties(node.styleReference),
+      properties:
+        node.primitive === "label"
+          ? getLabelStyleProperties(node)
+          : getFlowStyleProperties(node.styleReference),
       childRows: childRows.length ? childRows : [{ label: "children", value: "" }]
     },
     ...node.children.flatMap(createLayoutInspectorRows)

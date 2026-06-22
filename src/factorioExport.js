@@ -104,6 +104,9 @@ function renderLayoutNodeLua(parentVariableName, node, depth = 1) {
   const directionLine = node.direction
     ? `${indent}  direction = ${luaString(node.direction)},\n`
     : "";
+  const captionLine = node.caption != null
+    ? `${indent}  caption = ${luaString(node.caption)},\n`
+    : "";
   const addOptionsLines = addOptionLines(node, indent);
   const addOptionsBlock = addOptionsLines.length
     ? `${addOptionsLines.join("\n")}\n`
@@ -112,7 +115,7 @@ function renderLayoutNodeLua(parentVariableName, node, depth = 1) {
   return `${indent}local ${variableName} = ${parentVariableName}.add{
 ${indent}  type = ${luaString(node.primitive)},
 ${indent}  name = ${luaString(node.id)},
-${directionLine}${addOptionsBlock}${indent}  style = ${luaString(node.style)}
+${directionLine}${captionLine}${addOptionsBlock}${indent}  style = ${luaString(node.style)}
 ${indent}}
 ${styleLines}${childLines ? `\n${childLines}` : ""}`;
 }

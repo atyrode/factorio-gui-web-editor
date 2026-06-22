@@ -49,6 +49,7 @@ import {
   pasteLayoutSubtree,
   removeLayoutNode,
   resolveLayoutPasteTarget,
+  updateLayoutNodeCaption,
   updateLayoutNodeSize
 } from "../factorioLayoutTree.js";
 import {
@@ -2104,6 +2105,23 @@ export function EditorPage() {
   }
 
   function updateInspectorEditableValue(editable, value) {
+    if (editable?.field === "layoutCaption" && editable.nodeId) {
+      applyLayoutUpdate((layoutState) => {
+        const update = updateLayoutNodeCaption(
+          layoutState.layoutChildren,
+          editable.nodeId,
+          value
+        );
+        return {
+          ...update,
+          selectedAnchor: editable.nodeId,
+          nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+        };
+      });
+
+      return { ok: true };
+    }
+
     if (editable?.field !== "title") {
       return { ok: true };
     }

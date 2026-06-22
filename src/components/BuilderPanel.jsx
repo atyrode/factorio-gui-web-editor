@@ -22,7 +22,8 @@ import {
   canLayoutAtomHaveChildren,
   canDropLayoutNode,
   FILLER_ATOM_ID,
-  HORIZONTAL_FLOW_ATOM_ID
+  HORIZONTAL_FLOW_ATOM_ID,
+  LABEL_ATOM_ID
 } from "../factorioLayoutTree.js";
 import { FxActionButton, FxFrame } from "./factorioGui.jsx";
 
@@ -509,7 +510,8 @@ function BuilderPaletteItem({
 }) {
   const anchor = {
     [FILLER_ATOM_ID]: "filler_palette_item",
-    [HORIZONTAL_FLOW_ATOM_ID]: "horizontal_flow_palette_item"
+    [HORIZONTAL_FLOW_ATOM_ID]: "horizontal_flow_palette_item",
+    [LABEL_ATOM_ID]: "label_palette_item"
   }[atom] ?? "frame_palette_item";
 
   function handlePaletteDragStart(event) {

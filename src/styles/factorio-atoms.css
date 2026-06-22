@@ -117,6 +117,11 @@
   color: var(--fx-label-clicked-color, var(--fx-orange-pressed));
 }
 
+.fx-gui-label {
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
 .fx-button {
   min-width: 128px;
   height: 36px;
@@ -1055,6 +1060,12 @@
   min-height: var(--fx-gui-filler-min-height, 36px);
 }
 
+.fx-gui-label.fx-gui-flow-drop-preview-slot.is-expanded {
+  flex-grow: 0;
+  flex-basis: auto;
+  min-width: max-content;
+}
+
 .fx-gui-window.is-inspected,
 .fx-gui-window__titlebar.is-inspected,
 .fx-gui-window__title-label.is-inspected,
@@ -1062,6 +1073,7 @@
 .fx-gui-window__body.is-inspected,
 .fx-gui-frame.is-inspected,
 .fx-gui-horizontal-flow.is-inspected,
+.fx-gui-label.is-inspected,
 .fx-gui-filler.is-inspected {
   position: relative;
 }
@@ -1073,6 +1085,7 @@
 .fx-gui-window__body.is-inspected::after,
 .fx-gui-frame.is-inspected::after,
 .fx-gui-horizontal-flow.is-inspected::after,
+.fx-gui-label.is-inspected::after,
 .fx-gui-filler.is-inspected::after {
   content: "";
   position: absolute;
@@ -1093,6 +1106,7 @@
 .fx-gui-window.is-inspecting .fx-gui-window__body,
 .fx-gui-window.is-inspecting .fx-gui-frame,
 .fx-gui-window.is-inspecting .fx-gui-horizontal-flow,
+.fx-gui-window.is-inspecting .fx-gui-label,
 .fx-gui-window.is-inspecting .fx-gui-filler {
   cursor: crosshair;
   user-select: none;

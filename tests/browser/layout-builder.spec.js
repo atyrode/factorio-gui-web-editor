@@ -1006,6 +1006,7 @@ test.describe("Layout builder canvas preview", () => {
     await expect(tree.getByText("gui_frame_1", { exact: true })).toBeVisible();
     await expect(page.locator('[data-anchor="frame_palette_item"]')).toBeVisible();
     await expect(page.locator('[data-anchor="horizontal_flow_palette_item"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="label_palette_item"]')).toBeVisible();
     await expect(page.locator('[data-anchor="filler_palette_item"]')).toBeVisible();
   });
 
@@ -1492,6 +1493,7 @@ test.describe("Layout builder canvas preview", () => {
     await seedOneFrameWindow(page);
     await expect(page.locator('[data-anchor="frame_palette_item"]')).toBeVisible();
     await expect(page.locator('[data-anchor="horizontal_flow_palette_item"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="label_palette_item"]')).toBeVisible();
     await expect(page.locator('[data-anchor="filler_palette_item"]')).toBeVisible();
 
     await dragHorizontalFlowPaletteToFrame(page);
@@ -1549,6 +1551,51 @@ test.describe("Layout builder canvas preview", () => {
     await expect(luaOutput).toContainText("ignored_by_interaction = true");
     await expect(luaOutput).toContainText("gui_filler_5.style.horizontally_stretchable = true");
     await expect(luaOutput).toContainText("gui_filler_5.style.vertically_stretchable = true");
+  });
+
+  test("palette can insert authored Label and edit its caption", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showInspector: true,
+      showLuaOutput: true
+    });
+
+    await dropPaletteTileOverTreeRow(page, "label_palette_item", "gui_window_body");
+    await dropPaletteTileOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+    await dropPaletteTileOverTreeRow(page, "label_palette_item", "gui_horizontal_flow_3");
+
+    const bodyLabel = page.locator('[data-anchor="gui_label_2"]');
+    const flowLabel = page.locator(
+      '[data-anchor="gui_horizontal_flow_3"] > [data-anchor="gui_label_4"]'
+    );
+    for (const label of [bodyLabel, flowLabel]) {
+      await expect(label).toBeVisible();
+      await expect(label).toHaveAttribute("data-fx-atom", "label");
+      await expect(label).toHaveAttribute("data-fx-primitive", "label");
+      await expect(label).toHaveAttribute("data-fx-class", "agui::Label");
+      await expect(label).toHaveAttribute("data-fx-style", "label");
+      await expect(label).toContainText("Label");
+    }
+
+    const labelRow = page.locator('[data-anchor="builder_tree_item_gui_label_2"]');
+    await labelRow.click();
+    await expect(labelRow).toHaveClass(/is-selected/);
+    await expect(labelRow.getByRole("button", { name: "Add child" })).toHaveCount(0);
+    await expect(page.locator('[data-anchor="inspector_gui_label_2"]')).toBeVisible();
+
+    await page
+      .locator('[data-anchor="inspector_gui_label_2"]')
+      .getByTitle("Edit caption: Label")
+      .click();
+    await page.getByLabel("Edit caption").fill("Power grid");
+    await page.getByLabel("Edit caption").press("Enter");
+
+    await expect(bodyLabel).toHaveText("Power grid");
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText('local gui_label_2 = gui_window_body.add{');
+    await expect(luaOutput).toContainText('caption = "Power grid"');
+    await expect(luaOutput).toContainText('style = "label"');
+    await expect(luaOutput).toContainText('local gui_label_4 = gui_horizontal_flow_3.add{');
   });
 
   test("authored Filler is selectable, movable, removable, and not a drop parent", async ({ page }) => {

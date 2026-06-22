@@ -5,6 +5,10 @@ export const FRAME_ID_PREFIX = "gui_frame_";
 export const HORIZONTAL_FLOW_ATOM_ID = "horizontal-flow";
 export const GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT = "generic-horizontal-flow";
 export const HORIZONTAL_FLOW_ID_PREFIX = "gui_horizontal_flow_";
+export const LABEL_ATOM_ID = "label";
+export const GENERIC_LABEL_STYLE_VARIANT = "label";
+export const LABEL_ID_PREFIX = "gui_label_";
+export const DEFAULT_LABEL_CAPTION = "Label";
 export const FILLER_ATOM_ID = "filler";
 export const GENERIC_FILLER_STYLE_VARIANT = "draggable-space";
 export const FILLER_ID_PREFIX = "gui_filler_";
@@ -20,6 +24,7 @@ function createLayoutSpecFromMetadata(metadata, nodeNumber) {
     id: `${metadata.idPrefix}${safeNumber}`,
     atom: metadata.atom,
     styleVariant: metadata.defaultStyleVariant,
+    ...(metadata.defaultCaption != null ? { caption: metadata.defaultCaption } : {}),
     children: []
   };
 }
@@ -40,7 +45,12 @@ export const BUILDER_ATOM_METADATA = Object.freeze({
     paletteCode: "frame",
     canHaveChildren: true,
     defaultChildAtom: FRAME_ATOM_ID,
-    allowedChildren: Object.freeze([FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID, FILLER_ATOM_ID])
+    allowedChildren: Object.freeze([
+      FRAME_ATOM_ID,
+      HORIZONTAL_FLOW_ATOM_ID,
+      LABEL_ATOM_ID,
+      FILLER_ATOM_ID
+    ])
   }),
   [HORIZONTAL_FLOW_ATOM_ID]: defineBuilderAtomMetadata({
     atom: HORIZONTAL_FLOW_ATOM_ID,
@@ -50,7 +60,23 @@ export const BUILDER_ATOM_METADATA = Object.freeze({
     paletteCode: "flow.horizontal",
     canHaveChildren: true,
     defaultChildAtom: FRAME_ATOM_ID,
-    allowedChildren: Object.freeze([FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID, FILLER_ATOM_ID])
+    allowedChildren: Object.freeze([
+      FRAME_ATOM_ID,
+      HORIZONTAL_FLOW_ATOM_ID,
+      LABEL_ATOM_ID,
+      FILLER_ATOM_ID
+    ])
+  }),
+  [LABEL_ATOM_ID]: defineBuilderAtomMetadata({
+    atom: LABEL_ATOM_ID,
+    idPrefix: LABEL_ID_PREFIX,
+    defaultStyleVariant: GENERIC_LABEL_STYLE_VARIANT,
+    defaultCaption: DEFAULT_LABEL_CAPTION,
+    paletteLabel: "Label",
+    paletteCode: "label",
+    canHaveChildren: false,
+    defaultChildAtom: null,
+    allowedChildren: Object.freeze([])
   }),
   [FILLER_ATOM_ID]: defineBuilderAtomMetadata({
     atom: FILLER_ATOM_ID,
@@ -66,6 +92,7 @@ export const BUILDER_ATOM_METADATA = Object.freeze({
 export const BUILDER_PALETTE_ATOMS = Object.freeze([
   FRAME_ATOM_ID,
   HORIZONTAL_FLOW_ATOM_ID,
+  LABEL_ATOM_ID,
   FILLER_ATOM_ID
 ]);
 
@@ -99,6 +126,15 @@ function clampInteger(value, { min, max }) {
   }
 
   return Math.min(max, Math.max(min, Math.round(numberValue)));
+}
+
+function normalizeLayoutNodeCaption(value, fallback = null) {
+  if (fallback == null) {
+    return null;
+  }
+
+  const trimmedValue = String(value ?? "").trim();
+  return trimmedValue || fallback;
 }
 
 export function builderAtomMetadata(atom) {
@@ -148,10 +184,15 @@ function canParentAtomAcceptChildAtom(parentAtom, childAtom) {
 
 function cloneNode(node) {
   const size = normalizeLayoutNodeSize(node.size);
+  const caption = normalizeLayoutNodeCaption(
+    node.caption,
+    builderAtomMetadata(node.atom)?.defaultCaption
+  );
   return {
     id: node.id,
     atom: node.atom,
     styleVariant: canonicalStyleVariant(node.atom),
+    ...(caption != null ? { caption } : {}),
     ...(size ? { size } : {}),
     children: canLayoutAtomHaveChildren(node.atom)
       ? (node.children ?? []).map(cloneNode)
@@ -182,6 +223,10 @@ export function createHorizontalFlowSpec(nodeNumber) {
 
 export function createFillerSpec(nodeNumber) {
   return createLayoutSpec(FILLER_ATOM_ID, nodeNumber);
+}
+
+export function createLabelSpec(nodeNumber) {
+  return createLayoutSpec(LABEL_ATOM_ID, nodeNumber);
 }
 
 export function normalizeLayoutNodeSize(value = null) {
@@ -249,11 +294,16 @@ export function normalizeLayoutState(value = {}) {
       : [];
 
     const size = normalizeLayoutNodeSize(node.size);
+    const caption = normalizeLayoutNodeCaption(
+      node.caption,
+      builderAtomMetadata(atom)?.defaultCaption
+    );
 
     return {
       id,
       atom,
       styleVariant: canonicalStyleVariant(atom),
+      ...(caption != null ? { caption } : {}),
       ...(size ? { size } : {}),
       children
     };
@@ -476,6 +526,33 @@ export function updateLayoutNodeSize(layoutChildren = [], nodeId, sizePatch = {}
   return changed ? { layoutChildren: nextChildren, changed } : { layoutChildren, changed: false };
 }
 
+export function updateLayoutNodeCaption(layoutChildren = [], nodeId, caption) {
+  if (!nodeId) {
+    return { layoutChildren, changed: false };
+  }
+
+  let changed = false;
+  function updateIn(nodes) {
+    return nodes.map((entry) => {
+      const cloned = cloneNode(entry);
+      if (entry.id !== nodeId) {
+        return { ...cloned, children: updateIn(entry.children) };
+      }
+
+      if (entry.atom !== LABEL_ATOM_ID) {
+        return cloned;
+      }
+
+      const nextCaption = normalizeLayoutNodeCaption(caption, DEFAULT_LABEL_CAPTION);
+      changed = cloned.caption !== nextCaption;
+      return changed ? { ...cloned, caption: nextCaption } : cloned;
+    });
+  }
+
+  const nextChildren = updateIn(layoutChildren);
+  return changed ? { layoutChildren: nextChildren, changed } : { layoutChildren, changed: false };
+}
+
 function collectLayoutNodeIds(layoutChildren = [], usedIds = new Set()) {
   for (const node of layoutChildren) {
     if (node?.id) {
@@ -523,6 +600,10 @@ export function duplicateLayoutSubtree(
 
     const id = allocateId(atom);
     const size = normalizeLayoutNodeSize(node.size);
+    const caption = normalizeLayoutNodeCaption(
+      node.caption,
+      builderAtomMetadata(atom)?.defaultCaption
+    );
     const children = canLayoutAtomHaveChildren(atom) && Array.isArray(node.children)
       ? node.children
           .map((child) => duplicateNode(child, atom))
@@ -533,6 +614,7 @@ export function duplicateLayoutSubtree(
       id,
       atom,
       styleVariant: canonicalStyleVariant(atom),
+      ...(caption != null ? { caption } : {}),
       ...(size ? { size } : {}),
       children
     };

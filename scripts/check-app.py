@@ -83,6 +83,7 @@ REQUIRED_ANCHORS = [
     "layout_setting_horizontal_flow_min_width",
     "frame_palette_item",
     "horizontal_flow_palette_item",
+    "label_palette_item",
     "filler_palette_item",
     "builder_ghost_marker",
     "builder_copy_",

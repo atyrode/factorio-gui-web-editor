@@ -70,8 +70,9 @@ with a custom `fp_label_frame_title` style and `ignored_by_interaction=true`,
 with that style parented from `frame_title` in its prototype style file. LTN
 Manager uses `label` with `frame_title` and `ignored_by_interaction=true` in
 its titlebar and also uses `subheader_caption_label` and `caption_label` in its
-toolbar. This evidence is enough to scaffold Label style variants and titlebar
-export. It is not enough to close visual parity for every Label state without
+toolbar. This evidence is enough to scaffold Label style variants, export the
+titlebar Label, and expose an authored base `label` component with editable
+caption. It is not enough to close visual parity for every Label state without
 fresh in-game captures.
 
 Remaining Label evidence needed before claiming full parity:
