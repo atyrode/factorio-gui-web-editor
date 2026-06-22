@@ -639,6 +639,41 @@ function expectSharedFlowSize(actual, expected, label) {
 }
 
 test.describe("Layout builder canvas preview", () => {
+  test("style atlas renders Label samples without missing anchors or overflowing text", async ({
+    page
+  }) => {
+    await page.goto("/style-atlas");
+
+    await expect(page.locator('[data-anchor="atlas_labels"]')).toBeVisible();
+    const samples = page.locator('[data-anchor="atlas_labels_samples"] .fx-label');
+    await expect(samples).toHaveCount(8);
+
+    const sampleMetrics = await samples.evaluateAll((elements) =>
+      elements.map((element) => ({
+        text: element.textContent?.trim() ?? "",
+        style: element.getAttribute("data-fx-style"),
+        state: element.getAttribute("data-fx-state"),
+        disabled: element.getAttribute("aria-disabled"),
+        fits: Math.ceil(element.scrollWidth) <= Math.ceil(element.clientWidth) + 1
+      }))
+    );
+
+    expect(sampleMetrics.map((sample) => sample.style)).toEqual([
+      "label",
+      "label",
+      "frame_title",
+      "caption_label",
+      "subheader_caption_label",
+      "clickable_label",
+      "clickable_label",
+      "clickable_label"
+    ]);
+    expect(sampleMetrics[1].disabled).toBe("true");
+    expect(sampleMetrics[6].state).toBe("hovered");
+    expect(sampleMetrics[7].state).toBe("clicked");
+    expect(sampleMetrics.filter((sample) => !sample.fits)).toEqual([]);
+  });
+
   test("undo and redo controls restore Window creation and reset", async ({ page }) => {
     await page.addInitScript((key) => window.localStorage.removeItem(key), EDITOR_STORAGE_KEY);
     await page.goto("/");

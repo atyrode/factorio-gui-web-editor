@@ -134,7 +134,10 @@ with a title bar, reserved drag handle, and empty body.
             "id": "gui_window_title",
             "primitive": "label",
             "style": "frame_title",
-            "caption": "Untitled window"
+            "caption": "Untitled window",
+            "addOptions": {
+              "ignoredByInteraction": true
+            }
           },
           {
             "id": "gui_window_drag_handle",

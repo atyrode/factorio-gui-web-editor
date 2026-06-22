@@ -31,6 +31,8 @@ import {
 import {
   createWindowModel,
   getWindowInspectorRows,
+  labelStyleVariant,
+  labelStyleVariants,
   normalizeLayoutSettings,
   VERTICAL_FLOW_DIRECTION
 } from "../src/factorioModel.js";
@@ -537,9 +539,41 @@ const titlebar = model.root.children[0];
 const titleLabel = titlebar.children[0];
 const dragHandle = titlebar.children[1];
 const body = model.root.children[1];
+const labelVariantStyles = new Set(
+  Object.values(labelStyleVariants).map((variant) => variant.style)
+);
+for (const styleName of [
+  "label",
+  "frame_title",
+  "caption_label",
+  "heading_2_label",
+  "subheader_caption_label",
+  "clickable_label"
+]) {
+  assert.ok(labelVariantStyles.has(styleName), `Missing Label style variant: ${styleName}`);
+}
+assert.equal(labelStyleVariant("frame_title").font, "heading-1");
+assert.equal(labelStyleVariant("clickable_label").font, "default");
+assert.equal(labelStyleVariant("clickable_label").hoveredFontColor, "{1, 0.74, 0.40}");
+assert.equal(labelStyleVariant("caption_label").ignoredBySearch, true);
+assert.equal(labelStyleVariant("subheader_caption_label").leftPadding, 8);
 assert.equal(model.root.luaVariableName, "main_window");
 assert.equal(titlebar.luaVariableName, "window_header");
 assert.equal(titleLabel.luaVariableName, "window_heading");
+assert.equal(titleLabel.primitive, "label");
+assert.equal(titleLabel.style, "frame_title");
+assert.equal(titleLabel.styleDescription, "Frame title label_style from wube/factorio-data");
+assert.deepEqual(titleLabel.addOptions, {
+  ignoredByInteraction: true
+});
+assert.equal(titleLabel.styleReference.variantId, "frame-title");
+assert.equal(titleLabel.styleReference.source, "wube-factorio-data-style-lua");
+assert.equal(titleLabel.styleReference.topMargin, -4);
+assert.equal(titleLabel.styleReference.bottomPadding, 4);
+assert.equal(titleLabel.styleReference.font, "heading-1");
+assert.equal(titleLabel.styleReference.fontColor, "{1, 0.901961, 0.752941}");
+assert.equal(titleLabel.styleReference.browserColor, "#ffe6c0");
+assert.equal(titleLabel.styleReference.singleLine, true);
 assert.equal(dragHandle.luaVariableName, "window_drag_space");
 assert.equal(dragHandle.atom, "filler");
 assert.equal(dragHandle.primitive, "empty-widget");
@@ -692,6 +726,10 @@ assert.ok(lua.includes('type = "frame"'));
 assert.ok(lua.includes('style = "inside_deep_frame"'));
 assert.ok(lua.includes("if screen.gui_window then"));
 assert.ok(lua.includes("local main_window = screen.add{"));
+assert.match(
+  lua,
+  /local window_heading = window_header\.add\{\n    type = "label",\n    name = "gui_window_title",\n    caption = "Builder test",\n    ignored_by_interaction = true,\n    style = "frame_title"\n  \}/
+);
 assert.ok(lua.includes("local window_drag_space = window_header.add{"));
 assert.ok(lua.includes('type = "empty-widget"'));
 assert.ok(lua.includes('style = "draggable_space_header"'));
@@ -723,6 +761,42 @@ assert.ok(lua.includes("body_spacer.style.horizontally_stretchable = true"));
 assert.ok(
   lua.indexOf('name = "gui_frame_1"') <
     lua.indexOf('name = "gui_horizontal_flow_2"')
+);
+
+const labelAtom = factorioAtomRegistry.find((atom) => atom.id === "label");
+assert.equal(labelAtom.primitive, "label");
+assert.equal(labelAtom.style, "frame_title");
+assert.ok(
+  labelAtom.fields.some(
+    (field) =>
+      field.name === "style variants" &&
+      field.note.includes("caption_label") &&
+      field.note.includes("clickable_label")
+  )
+);
+assert.ok(
+  labelAtom.fields.some(
+    (field) =>
+      field.name === "ignoredByInteraction" &&
+      field.state === "implemented" &&
+      field.note.includes("ignored_by_interaction=true")
+  )
+);
+assert.ok(
+  labelAtom.progressChecks.some(
+    (check) =>
+      check.dimension === "evidence" &&
+      check.state === "partial" &&
+      check.label === "In-game Label visual captures"
+  )
+);
+assert.ok(
+  labelAtom.progressChecks.some(
+    (check) =>
+      check.dimension === "renderer" &&
+      check.state === "partial" &&
+      check.label === "Label atlas variants render as source-backed approximations"
+  )
 );
 
 const fillerAtom = factorioAtomRegistry.find((atom) => atom.id === "filler");
@@ -769,6 +843,10 @@ const styleSourcesDoc = readFileSync(
 );
 assert.ok(styleSourcesDoc.includes("RedMew has separate helper paths"));
 assert.ok(styleSourcesDoc.includes("`draggable_space` is a generic spacer"));
+assert.ok(styleSourcesDoc.includes("github.com/wube/factorio-data"));
+assert.ok(styleSourcesDoc.includes("`subheader_caption_label`"));
+assert.ok(styleSourcesDoc.includes("Remaining Label evidence needed"));
+assert.ok(styleSourcesDoc.includes("`Ctrl+F6` rows for plain `label`"));
 const atomSpecsDoc = readFileSync(
   new URL("../docs/atom-specs.md", import.meta.url),
   "utf8"

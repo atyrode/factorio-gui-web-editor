@@ -2,6 +2,7 @@ import {
   FxButton,
   FxCheckbox,
   FxInset,
+  FxLabel,
   FxNotice,
   FxSlotGrid,
   FxTable,
@@ -13,6 +14,7 @@ import {
 const atlasRows = [
   { Primitive: "frame", Style: "fx-frame", State: "raised panel" },
   { Primitive: "flow", Style: "fx-inset", State: "dark inset" },
+  { Primitive: "label", Style: "fx-label", State: "base, disabled, title, caption, clickable" },
   { Primitive: "button", Style: "fx-button", State: "normal, hover, active, disabled" },
   { Primitive: "textfield", Style: "fx-text-input", State: "normal, focus, disabled" },
   { Primitive: "checkbox", Style: "fx-checkbox", State: "unchecked, checked, disabled" }
@@ -53,6 +55,21 @@ export function StyleAtlasPage() {
             <FxButton disabled>Disabled</FxButton>
             <FxButton variant="green">Confirm</FxButton>
             <FxButton variant="red">Remove</FxButton>
+          </div>
+        </AtlasSection>
+
+        <AtlasSection title="Labels">
+          <div className="fx-atlas-stack" data-anchor="atlas_labels_samples">
+            <FxLabel>Base label text</FxLabel>
+            <FxLabel disabled>Disabled label text</FxLabel>
+            <FxLabel variant="frame_title">Frame title</FxLabel>
+            <FxLabel variant="caption_label">Caption label</FxLabel>
+            <FxLabel variant="subheader_caption_label">Subheader caption</FxLabel>
+            <div className="fx-atlas-flow">
+              <FxLabel variant="clickable_label">Clickable</FxLabel>
+              <FxLabel variant="clickable_label" state="hovered">Hovered</FxLabel>
+              <FxLabel variant="clickable_label" state="clicked">Clicked</FxLabel>
+            </div>
           </div>
         </AtlasSection>
 

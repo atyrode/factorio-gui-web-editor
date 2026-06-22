@@ -23,7 +23,8 @@ import {
   getFrameContentSize,
   getFrameTitlebarClipSize,
   getFrameTitlebarContentSize,
-  getFrameTitlebarSize
+  getFrameTitlebarSize,
+  labelStyleVariant
 } from "../factorioModel.js";
 
 export function FxButton({
@@ -275,6 +276,62 @@ function inspectorProps({ active, locked, anchor, inspectedAnchor, onInspect, on
 
 function pixelStyleValue(value) {
   return typeof value === "number" && Number.isFinite(value) ? `${value}px` : undefined;
+}
+
+function labelStyleVariables(styleVariant = {}) {
+  return {
+    "--fx-label-color": styleVariant.browserColor,
+    "--fx-label-disabled-color": styleVariant.browserDisabledColor,
+    "--fx-label-hover-color": styleVariant.browserHoveredColor,
+    "--fx-label-clicked-color": styleVariant.browserClickedColor,
+    "--fx-label-left-padding": pixelStyleValue(styleVariant.leftPadding)
+  };
+}
+
+export function FxLabel({
+  children,
+  variant = "label",
+  state = "default",
+  disabled = false,
+  className = "",
+  as: Element = "span",
+  style = null,
+  ...props
+}) {
+  const styleVariant = labelStyleVariant(variant);
+  const classes = [
+    "fx-label",
+    `fx-label--${styleVariant.id}`,
+    state !== "default" ? `is-${state}` : "",
+    disabled ? "is-disabled" : "",
+    className
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <Element
+      {...props}
+      className={classes}
+      data-fx-primitive="label"
+      data-fx-style={styleVariant.style}
+      data-fx-style-variant={styleVariant.id}
+      data-fx-style-source={styleVariant.source}
+      data-fx-parent-style={styleVariant.parent}
+      data-fx-font={styleVariant.font}
+      data-fx-font-color={styleVariant.fontColor}
+      data-fx-single-line={String(styleVariant.singleLine)}
+      data-fx-ignored-by-search={styleVariant.ignoredBySearch}
+      data-fx-state={state !== "default" ? state : undefined}
+      aria-disabled={disabled ? "true" : undefined}
+      style={{
+        ...labelStyleVariables(styleVariant),
+        ...style
+      }}
+    >
+      {children}
+    </Element>
+  );
 }
 
 function horizontalFlowStyleVariables(styleReference = {}) {
@@ -1157,17 +1214,18 @@ export function GuiWindow({
         onPointerCancel={onTitlebarPointerCancel}
         onFocus={titlebarInspector.onFocus}
       >
-        <strong
+        <FxLabel
+          as="strong"
+          variant={styleReference.titleLabelStyle}
           className={["fx-gui-window__title-label", titleInspector.className]
             .filter(Boolean)
             .join(" ")}
           data-anchor={titleAnchor}
-          data-fx-primitive="label"
-          data-fx-style={styleReference.titleLabelStyle}
           data-fx-top-margin={styleReference.titleLabelTopMargin}
           data-fx-bottom-padding={styleReference.titleLabelBottomPadding}
           data-fx-horizontally-squashable="true"
           data-fx-vertically-stretchable="true"
+          data-fx-ignored-by-interaction="true"
           tabIndex={titleInspector.tabIndex}
           onMouseEnter={titleInspector.onMouseEnter}
           onMouseMove={titleInspector.onMouseMove}
@@ -1175,7 +1233,7 @@ export function GuiWindow({
           onFocus={titleInspector.onFocus}
         >
           {title}
-        </strong>
+        </FxLabel>
         <div
           className={["fx-gui-window__drag-handle", dragInspector.className]
             .filter(Boolean)

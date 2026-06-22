@@ -202,11 +202,14 @@ Legal parents are declared by builder atom capability metadata. The Window body
 accepts implemented authored atoms. Frame and Horizontal Flow accept Frame,
 Horizontal Flow, and Filler children. Filler is a leaf and accepts no children.
 The old Frame -> Horizontal Flow -> Frame alternation was a temporary
-implementation slice, not a Factorio rule. The Window root, titlebar, title
-label, generated header Filler, a moved node itself, and descendants of the
-moved node are not legal drop parents. Headless Tree supplies component-tree
-drag/drop targets and accessibility state, but it does not change the persisted
-schema; accepted drops still commit only ordered mutations to `layoutChildren`.
+implementation slice, not a Factorio rule. The generated Window title label
+uses the Factorio `label` primitive with `style: frame_title` and
+`ignored_by_interaction = true` so the titlebar remains draggable. The Window
+root, titlebar, title label, generated header Filler, a moved node itself, and
+descendants of the moved node are not legal drop parents. Headless Tree supplies
+component-tree drag/drop targets and accessibility state, but it does not change
+the persisted schema; accepted drops still commit only ordered mutations to
+`layoutChildren`.
 
 Resize mode is a generic editor operation over explicit resize capabilities. It
 does not add arbitrary CSS sizing to the schema. `gui_window` resizes through
