@@ -2381,22 +2381,6 @@ export function EditorPage() {
     >
         <aside className="fx-editor-rail" aria-label="Editor controls">
           <FxFrame title="Window" className="fx-editor-panel">
-            <div className="fx-editor-history-actions" aria-label="Editor history">
-              <FxActionButton
-                data-anchor="editor_undo"
-                disabled={!canUndo}
-                icon="undo"
-                label="Undo"
-                onClick={undoEditor}
-              />
-              <FxActionButton
-                data-anchor="editor_redo"
-                disabled={!canRedo}
-                icon="redo"
-                label="Redo"
-                onClick={redoEditor}
-              />
-            </div>
             <label className="fx-field">
               <span>Title</span>
               <FxTextInput
@@ -2472,6 +2456,24 @@ export function EditorPage() {
           <BuilderPanel
             canPaste={canPasteLayoutClipboard}
             currentWindow={currentWindow}
+            historyActions={(
+              <div className="fx-builder-history-actions" aria-label="Editor history">
+                <FxActionButton
+                  data-anchor="editor_undo"
+                  disabled={!canUndo}
+                  icon="undo"
+                  label="Undo"
+                  onClick={undoEditor}
+                />
+                <FxActionButton
+                  data-anchor="editor_redo"
+                  disabled={!canRedo}
+                  icon="redo"
+                  label="Redo"
+                  onClick={redoEditor}
+                />
+              </div>
+            )}
             inspectedAnchor={inspectedAnchor}
             onAddAfter={addLayoutNodeAfter}
             onAddChild={addLayoutNodeChild}

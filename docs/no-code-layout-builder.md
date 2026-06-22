@@ -63,6 +63,7 @@ The editor rail contains three pinned sections:
   title, width, height, create/recreate, body-flow toggle, reset
 
 [Builder]
+  title row with undo/redo actions aligned right
   [Palette: drag/drop Frame, Horizontal Flow, Filler]
   [Scroll: component tree, starting at Window body flow by default]
     [Optional non-deletable Window frame root]

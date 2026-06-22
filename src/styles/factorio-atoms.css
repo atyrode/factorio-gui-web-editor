@@ -17,6 +17,26 @@
   cursor: default;
 }
 
+.fx-frame__header {
+  min-width: 0;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fx-frame__header .fx-frame__title {
+  min-width: 0;
+  margin: 0;
+}
+
+.fx-frame__title-actions {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .fx-inset {
   padding: 8px;
   margin: 0;

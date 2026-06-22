@@ -647,6 +647,35 @@ test.describe("Layout builder canvas preview", () => {
     const redo = page.locator('[data-anchor="editor_redo"]');
     await expect(undo).toBeDisabled();
     await expect(redo).toBeDisabled();
+    await expect(page.locator('[data-anchor="builder_panel"] [data-anchor="editor_undo"]'))
+      .toBeVisible();
+    const historyHeaderGeometry = await page.locator('[data-anchor="builder_panel"]').evaluate(
+      (panel) => {
+        const title = panel.querySelector(".fx-frame__title");
+        const undoButton = panel.querySelector('[data-anchor="editor_undo"]');
+        const redoButton = panel.querySelector('[data-anchor="editor_redo"]');
+        if (!title || !undoButton || !redoButton) {
+          throw new Error("Missing Builder title or history controls");
+        }
+
+        const titleRect = title.getBoundingClientRect();
+        const undoRect = undoButton.getBoundingClientRect();
+        const redoRect = redoButton.getBoundingClientRect();
+        return {
+          titleRight: titleRect.right,
+          undoLeft: undoRect.left,
+          titleTop: Math.round(titleRect.top),
+          undoTop: Math.round(undoRect.top),
+          redoRight: Math.round(redoRect.right),
+          panelRight: Math.round(panel.getBoundingClientRect().right)
+        };
+      }
+    );
+    expect(historyHeaderGeometry.undoLeft).toBeGreaterThan(historyHeaderGeometry.titleRight);
+    expect(Math.abs(historyHeaderGeometry.undoTop - historyHeaderGeometry.titleTop))
+      .toBeLessThanOrEqual(8);
+    expect(historyHeaderGeometry.panelRight - historyHeaderGeometry.redoRight)
+      .toBeLessThanOrEqual(12);
 
     await page.locator("#create-window").click();
     await expect(page.locator('[data-anchor="gui_window"]')).toBeVisible();

@@ -121,10 +121,26 @@ export function FxCheckbox({
   );
 }
 
-export function FxFrame({ title, children, className = "", as: Element = "section", ...props }) {
+export function FxFrame({
+  title,
+  titleActions = null,
+  children,
+  className = "",
+  as: Element = "section",
+  ...props
+}) {
   return (
     <Element className={["fx-frame", className].filter(Boolean).join(" ")} {...props}>
-      {title ? <h2 className="fx-frame__title">{title}</h2> : null}
+      {title ? (
+        titleActions ? (
+          <div className="fx-frame__header">
+            <h2 className="fx-frame__title">{title}</h2>
+            <div className="fx-frame__title-actions">{titleActions}</div>
+          </div>
+        ) : (
+          <h2 className="fx-frame__title">{title}</h2>
+        )
+      ) : null}
       {children}
     </Element>
   );

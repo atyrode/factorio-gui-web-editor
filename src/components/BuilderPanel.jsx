@@ -761,6 +761,7 @@ export function BuilderPanel({
   paletteDraggingAtom = null,
   canPaste,
   model,
+  historyActions = null,
   onAddAfter,
   onAddChild,
   onCopy,
@@ -777,7 +778,12 @@ export function BuilderPanel({
   const layoutChildren = currentWindow?.layoutChildren ?? [];
 
   return (
-    <FxFrame title="Builder" className="fx-editor-panel fx-builder-panel" data-anchor="builder_panel">
+    <FxFrame
+      title="Builder"
+      titleActions={historyActions}
+      className="fx-editor-panel fx-builder-panel"
+      data-anchor="builder_panel"
+    >
       <div className="fx-builder-palette" aria-label="Builder palette">
         {BUILDER_PALETTE_ATOMS.map((atom) => (
           <BuilderPaletteItem
