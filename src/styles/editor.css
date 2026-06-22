@@ -1,9 +1,120 @@
 .fx-editor-shell {
+  height: calc(100vh - 56px);
   display: grid;
-  grid-template-columns: var(--fx-editor-sidebar-width, 280px) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   align-items: stretch;
-  gap: 20px;
+  gap: 12px;
+}
+
+.fx-editor-command-bar {
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #302f30;
+  border: 1px solid #0a0a0a;
+  box-shadow: var(--fx-frame-shadow);
+}
+
+.fx-editor-command-bar__title {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.fx-editor-command-bar__title span {
+  color: var(--fx-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.fx-editor-command-bar__title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fx-gold);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-editor-command-bar__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fx-editor-command-bar__export {
+  min-height: 34px;
+  gap: 6px;
+}
+
+.fx-editor-command-bar__export svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fx-editor-workbench {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 48px var(--fx-editor-sidebar-width, 260px) minmax(420px, 1fr) minmax(280px, 300px);
+  align-items: stretch;
+  gap: 12px;
+}
+
+.fx-editor-tool-strip {
+  min-width: 0;
+  min-height: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #302f30;
+  border: 1px solid #0a0a0a;
+  box-shadow: var(--fx-frame-shadow);
+}
+
+.fx-editor-tool {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--fx-text-soft);
+  background: #3a393a;
+  border: 1px solid #0a0a0a;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.55);
+}
+
+.fx-editor-tool:hover,
+.fx-editor-tool:focus-visible {
+  outline: 0;
+  color: #ffffff;
+  background: #454445;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.10),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(227, 152, 39, 0.58);
+}
+
+.fx-editor-tool.is-active {
+  color: #17130d;
+  background: var(--fx-orange);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.38);
+}
+
+.fx-editor-tool svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.8;
 }
 
 .fx-editor-rail {
@@ -11,7 +122,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  min-height: 0;
 }
 
 .fx-editor-rail__resize {
@@ -122,9 +233,92 @@
   flex-direction: column;
 }
 
+.fx-editor-panel--properties {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.fx-editor-properties-rail {
+  min-width: 0;
+  min-height: 0;
+}
+
+.fx-properties-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.fx-properties-tabs__button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 5px 8px;
+  color: var(--fx-text-soft);
+  background: #2b2a2b;
+  border: 1px solid #0a0a0a;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.54);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fx-properties-tabs__button:hover,
+.fx-properties-tabs__button:focus-visible {
+  outline: 0;
+  color: #ffffff;
+  background: #393839;
+}
+
+.fx-properties-tabs__button.is-active {
+  color: #17130d;
+  background: var(--fx-orange);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -2px 2px rgba(0, 0, 0, 0.38);
+}
+
+.fx-properties-stack {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding-right: 2px;
+}
+
+.fx-properties-section {
+  min-width: 0;
+  padding: 8px;
+  background: rgba(18, 19, 20, 0.42);
+  border: 1px solid rgba(0, 0, 0, 0.78);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.04),
+    inset -1px 0 0 rgba(0, 0, 0, 0.46);
+}
+
+.fx-properties-section h3 {
+  margin-bottom: 8px;
+  color: var(--fx-gold);
+  font-size: 14px;
+}
+
+.fx-properties-section .fx-window-create-row {
+  grid-template-columns: 1fr;
+}
+
+.fx-properties-section .fx-body-direction-toggle {
+  min-width: 0;
+}
+
 .fx-builder-panel {
-  max-height: min(40vh, 380px);
-  flex: 0 1 auto;
+  height: 100%;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -229,7 +423,7 @@
 }
 
 .fx-layout-settings {
-  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .fx-layout-settings__toggle {
@@ -641,12 +835,17 @@
   min-width: 0;
   min-height: 0;
   display: grid;
-  gap: 14px;
+}
+
+.fx-editor-stage > #editor-root {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
 }
 
 .fx-editor-canvas {
   position: relative;
-  min-height: 640px;
+  min-height: 0;
   height: 100%;
   padding: 18px;
   display: grid;
@@ -824,8 +1023,15 @@
 }
 
 .fx-editor-output {
-  grid-column: 1 / -1;
   width: 100%;
+}
+
+.fx-editor-export-drawer {
+  min-width: 0;
+}
+
+.fx-editor-export-drawer .fx-editor-output {
+  margin: 0;
 }
 
 .fx-style-inspector {
@@ -1078,24 +1284,51 @@
   white-space: pre;
 }
 
-@media (max-width: 900px) {
-  .fx-editor-shell {
-    grid-template-columns: 1fr;
+@media (max-width: 1180px) {
+  .fx-editor-workbench {
+    grid-template-columns: 44px minmax(220px, 280px) minmax(0, 1fr);
+    grid-template-rows: minmax(460px, 1fr) minmax(320px, auto);
   }
 
-  .fx-editor-rail {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .fx-editor-tool-strip {
+    grid-row: 1 / span 2;
+  }
+
+  .fx-editor-stage {
+    min-height: 460px;
+  }
+
+  .fx-editor-properties-rail {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .fx-editor-command-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fx-editor-command-bar__actions {
+    flex-wrap: wrap;
+  }
+
+  .fx-editor-workbench {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(460px, 1fr) auto;
+  }
+
+  .fx-editor-tool-strip {
+    grid-row: auto;
+    flex-direction: row;
   }
 
   .fx-editor-rail__resize {
     display: none;
   }
-}
 
-@media (max-width: 640px) {
   .fx-editor-rail {
-    display: flex;
+    min-height: 320px;
   }
 
   .fx-editor-canvas {

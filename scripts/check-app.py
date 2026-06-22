@@ -66,7 +66,14 @@ REQUIRED_ANCHORS = [
     "gui_window_titlebar",
     "gui_window_drag_handle",
     "gui_window_body",
+    "editor_command_bar",
+    "editor_tool_select",
+    "editor_tool_inspect",
+    "editor_export_drawer",
     "builder_panel",
+    "properties_panel",
+    "properties_tab_properties",
+    "properties_tab_factorio",
     "layout_settings_panel",
     "layout_settings_toggle",
     "layout_setting_horizontal_flow_min_width",
@@ -76,6 +83,8 @@ REQUIRED_ANCHORS = [
     "builder_ghost_marker",
     "builder_copy_",
     "builder_paste_",
+    "resize_mode_toggle",
+    "resize_overlay",
     "gui_shadow_toggle",
 ]
 

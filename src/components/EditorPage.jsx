@@ -1,5 +1,14 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Download, SlidersHorizontal } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Maximize2,
+  MousePointer2,
+  PanelBottomOpen,
+  ScanSearch,
+  SlidersHorizontal
+} from "lucide-react";
 import {
   FxActionButton,
   FxButton,
@@ -66,21 +75,29 @@ const HISTORY_LIMIT = 50;
 const SIDEBAR_MIN_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 640;
 const SIDEBAR_STAGE_MIN_WIDTH = 420;
+const CANVAS_TOOL_SELECT = "select";
+const CANVAS_TOOL_INSPECT = "inspect";
+const CANVAS_TOOL_RESIZE = "resize";
+const PROPERTIES_TAB_PROPERTIES = "properties";
+const PROPERTIES_TAB_FACTORIO = "factorio";
 const DEFAULT_EDITOR_STATE = {
   title: "Untitled window",
   windowSize: DEFAULT_WINDOW_SIZE,
   windowBodyDirection: HORIZONTAL_FLOW_DIRECTION,
   currentWindow: null,
   showInspector: false,
-  showLuaOutput: true,
+  showLuaOutput: false,
   showGuiShadows: true,
   resizeMode: false,
+  activeCanvasTool: CANVAS_TOOL_SELECT,
+  propertiesTab: PROPERTIES_TAB_PROPERTIES,
+  exportDrawerOpen: false,
   inspectorLocked: false,
   inspectedAnchor: null,
   showLayoutSettings: false,
   showComponentTreeShell: false,
   layoutSettings: DEFAULT_LAYOUT_SETTINGS,
-  sidebarWidth: 280
+  sidebarWidth: 260
 };
 
 function normalizeLocation(location) {
@@ -123,6 +140,56 @@ function normalizeWindow(value) {
   };
 }
 
+function normalizeCanvasTool(value, fallback = CANVAS_TOOL_SELECT) {
+  return [CANVAS_TOOL_SELECT, CANVAS_TOOL_INSPECT, CANVAS_TOOL_RESIZE].includes(value)
+    ? value
+    : fallback;
+}
+
+function canvasToolFromLegacyState(value) {
+  if (typeof value?.activeCanvasTool === "string") {
+    return normalizeCanvasTool(value.activeCanvasTool);
+  }
+  if (value?.resizeMode) {
+    return CANVAS_TOOL_RESIZE;
+  }
+  if (value?.showInspector) {
+    return CANVAS_TOOL_INSPECT;
+  }
+  return CANVAS_TOOL_SELECT;
+}
+
+function normalizePropertiesTab(value) {
+  return value === PROPERTIES_TAB_FACTORIO
+    ? PROPERTIES_TAB_FACTORIO
+    : PROPERTIES_TAB_PROPERTIES;
+}
+
+function normalizeEditorStateShape(value) {
+  const activeCanvasTool = canvasToolFromLegacyState(value);
+  const exportDrawerOpen =
+    typeof value.exportDrawerOpen === "boolean"
+      ? value.exportDrawerOpen
+      : typeof value.showLuaOutput === "boolean"
+        ? value.showLuaOutput
+        : DEFAULT_EDITOR_STATE.exportDrawerOpen;
+
+  return {
+    ...value,
+    activeCanvasTool,
+    propertiesTab:
+      typeof value.propertiesTab === "string"
+        ? normalizePropertiesTab(value.propertiesTab)
+        : activeCanvasTool === CANVAS_TOOL_INSPECT
+          ? PROPERTIES_TAB_FACTORIO
+          : PROPERTIES_TAB_PROPERTIES,
+    exportDrawerOpen,
+    showInspector: activeCanvasTool === CANVAS_TOOL_INSPECT,
+    resizeMode: activeCanvasTool === CANVAS_TOOL_RESIZE,
+    showLuaOutput: exportDrawerOpen
+  };
+}
+
 function normalizeWindowLuaVariableNames(windowState) {
   return normalizeLuaVariableNames(
     windowState?.luaVariableNames,
@@ -153,13 +220,21 @@ function readCachedEditorState() {
 
     const parsedValue = JSON.parse(rawValue);
     const currentWindow = normalizeWindow(parsedValue.currentWindow);
-    return {
+    return normalizeEditorStateShape({
       title: String(parsedValue.title ?? DEFAULT_EDITOR_STATE.title),
       windowSize: normalizeWindowSize(parsedValue.windowSize ?? currentWindow?.size),
       windowBodyDirection: normalizeWindowBodyDirection(
         parsedValue.windowBodyDirection ?? currentWindow?.bodyDirection
       ),
       currentWindow,
+      activeCanvasTool: canvasToolFromLegacyState(parsedValue),
+      propertiesTab: parsedValue.propertiesTab,
+      exportDrawerOpen:
+        typeof parsedValue.exportDrawerOpen === "boolean"
+          ? parsedValue.exportDrawerOpen
+          : typeof parsedValue.showLuaOutput === "boolean"
+            ? parsedValue.showLuaOutput
+            : DEFAULT_EDITOR_STATE.exportDrawerOpen,
       showInspector: Boolean(parsedValue.showInspector),
       showLuaOutput:
         typeof parsedValue.showLuaOutput === "boolean"
@@ -187,7 +262,7 @@ function readCachedEditorState() {
       sidebarWidth: clampSidebarWidth(
         Number(parsedValue.sidebarWidth ?? DEFAULT_EDITOR_STATE.sidebarWidth)
       )
-    };
+    });
   } catch {
     return DEFAULT_EDITOR_STATE;
   }
@@ -195,7 +270,10 @@ function readCachedEditorState() {
 
 function writeCachedEditorState(editorState) {
   try {
-    window.localStorage.setItem(EDITOR_STORAGE_KEY, JSON.stringify(editorState));
+    window.localStorage.setItem(
+      EDITOR_STORAGE_KEY,
+      JSON.stringify(normalizeEditorStateShape(editorState))
+    );
   } catch {
     // Local storage can be unavailable in private or locked-down browser contexts.
   }
@@ -746,6 +824,7 @@ function EditorCanvas({
     .join(" ");
   const bodyChildren = model?.root?.children?.[1]?.children ?? [];
   const bodyStyleReference = model?.root?.children?.[1]?.styleReference ?? null;
+  const canvasSelectionActive = inspectorActive || selectionActive;
 
   return (
     <div className="fx-editor-canvas" data-anchor="editor_canvas" ref={canvasRef}>
@@ -754,7 +833,7 @@ function EditorCanvas({
           title={currentWindow.title}
           className={windowClassName}
           styleReference={styleReference}
-          inspectorActive={selectionActive}
+          inspectorActive={canvasSelectionActive}
           inspectorLocked={inspectorLocked}
           inspectedAnchor={previewAnchor}
           onInspect={onInspect}
@@ -911,7 +990,7 @@ function LayoutSettingsPanel({
   const ToggleIcon = expanded ? ChevronDown : ChevronRight;
 
   return (
-    <FxFrame className="fx-editor-panel fx-layout-settings" data-anchor="layout_settings_panel">
+    <section className="fx-layout-settings" data-anchor="layout_settings_panel">
       <button
         aria-expanded={expanded}
         className="fx-layout-settings__toggle"
@@ -963,7 +1042,7 @@ function LayoutSettingsPanel({
           </div>
         </>
       ) : null}
-    </FxFrame>
+    </section>
   );
 }
 
@@ -1388,6 +1467,39 @@ function StyleInspector({
   );
 }
 
+function EditorToolButton({ active, anchor, icon: Icon, label, onClick }) {
+  return (
+    <button
+      aria-label={label}
+      aria-pressed={active}
+      className={["fx-editor-tool", active ? "is-active" : ""].filter(Boolean).join(" ")}
+      data-anchor={anchor}
+      onClick={onClick}
+      title={label}
+      type="button"
+    >
+      <Icon aria-hidden="true" />
+    </button>
+  );
+}
+
+function PropertiesTabButton({ active, anchor, children, onClick }) {
+  return (
+    <button
+      aria-selected={active}
+      className={["fx-properties-tabs__button", active ? "is-active" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      data-anchor={anchor}
+      onClick={onClick}
+      role="tab"
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
 export function EditorPage() {
   const [editorState, setEditorState] = useState(readCachedEditorState);
   const [editorHistory, setEditorHistory] = useState({ undo: [], redo: [] });
@@ -1409,10 +1521,10 @@ export function EditorPage() {
     windowSize,
     windowBodyDirection,
     currentWindow,
-    showInspector,
-    showLuaOutput,
+    activeCanvasTool,
+    propertiesTab,
+    exportDrawerOpen,
     showGuiShadows,
-    resizeMode,
     inspectorLocked,
     inspectedAnchor,
     showLayoutSettings,
@@ -1433,8 +1545,9 @@ export function EditorPage() {
   const canRedo = editorHistory.redo.length > 0;
 
   function replaceEditorState(nextState) {
-    editorStateRef.current = nextState;
-    setEditorState(nextState);
+    const normalizedState = normalizeEditorStateShape(nextState);
+    editorStateRef.current = normalizedState;
+    setEditorState(normalizedState);
   }
 
   function replaceEditorHistory(nextHistory) {
@@ -1672,18 +1785,57 @@ export function EditorPage() {
     updateWindowSize("height", event.target.value);
   }
 
-  function updateInspectorEnabled(event) {
+  function activateCanvasTool(tool) {
+    const nextTool = normalizeCanvasTool(tool);
+    setResizeDraft(null);
+    if (nextTool !== CANVAS_TOOL_INSPECT) {
+      setInspectorPreview(null);
+    }
+
     updateEditorState((state) => ({
       ...state,
-      showInspector: event.target.checked,
-      inspectorLocked: event.target.checked ? state.inspectorLocked : false
+      activeCanvasTool: nextTool,
+      showInspector: nextTool === CANVAS_TOOL_INSPECT,
+      resizeMode: nextTool === CANVAS_TOOL_RESIZE,
+      propertiesTab:
+        nextTool === CANVAS_TOOL_INSPECT
+          ? PROPERTIES_TAB_FACTORIO
+          : PROPERTIES_TAB_PROPERTIES,
+      inspectedAnchor:
+        nextTool === CANVAS_TOOL_RESIZE && state.currentWindow && !state.inspectedAnchor
+          ? "gui_window"
+          : state.inspectedAnchor,
+      inspectorLocked:
+        nextTool === CANVAS_TOOL_RESIZE && state.currentWindow && !state.inspectedAnchor
+          ? true
+          : state.inspectorLocked
     }));
+  }
+
+  function updateInspectorEnabled(event) {
+    activateCanvasTool(event.target.checked ? CANVAS_TOOL_INSPECT : CANVAS_TOOL_SELECT);
   }
 
   function updateLuaOutputEnabled(event) {
     updateEditorState((state) => ({
       ...state,
+      exportDrawerOpen: event.target.checked,
       showLuaOutput: event.target.checked
+    }));
+  }
+
+  function toggleExportDrawer() {
+    updateEditorState((state) => ({
+      ...state,
+      exportDrawerOpen: !state.exportDrawerOpen,
+      showLuaOutput: !state.exportDrawerOpen
+    }));
+  }
+
+  function updatePropertiesTab(nextTab) {
+    updateEditorState((state) => ({
+      ...state,
+      propertiesTab: normalizePropertiesTab(nextTab)
     }));
   }
 
@@ -1695,20 +1847,7 @@ export function EditorPage() {
   }
 
   function updateResizeModeEnabled(event) {
-    const enabled = event.target.checked;
-    setResizeDraft(null);
-    updateEditorState((state) => ({
-      ...state,
-      resizeMode: enabled,
-      inspectedAnchor:
-        enabled && state.currentWindow && !state.inspectedAnchor
-          ? "gui_window"
-          : state.inspectedAnchor,
-      inspectorLocked:
-        enabled && state.currentWindow && !state.inspectedAnchor
-          ? true
-          : state.inspectorLocked
-    }));
+    activateCanvasTool(event.target.checked ? CANVAS_TOOL_RESIZE : CANVAS_TOOL_SELECT);
   }
 
   function commitResizeDraft(draft) {
@@ -1824,7 +1963,7 @@ export function EditorPage() {
     }));
   }
 
-  function selectInspectorComponent(nextAnchor) {
+  function selectInspectorComponent(nextAnchor, nextPropertiesTab = PROPERTIES_TAB_FACTORIO) {
     if (!nextAnchor) {
       return;
     }
@@ -1833,7 +1972,8 @@ export function EditorPage() {
     updateEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
-      inspectorLocked: true
+      inspectorLocked: true,
+      propertiesTab: normalizePropertiesTab(nextPropertiesTab)
     }));
   }
 
@@ -2171,6 +2311,7 @@ export function EditorPage() {
         ...state,
         inspectedAnchor: result.selectedAnchor ?? state.inspectedAnchor,
         inspectorLocked: result.selectedAnchor ? true : state.inspectorLocked,
+        propertiesTab: result.selectedAnchor ? PROPERTIES_TAB_FACTORIO : state.propertiesTab,
         currentWindow: {
           ...currentWindow,
           luaVariableNames: normalizeWindowLuaVariableNames(currentWindow)
@@ -2373,107 +2514,82 @@ export function EditorPage() {
     }
   }
 
+  const activeTool = normalizeCanvasTool(activeCanvasTool);
+  const selectedPropertiesTab = normalizePropertiesTab(propertiesTab);
+  const inspectToolActive = activeTool === CANVAS_TOOL_INSPECT;
+  const resizeToolActive = activeTool === CANVAS_TOOL_RESIZE;
+
   return (
     <main
       className="fx-editor-shell"
       ref={shellRef}
       style={{ "--fx-editor-sidebar-width": `${sidebarWidth}px` }}
     >
-        <aside className="fx-editor-rail" aria-label="Editor controls">
-          <FxFrame title="Window" className="fx-editor-panel">
-            <label className="fx-field">
-              <span>Title</span>
-              <FxTextInput
-                id="window-title"
-                type="text"
-                value={title}
-                autoComplete="off"
-                onBlur={commitAuthoredEditSession}
-                onChange={updateTitle}
-                onFocus={beginAuthoredEditSession}
-              />
-            </label>
-            <div className="fx-field-grid fx-field-grid--two">
-              <label className="fx-field">
-                <span>Width</span>
-                <FxTextInput
-                  id="window-width"
-                  type="number"
-                  min={WINDOW_SIZE_LIMITS.minWidth}
-                  max={WINDOW_SIZE_LIMITS.maxWidth}
-                  step="10"
-                  value={windowSize.width}
-                  onBlur={commitAuthoredEditSession}
-                  onChange={updateWindowWidth}
-                  onFocus={beginAuthoredEditSession}
-                />
-              </label>
-              <label className="fx-field">
-                <span>Height</span>
-                <FxTextInput
-                  id="window-height"
-                  type="number"
-                  min={WINDOW_SIZE_LIMITS.minHeight}
-                  max={WINDOW_SIZE_LIMITS.maxHeight}
-                  step="10"
-                  value={windowSize.height}
-                  onBlur={commitAuthoredEditSession}
-                  onChange={updateWindowHeight}
-                  onFocus={beginAuthoredEditSession}
-                />
-              </label>
-            </div>
-            <div className="fx-window-create-row">
-              <FxButton id="create-window" onClick={createWindow}>
-                {currentWindow ? "Recreate window" : "Create window"}
-              </FxButton>
-              <div className="fx-body-direction-toggle" role="group" aria-label="Default body flow">
-                <button
-                  aria-pressed={selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION}
-                  className={selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION ? "is-active" : ""}
-                  onClick={() => updateWindowBodyDirection(HORIZONTAL_FLOW_DIRECTION)}
-                  type="button"
-                >
-                  Horizontal
-                </button>
-                <button
-                  aria-pressed={selectedBodyDirection === VERTICAL_FLOW_DIRECTION}
-                  className={selectedBodyDirection === VERTICAL_FLOW_DIRECTION ? "is-active" : ""}
-                  onClick={() => updateWindowBodyDirection(VERTICAL_FLOW_DIRECTION)}
-                  type="button"
-                >
-                  Vertical
-                </button>
-              </div>
-            </div>
-            <div className="fx-actions">
-              <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
-                Reset
-              </FxButton>
-            </div>
-          </FxFrame>
+      <header className="fx-editor-command-bar" data-anchor="editor_command_bar">
+        <div className="fx-editor-command-bar__title">
+          <span>Editor</span>
+          <strong>{currentWindow ? currentWindow.title : "No window"}</strong>
+        </div>
+        <div className="fx-editor-command-bar__actions" aria-label="Editor commands">
+          <FxActionButton
+            data-anchor="editor_undo"
+            disabled={!canUndo}
+            icon="undo"
+            label="Undo"
+            onClick={undoEditor}
+          />
+          <FxActionButton
+            data-anchor="editor_redo"
+            disabled={!canRedo}
+            icon="redo"
+            label="Redo"
+            onClick={redoEditor}
+          />
+          <FxButton
+            aria-pressed={exportDrawerOpen}
+            active={exportDrawerOpen}
+            className="fx-editor-command-bar__export"
+            data-anchor="editor_export_toggle"
+            onClick={toggleExportDrawer}
+          >
+            <PanelBottomOpen aria-hidden="true" />
+            Export
+          </FxButton>
+          <FxButton data-anchor="create_window_command" onClick={createWindow}>
+            {currentWindow ? "Recreate window" : "Create window"}
+          </FxButton>
+        </div>
+      </header>
 
+      <div className="fx-editor-workbench">
+        <nav className="fx-editor-tool-strip" aria-label="Canvas tools">
+          <EditorToolButton
+            active={activeTool === CANVAS_TOOL_SELECT}
+            anchor="editor_tool_select"
+            icon={MousePointer2}
+            label="Select"
+            onClick={() => activateCanvasTool(CANVAS_TOOL_SELECT)}
+          />
+          <EditorToolButton
+            active={inspectToolActive}
+            anchor="editor_tool_inspect"
+            icon={ScanSearch}
+            label="Inspect Factorio style"
+            onClick={() => activateCanvasTool(CANVAS_TOOL_INSPECT)}
+          />
+          <EditorToolButton
+            active={resizeToolActive}
+            anchor="resize_mode_toggle"
+            icon={Maximize2}
+            label="Resize"
+            onClick={() => activateCanvasTool(CANVAS_TOOL_RESIZE)}
+          />
+        </nav>
+
+        <aside className="fx-editor-rail" aria-label="Editor controls">
           <BuilderPanel
             canPaste={canPasteLayoutClipboard}
             currentWindow={currentWindow}
-            historyActions={(
-              <div className="fx-builder-history-actions" aria-label="Editor history">
-                <FxActionButton
-                  data-anchor="editor_undo"
-                  disabled={!canUndo}
-                  icon="undo"
-                  label="Undo"
-                  onClick={undoEditor}
-                />
-                <FxActionButton
-                  data-anchor="editor_redo"
-                  disabled={!canRedo}
-                  icon="redo"
-                  label="Redo"
-                  onClick={redoEditor}
-                />
-              </div>
-            )}
             inspectedAnchor={inspectedAnchor}
             onAddAfter={addLayoutNodeAfter}
             onAddChild={addLayoutNodeChild}
@@ -2490,55 +2606,6 @@ export function EditorPage() {
             model={currentModel}
             showGeneratedShell={showComponentTreeShell}
           />
-
-          <FxFrame title="Inspector" className="fx-editor-panel fx-editor-panel--inspector">
-            <FxCheckbox
-              checked={showInspector}
-              readOnly={false}
-              onChange={updateInspectorEnabled}
-            >
-              Ctrl+F6 style inspector
-            </FxCheckbox>
-            <FxCheckbox
-              checked={showLuaOutput}
-              readOnly={false}
-              onChange={updateLuaOutputEnabled}
-            >
-              Lua output
-            </FxCheckbox>
-            <FxCheckbox
-              checked={showGuiShadows}
-              data-anchor="gui_shadow_toggle"
-              readOnly={false}
-              onChange={updateGuiShadowsEnabled}
-            >
-              GUI shadows
-            </FxCheckbox>
-            <FxCheckbox
-              checked={resizeMode}
-              data-anchor="resize_mode_toggle"
-              readOnly={false}
-              onChange={updateResizeModeEnabled}
-            >
-              Resize mode
-            </FxCheckbox>
-            {showInspector ? (
-              <StyleInspector
-                canGoBack={inspectorHistory.back.length > 0}
-                canGoForward={inspectorHistory.forward.length > 0}
-                model={currentModel}
-                inspectedAnchor={inspectedAnchor}
-                locked={inspectorLocked}
-                onBack={goInspectorBack}
-                onClearPreview={clearInspectorPreview}
-                onEdit={updateInspectorEditableValue}
-                onForward={goInspectorForward}
-                onNavigate={navigateInspector}
-                onPreview={previewInspector}
-                onToggleLock={() => lockInspectedAnchor(inspectedAnchor)}
-              />
-            ) : null}
-          </FxFrame>
           <div
             aria-label="Resize editor sidebar"
             aria-orientation="vertical"
@@ -2554,17 +2621,6 @@ export function EditorPage() {
             role="separator"
             tabIndex={0}
           />
-          <LayoutSettingsPanel
-            expanded={showLayoutSettings}
-            onChange={updateLayoutSetting}
-            onEditCommit={commitAuthoredEditSession}
-            onEditStart={beginAuthoredEditSession}
-            onReset={resetLayoutSettings}
-            onShowComponentTreeShellChange={updateComponentTreeShellVisible}
-            onToggle={toggleLayoutSettings}
-            settings={normalizedLayoutSettings}
-            showComponentTreeShell={showComponentTreeShell}
-          />
         </aside>
 
         <section className="fx-editor-stage" aria-label="Editor canvas">
@@ -2572,14 +2628,22 @@ export function EditorPage() {
             <EditorCanvas
               currentWindow={previewWindow}
               model={currentModel}
-              inspectorActive={showInspector}
-              selectionActive={showInspector || resizeMode}
-              inspectorLocked={inspectorLocked}
+              inspectorActive={inspectToolActive}
+              selectionActive={Boolean(currentWindow)}
+              inspectorLocked={inspectToolActive ? inspectorLocked : true}
               inspectedAnchor={inspectedAnchor}
               inspectorPreview={inspectorPreview}
-              onInspect={updateInspectedAnchor}
-              onInspectClear={clearHoveredInspection}
-              onInspectLock={lockInspectedAnchor}
+              onInspect={inspectToolActive ? updateInspectedAnchor : undefined}
+              onInspectClear={inspectToolActive ? clearHoveredInspection : undefined}
+              onInspectLock={
+                inspectToolActive
+                  ? lockInspectedAnchor
+                  : (anchor) =>
+                      selectInspectorComponent(
+                        anchor,
+                        resizeToolActive ? PROPERTIES_TAB_PROPERTIES : PROPERTIES_TAB_FACTORIO
+                      )
+              }
               onBuilderDrop={handleCanvasDrop}
               onBuilderDropTargetOver={handleCanvasDropTargetOver}
               onResizeCancel={() => setResizeDraft(null)}
@@ -2589,12 +2653,168 @@ export function EditorPage() {
               builderDragActive={Boolean(builderDrag)}
               builderDragAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
               builderDropTarget={builderDropTarget}
-              resizeMode={resizeMode}
+              resizeMode={resizeToolActive}
               shadowsVisible={showGuiShadows}
             />
           </div>
         </section>
-        {showLuaOutput ? <LuaOutput model={currentModel} /> : null}
+
+        <aside className="fx-editor-properties-rail" aria-label="Editor properties">
+          <FxFrame
+            title="Properties"
+            className="fx-editor-panel fx-editor-panel--properties"
+            data-anchor="properties_panel"
+          >
+            <div className="fx-properties-tabs" role="tablist" aria-label="Properties views">
+              <PropertiesTabButton
+                active={selectedPropertiesTab === PROPERTIES_TAB_PROPERTIES}
+                anchor="properties_tab_properties"
+                onClick={() => updatePropertiesTab(PROPERTIES_TAB_PROPERTIES)}
+              >
+                Properties
+              </PropertiesTabButton>
+              <PropertiesTabButton
+                active={selectedPropertiesTab === PROPERTIES_TAB_FACTORIO}
+                anchor="properties_tab_factorio"
+                onClick={() => updatePropertiesTab(PROPERTIES_TAB_FACTORIO)}
+              >
+                Factorio
+              </PropertiesTabButton>
+            </div>
+
+            {selectedPropertiesTab === PROPERTIES_TAB_PROPERTIES ? (
+              <div className="fx-properties-stack">
+                <section className="fx-properties-section" data-anchor="window_properties">
+                  <h3>Window</h3>
+                  <label className="fx-field">
+                    <span>Title</span>
+                    <FxTextInput
+                      id="window-title"
+                      type="text"
+                      value={title}
+                      autoComplete="off"
+                      onBlur={commitAuthoredEditSession}
+                      onChange={updateTitle}
+                      onFocus={beginAuthoredEditSession}
+                    />
+                  </label>
+                  <div className="fx-field-grid fx-field-grid--two">
+                    <label className="fx-field">
+                      <span>Width</span>
+                      <FxTextInput
+                        id="window-width"
+                        type="number"
+                        min={WINDOW_SIZE_LIMITS.minWidth}
+                        max={WINDOW_SIZE_LIMITS.maxWidth}
+                        step="10"
+                        value={windowSize.width}
+                        onBlur={commitAuthoredEditSession}
+                        onChange={updateWindowWidth}
+                        onFocus={beginAuthoredEditSession}
+                      />
+                    </label>
+                    <label className="fx-field">
+                      <span>Height</span>
+                      <FxTextInput
+                        id="window-height"
+                        type="number"
+                        min={WINDOW_SIZE_LIMITS.minHeight}
+                        max={WINDOW_SIZE_LIMITS.maxHeight}
+                        step="10"
+                        value={windowSize.height}
+                        onBlur={commitAuthoredEditSession}
+                        onChange={updateWindowHeight}
+                        onFocus={beginAuthoredEditSession}
+                      />
+                    </label>
+                  </div>
+                  <div className="fx-window-create-row">
+                    <FxButton id="create-window" onClick={createWindow}>
+                      {currentWindow ? "Recreate window" : "Create window"}
+                    </FxButton>
+                    <div
+                      className="fx-body-direction-toggle"
+                      role="group"
+                      aria-label="Default body flow"
+                    >
+                      <button
+                        aria-pressed={selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION}
+                        className={
+                          selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION ? "is-active" : ""
+                        }
+                        onClick={() => updateWindowBodyDirection(HORIZONTAL_FLOW_DIRECTION)}
+                        type="button"
+                      >
+                        Horizontal
+                      </button>
+                      <button
+                        aria-pressed={selectedBodyDirection === VERTICAL_FLOW_DIRECTION}
+                        className={
+                          selectedBodyDirection === VERTICAL_FLOW_DIRECTION ? "is-active" : ""
+                        }
+                        onClick={() => updateWindowBodyDirection(VERTICAL_FLOW_DIRECTION)}
+                        type="button"
+                      >
+                        Vertical
+                      </button>
+                    </div>
+                  </div>
+                  <div className="fx-actions">
+                    <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
+                      Reset
+                    </FxButton>
+                  </div>
+                </section>
+
+                <section className="fx-properties-section" data-anchor="view_properties">
+                  <h3>View</h3>
+                  <FxCheckbox
+                    checked={showGuiShadows}
+                    data-anchor="gui_shadow_toggle"
+                    readOnly={false}
+                    onChange={updateGuiShadowsEnabled}
+                  >
+                    GUI shadows
+                  </FxCheckbox>
+                </section>
+
+                <LayoutSettingsPanel
+                  expanded={showLayoutSettings}
+                  onChange={updateLayoutSetting}
+                  onEditCommit={commitAuthoredEditSession}
+                  onEditStart={beginAuthoredEditSession}
+                  onReset={resetLayoutSettings}
+                  onShowComponentTreeShellChange={updateComponentTreeShellVisible}
+                  onToggle={toggleLayoutSettings}
+                  settings={normalizedLayoutSettings}
+                  showComponentTreeShell={showComponentTreeShell}
+                />
+              </div>
+            ) : (
+              <StyleInspector
+                canGoBack={inspectorHistory.back.length > 0}
+                canGoForward={inspectorHistory.forward.length > 0}
+                model={currentModel}
+                inspectedAnchor={inspectedAnchor}
+                locked={inspectorLocked}
+                onBack={goInspectorBack}
+                onClearPreview={clearInspectorPreview}
+                onEdit={updateInspectorEditableValue}
+                onForward={goInspectorForward}
+                onNavigate={navigateInspector}
+                onPreview={previewInspector}
+                onToggleLock={() => lockInspectedAnchor(inspectedAnchor)}
+              />
+            )}
+          </FxFrame>
+        </aside>
+      </div>
+
+      {exportDrawerOpen ? (
+        <section className="fx-editor-export-drawer" data-anchor="editor_export_drawer">
+          <LuaOutput model={currentModel} />
+        </section>
+      ) : null}
       </main>
   );
 }
