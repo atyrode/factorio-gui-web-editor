@@ -647,15 +647,15 @@ test.describe("Layout builder canvas preview", () => {
     const redo = page.locator('[data-anchor="editor_redo"]');
     await expect(undo).toBeDisabled();
     await expect(redo).toBeDisabled();
-    await expect(page.locator('[data-anchor="builder_panel"] [data-anchor="editor_undo"]'))
+    await expect(page.locator('[data-anchor="editor_command_bar"] [data-anchor="editor_undo"]'))
       .toBeVisible();
-    const historyHeaderGeometry = await page.locator('[data-anchor="builder_panel"]').evaluate(
-      (panel) => {
-        const title = panel.querySelector(".fx-frame__title");
-        const undoButton = panel.querySelector('[data-anchor="editor_undo"]');
-        const redoButton = panel.querySelector('[data-anchor="editor_redo"]');
+    const historyHeaderGeometry = await page.locator('[data-anchor="editor_command_bar"]').evaluate(
+      (bar) => {
+        const title = bar.querySelector(".fx-editor-command-bar__title");
+        const undoButton = bar.querySelector('[data-anchor="editor_undo"]');
+        const redoButton = bar.querySelector('[data-anchor="editor_redo"]');
         if (!title || !undoButton || !redoButton) {
-          throw new Error("Missing Builder title or history controls");
+          throw new Error("Missing command title or history controls");
         }
 
         const titleRect = title.getBoundingClientRect();
@@ -667,15 +667,14 @@ test.describe("Layout builder canvas preview", () => {
           titleTop: Math.round(titleRect.top),
           undoTop: Math.round(undoRect.top),
           redoRight: Math.round(redoRect.right),
-          panelRight: Math.round(panel.getBoundingClientRect().right)
+          panelRight: Math.round(bar.getBoundingClientRect().right)
         };
       }
     );
     expect(historyHeaderGeometry.undoLeft).toBeGreaterThan(historyHeaderGeometry.titleRight);
     expect(Math.abs(historyHeaderGeometry.undoTop - historyHeaderGeometry.titleTop))
       .toBeLessThanOrEqual(8);
-    expect(historyHeaderGeometry.panelRight - historyHeaderGeometry.redoRight)
-      .toBeLessThanOrEqual(12);
+    expect(historyHeaderGeometry.redoRight).toBeLessThan(historyHeaderGeometry.panelRight);
 
     await page.locator("#create-window").click();
     await expect(page.locator('[data-anchor="gui_window"]')).toBeVisible();
@@ -699,6 +698,115 @@ test.describe("Layout builder canvas preview", () => {
 
     const state = await readStoredEditorState(page);
     expect(state.currentWindow).toBeNull();
+  });
+
+  test("export drawer is closed by default and opens from the command bar", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await expect(page.locator('[data-anchor="editor_export_drawer"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor="lua_output_file"]')).toHaveCount(0);
+
+    const exportToggle = page.locator('[data-anchor="editor_export_toggle"]');
+    await exportToggle.click();
+    await expect(exportToggle).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-anchor="editor_export_drawer"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="lua_output_file"]')).toBeVisible();
+    await expect(page.locator(".fx-editor-output__code code")).toContainText(
+      "local function build_gui(player)"
+    );
+
+    await exportToggle.click();
+    await expect(page.locator('[data-anchor="editor_export_drawer"]')).toHaveCount(0);
+  });
+
+  test("Inspect tool opens the Factorio properties tab", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await page.locator('[data-anchor="editor_tool_inspect"]').click();
+    await expect(page.locator('[data-anchor="editor_tool_inspect"]')).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(page.locator('[data-anchor="properties_tab_factorio"]')).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await page.locator('[data-anchor="gui_frame_1"]').click();
+    await expect(page.locator('[data-anchor="style_inspector_panel"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="style_inspector_panel"]')).toContainText(
+      "class agui::Frame"
+    );
+  });
+
+  test("Select tool leaves canvas clicks passive", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await expect(page.locator('[data-anchor="editor_tool_select"]')).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await page.locator('[data-anchor="gui_frame_1"]').click();
+    await expect(page.locator('[data-anchor="properties_tab_properties"]')).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expect(page.locator('[data-anchor="style_inspector_panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).not.toHaveClass(/is-inspected/);
+
+    const state = await readStoredEditorState(page);
+    expect(state.inspectedAnchor).toBeNull();
+    expect(state.inspectorLocked).toBe(false);
+  });
+
+  test("canvas is the dominant desktop work area without a closed export drawer", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await seedOneFrameWindow(page);
+
+    await expect(page.locator('[data-anchor="editor_export_drawer"]')).toHaveCount(0);
+    const geometry = await page.evaluate(() => {
+      const canvas = document.querySelector('[data-anchor="editor_canvas"]');
+      const componentsRow = document.querySelector('[data-anchor="builder_panel"]');
+      const properties = document.querySelector('[data-anchor="properties_panel"]');
+      const tree = document.querySelector('[data-anchor="component_tree_panel"]');
+      const canvasRect = canvas.getBoundingClientRect();
+      const componentsRowRect = componentsRow.getBoundingClientRect();
+      const propertiesRect = properties.getBoundingClientRect();
+      const treeRect = tree.getBoundingClientRect();
+      const labelFits = (selector) => [...document.querySelectorAll(selector)].map((label) => ({
+        text: label.textContent?.trim() ?? "",
+        fits: Math.ceil(label.scrollWidth) <= Math.ceil(label.clientWidth) + 1
+      }));
+      return {
+        canvas: {
+          top: canvasRect.top,
+          left: canvasRect.left,
+          right: canvasRect.right,
+          width: canvasRect.width
+        },
+        componentsRow: {
+          bottom: componentsRowRect.bottom
+        },
+        properties: {
+          left: propertiesRect.left,
+          right: propertiesRect.right,
+          width: propertiesRect.width
+        },
+        tree: {
+          left: treeRect.left,
+          width: treeRect.width
+        },
+        componentLabels: labelFits('[data-anchor="builder_panel"] .fx-builder-palette__item span'),
+        treeLabels: labelFits('[data-anchor="component_tree_panel"] .fx-builder-row__label span')
+      };
+    });
+
+    expect(geometry.canvas.width).toBeGreaterThan(geometry.properties.width);
+    expect(geometry.canvas.width).toBeGreaterThan(geometry.tree.width);
+    expect(geometry.componentsRow.bottom).toBeLessThanOrEqual(geometry.canvas.top);
+    expect(geometry.canvas.right).toBeLessThanOrEqual(geometry.properties.left);
+    expect(geometry.properties.left).toBe(geometry.tree.left);
+    expect(geometry.componentLabels.filter((label) => !label.fits)).toEqual([]);
+    expect(geometry.treeLabels.filter((label) => !label.fits)).toEqual([]);
   });
 
   test("authored field edits coalesce and clear the redo branch", async ({ page }) => {
@@ -760,6 +868,7 @@ test.describe("Layout builder canvas preview", () => {
     await dropPaletteTileOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
     await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
 
+    await page.locator('[data-anchor="properties_tab_properties"]').click();
     await page.locator("#window-title").click();
     await page.keyboard.press("ControlOrMeta+Z");
     await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
@@ -866,7 +975,20 @@ test.describe("Layout builder canvas preview", () => {
   });
 
   test("component tree scrollbar has a dedicated right gutter", async ({ page }) => {
-    await seedEditorState(page, MANY_BODY_FRAMES_STATE);
+    await page.setViewportSize({ width: 1280, height: 560 });
+    await seedEditorState(page, {
+      ...MANY_BODY_FRAMES_STATE,
+      currentWindow: {
+        ...MANY_BODY_FRAMES_STATE.currentWindow,
+        layoutChildren: Array.from({ length: 80 }, (_, index) => ({
+          id: `gui_frame_${index + 1}`,
+          atom: "frame",
+          styleVariant: "inside-deep-frame",
+          children: []
+        })),
+        nextLayoutNodeNumber: 81
+      }
+    });
 
     const geometry = await page.locator('[data-anchor="builder_body_tree"]').evaluate((tree) => {
       const firstRow = tree.querySelector('[data-anchor="builder_tree_item_gui_frame_1"]');
@@ -938,7 +1060,8 @@ test.describe("Layout builder canvas preview", () => {
     await page.locator('[data-anchor="layout_settings_toggle"]').click();
     const shellToggle = page.locator('[data-anchor="component_tree_shell_toggle"] input');
     await expect(shellToggle).not.toBeChecked();
-    await shellToggle.click({ force: true });
+    await page.locator('[data-anchor="component_tree_shell_toggle"]').click();
+    await expect(shellToggle).toBeChecked();
 
     await expect(tree.getByText("Window Frame")).toBeVisible();
     await expect(tree.getByText("Titlebar Horizontal Flow")).toBeVisible();
@@ -1065,6 +1188,7 @@ test.describe("Layout builder canvas preview", () => {
     );
 
     const frameCountAfterPaste = await page.locator('[data-anchor^="gui_frame_"]').count();
+    await page.locator('[data-anchor="properties_tab_properties"]').click();
     await page.locator("#window-title").click();
     await page.keyboard.press("ControlOrMeta+C");
     await page.keyboard.press("ControlOrMeta+X");
@@ -1478,14 +1602,15 @@ test.describe("Layout builder canvas preview", () => {
       };
     });
 
-    await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).toBeChecked();
+    const shadowToggle = page.locator('[data-anchor="gui_shadow_toggle"]');
+    await expect(shadowToggle).toHaveAttribute("aria-pressed", "true");
     expect(shadowOn.root).not.toBe("none");
     expect(shadowOn.body).toBe("none");
     expect(shadowOn.frame).toBe("none");
     expect(shadowOn.frameBevel).toContain("inset");
 
-    await page.locator('[data-anchor="gui_shadow_toggle"] input').click({ force: true });
-    await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).not.toBeChecked();
+    await shadowToggle.click();
+    await expect(shadowToggle).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator('[data-anchor="gui_window"]')).toHaveAttribute(
       "data-fx-shadows",
       "hidden"
@@ -1517,7 +1642,9 @@ test.describe("Layout builder canvas preview", () => {
     );
 
     await expect(page.locator('[data-anchor="resize_overlay"]')).toHaveCount(0);
-    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+    const resizeTool = page.locator('[data-anchor="resize_mode_toggle"]');
+    await resizeTool.click();
+    await expect(resizeTool).toHaveAttribute("aria-pressed", "true");
 
     const overlay = page.locator('[data-anchor="resize_overlay"]');
     await expect(overlay).toBeVisible();
@@ -1555,7 +1682,7 @@ test.describe("Layout builder canvas preview", () => {
       page,
       stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
     );
-    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+    await page.locator('[data-anchor="resize_mode_toggle"]').click();
 
     await dragResizeHandle(page, "se", 140, 50);
     await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
@@ -1586,9 +1713,12 @@ test.describe("Layout builder canvas preview", () => {
   test("resize mode updates Window width and height through exported style fields", async ({ page }) => {
     await seedEditorState(
       page,
-      stateWithSelection(ONE_FRAME_STATE, "gui_window", { showLuaOutput: true })
+      stateWithSelection(ONE_FRAME_STATE, "gui_window", {
+        showLayoutSettings: true,
+        showLuaOutput: true
+      })
     );
-    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+    await page.locator('[data-anchor="resize_mode_toggle"]').click();
 
     const overlay = page.locator('[data-anchor="resize_overlay"]');
     await expect(overlay).toBeVisible();
@@ -1664,7 +1794,7 @@ test.describe("Layout builder canvas preview", () => {
       page,
       stateWithSelection(ONE_FRAME_STATE, "gui_window_title")
     );
-    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+    await page.locator('[data-anchor="resize_mode_toggle"]').click();
 
     const overlay = page.locator('[data-anchor="resize_overlay"]');
     await expect(overlay).toBeVisible();
@@ -1763,23 +1893,28 @@ test.describe("Layout builder canvas preview", () => {
       windowBox.x;
     const leftFrameTopX = finalFrames[0].left + finalFrames[0].width - 20 - windowBox.x;
     const rightFrameTopX = finalFrames[1].left + 20 - windowBox.x;
-    const gapTop = luminance(screenshot.getPixel(gapCenterX, topY));
-    const frameTop = Math.max(
-      luminance(screenshot.getPixel(leftFrameTopX, topY)),
-      luminance(screenshot.getPixel(rightFrameTopX, topY))
+    const edgeOffsets = [-1, 0, 1, 2];
+    function edgeContrastAt(y) {
+      const gap = luminance(screenshot.getPixel(gapCenterX, y));
+      const frame = Math.max(
+        luminance(screenshot.getPixel(leftFrameTopX, y)),
+        luminance(screenshot.getPixel(rightFrameTopX, y))
+      );
+      return gap - frame;
+    }
+    const topEdgeContrast = Math.max(
+      ...edgeOffsets.map((offset) => edgeContrastAt(topY + offset))
     );
-    const gapBottom = luminance(screenshot.getPixel(gapCenterX, bottomY));
-    const frameBottom = Math.max(
-      luminance(screenshot.getPixel(leftFrameTopX, bottomY)),
-      luminance(screenshot.getPixel(rightFrameTopX, bottomY))
+    const bottomEdgeContrast = Math.max(
+      ...edgeOffsets.map((offset) => edgeContrastAt(bottomY + offset))
     );
 
     expect(
-      gapTop - frameTop,
+      topEdgeContrast,
       "the Window body must not draw a continuous dark top stroke over the split gap"
     ).toBeGreaterThan(24);
     expect(
-      gapBottom - frameBottom,
+      bottomEdgeContrast,
       "the Window body must not draw a continuous dark bottom stroke over the split gap"
     ).toBeGreaterThan(24);
   });

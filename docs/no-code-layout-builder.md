@@ -56,15 +56,26 @@ under a proposed parent in the constrained recursive layout model.
 
 ## Information Architecture
 
-The editor rail contains three pinned sections:
+The editor page is a canvas-dominant workbench rather than a single stacked
+control rail. Its default desktop structure is:
 
 ```text
-[Window]
-  title, width, height, create/recreate, body-flow toggle, reset
+[Top command bar]
+  editable Window title, body-flow toggle, undo, redo, export drawer toggle,
+  create/recreate Window, reset
+  [Components: drag/drop Frame, Horizontal Flow, Filler]
 
-[Builder]
-  title row with undo/redo actions aligned right
-  [Palette: drag/drop Frame, Horizontal Flow, Filler]
+[Tool strip]
+  [Tools: Select, Inspect, Resize]
+  [View toggles: GUI shadows]
+
+[Right rail]
+  [Properties panel]
+    [Properties tab]
+      Layout Settings, collapsed by default, including exact Window size
+    [Factorio tab]
+      Ctrl+F6-style structured facts for selected/hovered GUI node
+  [Component tree]
   [Scroll: component tree, starting at Window body flow by default]
     [Optional non-deletable Window frame root]
     [Optional non-deletable titlebar flow, title label, header filler]
@@ -72,32 +83,27 @@ The editor rail contains three pinned sections:
     [Headless Tree drag line for ordered placement]
     [Child rows with copy, paste, add child, add after, remove]
 
-[Inspector]
-  Ctrl+F6 style inspector toggle
-  Lua output toggle
-  Resize mode toggle
-  selected node details
+[Canvas]
+  visual preview, canvas drops, Window movement, resize overlays
 
-[Settings]
-  collapsed by default
-  Frame and Horizontal Flow authored values
-  Reset defaults
+[Export drawer]
+  hidden by default; generated gui.lua and preview-mod download
 ```
 
 The canvas remains the visual preview. It accepts legal drops into the Window
 body, user-created Frames, and user-created Horizontal Flows. Filler is a leaf
 and does not expose child drop targets. The Window
 root/header/titlebar shell can be shown in the component tree when the Settings
-toggle is enabled; those generated shell rows are locked.
+toggle in the Properties tab is enabled; those generated shell rows are locked.
 
 The Builder tree is the structure navigator for the generated Lua hierarchy. It
 starts at the locked `gui_window_body` flow by default, followed by editable
 authored layout specs under the body flow. A Settings toggle can expose the full
 generated shell, including locked nodes such as `gui_window`,
 `gui_window_titlebar`, `gui_window_title`, and `gui_window_drag_handle`. It has
-a bounded height and scrolls when nested layout would otherwise crowd the
-Inspector. The scroll area reserves a right-side gutter so the vertical scrollbar
-does not cover row labels or actions.
+a bounded height under the right-side Properties panel and scrolls when nested
+layout would otherwise crowd the canvas. The scroll area reserves a right-side
+gutter so the vertical scrollbar does not cover row labels or actions.
 
 Tree row rendering remains Factorio-styled local UI, but tree interaction logic
 is not custom. Headless Tree supplies flat visible items, ARIA tree props,
@@ -105,24 +111,45 @@ separate drag-handle props, drag targets, and drag-line positioning. The
 rendered rows reuse the editor's dark panel/menu vocabulary, compact action
 buttons, orange active affordances, and blue structural guide color.
 
-The Settings panel is the last section in the editor rail and is collapsed by
-default. It owns authored Horizontal Flow assumptions until Factorio defaults
-are proven. It currently controls generic flow spacing, top-level minimum
-width, nested minimum width, minimum height, and padding.
-It also owns the presentation toggle for showing or hiding the generated Window
-shell rows in the Builder tree.
+The command bar owns high-frequency Window commands and component creation from
+the builder palette, with a separated Components row below the Window controls.
+The left tool strip keeps exclusive canvas tools at the top and view toggles,
+including GUI shadows, at the bottom. The Properties panel owns lower-frequency
+root/global settings. The Layout Settings section is collapsed by default and
+owns exact Window width/height plus authored Horizontal Flow
+assumptions until Factorio defaults are proven: generic flow spacing, top-level
+minimum width, nested minimum width, minimum height, and padding. It also owns
+the presentation toggle for showing or hiding generated Window shell rows in the
+Builder tree.
 
-Resize mode is a canvas tool, not always-active drag behavior. When enabled, the
-selected GUI node gets a measured overlay. Supported nodes show side and corner
-handles; unsupported nodes show a disabled resize state. The tool reuses the
-same selected anchor as the Builder tree and Inspector, so selecting a row,
-inspector item, or canvas element targets the same model node.
+The Factorio tab owns Ctrl+F6-style structured facts. Selecting a Builder row or
+navigating from inspector child rows switches to this tab so the selected model
+node can be checked precisely. The Inspect tool owns canvas hover/click
+inspection, while the Resize tool can target canvas nodes for sizing without
+enabling hover inspection.
+
+The export drawer is closed by default. Opening it reveals generated `gui.lua`
+and the preview-mod download action. Lua output remains a generated export
+surface; it is not an always-visible editing surface.
+
+Select, Inspect, and Resize are exclusive canvas tools. Select is the default
+passive pointer mode: canvas clicks do not change inspected selection or switch
+the properties tab, and the preview remains available for normal interactions
+such as Window dragging. Inspect enables Ctrl+F6-style hover/click inspection
+and routes facts to the Factorio tab. Resize shows a measured overlay for the
+selected GUI node; supported nodes show side and corner handles, while
+unsupported nodes show a disabled resize state. Inspect, Resize, Builder rows,
+and inspector navigation reuse the same selected anchor, so precision operations
+target the same model node.
 
 ## Data Contract
 
-The Window panel has one create/recreate command. A nearby body-flow toggle
+The command bar has one create/recreate command. Its nearby body-flow toggle
 chooses whether that command creates a Window with a Horizontal Flow or Vertical
-Flow body. The persisted editor state stores only constrained specs:
+Flow body. Exact Window width/height remain model state, but their numeric
+inputs live in collapsed Settings because the Resize tool is the primary sizing
+surface. The persisted editor state stores constrained layout specs separately
+from transient workbench UI state:
 
 ```json
 {
@@ -145,6 +172,14 @@ Flow body. The persisted editor state stores only constrained specs:
   }
 }
 ```
+
+Workbench UI state is persisted under the existing
+`labtorio.editorState.v1` local-storage key. New layout fields are
+`activeCanvasTool: "select" | "inspect" | "resize"`,
+`propertiesTab: "properties" | "factorio"`, and `exportDrawerOpen: boolean`.
+Legacy `showInspector`, `resizeMode`, and `showLuaOutput` values are still read
+and written during this transition so older saved fixtures migrate to the
+matching Inspect, Resize, and export-drawer states.
 
 The model hydrates these specs into Factorio nodes only when rendering,
 inspecting, or exporting. `bodyDirection` selects the generated
@@ -277,9 +312,11 @@ paste.
 
 ## Resize Rules
 
-- Resize mode is toggled from the Inspector panel at `resize_mode_toggle`.
+- Resize mode is selected from the left canvas tool strip at
+  `resize_mode_toggle`.
 - `gui_window` supports width and height resizing through `currentWindow.size`;
-  the Window controls and Lua `.style.width` / `.style.height` update on commit.
+  the Settings size fields and Lua `.style.width` / `.style.height` update on
+  commit.
 - Editor-created Frames and Horizontal Flows support `minimal_width` and
   `minimal_height` resizing through their per-node `size` object.
 - Generated shell children such as `gui_window_title` and
@@ -312,11 +349,22 @@ paste.
 
 ## Stable Anchors
 
+- `editor_command_bar`
+- `editor_tool_select`
+- `editor_tool_inspect`
+- `editor_export_drawer`
 - `builder_panel`
 - `editor_undo`
 - `editor_redo`
+- `create_window_command`
+- `properties_panel`
+- `properties_tab_properties`
+- `properties_tab_factorio`
 - `layout_settings_panel`
 - `layout_settings_toggle`
+- `layout_settings_window_size`
+- `layout_setting_window_width`
+- `layout_setting_window_height`
 - `component_tree_shell_toggle`
 - `frame_palette_item`
 - `horizontal_flow_palette_item`
@@ -328,6 +376,9 @@ paste.
 - `builder_paste_<node_id>`
 - `resize_mode_toggle`
 - `resize_overlay`
+- `gui_shadow_toggle`
+- `lua_output_file`
+- `factorio_mod_download`
 - `gui_window_body`
 - `gui_frame_N` for editor-created Frame nodes
 - `gui_horizontal_flow_N` for editor-created Horizontal Flow nodes
