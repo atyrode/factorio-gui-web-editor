@@ -61,8 +61,8 @@ control rail. Its default desktop structure is:
 
 ```text
 [Top command bar]
-  current Window title/status, undo, redo, export drawer toggle,
-  create/recreate Window
+  editable Window title, body-flow toggle, undo, redo, export drawer toggle,
+  create/recreate Window, reset
 
 [Tool strip]
   Select, Inspect, Resize
@@ -81,9 +81,8 @@ control rail. Its default desktop structure is:
 
 [Properties rail]
   [Properties tab]
-    Window title, width, height, create/recreate, body-flow toggle, reset
     GUI shadow view toggle
-    Layout Settings, collapsed by default
+    Layout Settings, collapsed by default, including exact Window size
   [Factorio tab]
     Ctrl+F6-style structured facts for selected/hovered GUI node
 
@@ -112,13 +111,15 @@ separate drag-handle props, drag targets, and drag-line positioning. The
 rendered rows reuse the editor's dark panel/menu vocabulary, compact action
 buttons, orange active affordances, and blue structural guide color.
 
-The Properties rail owns editable root/global settings. The Window section
-controls title, size, body-flow direction, creation/recreation, and reset. The
-View section owns the GUI shadow display toggle. The Layout Settings section is
-collapsed by default and owns authored Horizontal Flow assumptions until
-Factorio defaults are proven: generic flow spacing, top-level minimum width,
-nested minimum width, minimum height, and padding. It also owns the presentation
-toggle for showing or hiding generated Window shell rows in the Builder tree.
+The top command bar owns high-frequency Window commands: title, body-flow
+direction, creation/recreation, reset, undo/redo, and export drawer visibility.
+The Properties rail owns lower-frequency root/global settings. The View section
+owns the GUI shadow display toggle. The Layout Settings section is collapsed by
+default and owns exact Window width/height plus authored Horizontal Flow
+assumptions until Factorio defaults are proven: generic flow spacing, top-level
+minimum width, nested minimum width, minimum height, and padding. It also owns
+the presentation toggle for showing or hiding generated Window shell rows in the
+Builder tree.
 
 The Factorio tab owns Ctrl+F6-style structured facts. Selecting a Builder row or
 navigating from inspector child rows switches to this tab so the selected model
@@ -139,10 +140,12 @@ inspector item, or canvas element targets the same model node.
 
 ## Data Contract
 
-The Window Properties section has one create/recreate command. A nearby
-body-flow toggle chooses whether that command creates a Window with a Horizontal
-Flow or Vertical Flow body. The persisted editor state stores constrained layout
-specs separately from transient workbench UI state:
+The command bar has one create/recreate command. Its nearby body-flow toggle
+chooses whether that command creates a Window with a Horizontal Flow or Vertical
+Flow body. Exact Window width/height remain model state, but their numeric
+inputs live in collapsed Settings because the Resize tool is the primary sizing
+surface. The persisted editor state stores constrained layout specs separately
+from transient workbench UI state:
 
 ```json
 {
@@ -308,7 +311,8 @@ paste.
 - Resize mode is selected from the left canvas tool strip at
   `resize_mode_toggle`.
 - `gui_window` supports width and height resizing through `currentWindow.size`;
-  the Window controls and Lua `.style.width` / `.style.height` update on commit.
+  the Settings size fields and Lua `.style.width` / `.style.height` update on
+  commit.
 - Editor-created Frames and Horizontal Flows support `minimal_width` and
   `minimal_height` resizing through their per-node `size` object.
 - Generated shell children such as `gui_window_title` and
@@ -348,11 +352,15 @@ paste.
 - `builder_panel`
 - `editor_undo`
 - `editor_redo`
+- `create_window_command`
 - `properties_panel`
 - `properties_tab_properties`
 - `properties_tab_factorio`
 - `layout_settings_panel`
 - `layout_settings_toggle`
+- `layout_settings_window_size`
+- `layout_setting_window_width`
+- `layout_setting_window_height`
 - `component_tree_shell_toggle`
 - `frame_palette_item`
 - `horizontal_flow_palette_item`

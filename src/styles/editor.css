@@ -13,39 +13,62 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   background: #302f30;
   border: 1px solid #0a0a0a;
   box-shadow: var(--fx-frame-shadow);
 }
 
-.fx-editor-command-bar__title {
+.fx-editor-command-bar__window {
   min-width: 0;
+  flex: 1 1 520px;
   display: grid;
-  gap: 1px;
+  grid-template-columns: minmax(190px, 320px) minmax(160px, 220px);
+  align-items: end;
+  justify-content: start;
+  gap: 10px;
 }
 
-.fx-editor-command-bar__title span {
+.fx-editor-command-bar__field {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.fx-editor-command-bar__title {
+  min-width: 0;
+}
+
+.fx-editor-command-bar__field > span {
   color: var(--fx-muted);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.fx-editor-command-bar__title strong {
-  min-width: 0;
-  overflow: hidden;
+.fx-editor-command-bar__title .fx-text-input {
+  height: 34px;
   color: var(--fx-gold);
-  font-size: 15px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 14px;
+}
+
+.fx-editor-command-bar__body .fx-body-direction-toggle {
+  min-width: 160px;
 }
 
 .fx-editor-command-bar__actions {
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.fx-editor-command-bar__actions .fx-button {
+  min-height: 34px;
 }
 
 .fx-editor-command-bar__export {
@@ -166,20 +189,6 @@
 
 .fx-editor-panel .fx-field-grid .fx-field {
   margin-bottom: 0;
-}
-
-.fx-window-create-row {
-  min-width: 0;
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.fx-window-create-row .fx-button {
-  min-width: 0;
-  width: 100%;
 }
 
 .fx-body-direction-toggle {
@@ -306,14 +315,6 @@
   margin-bottom: 8px;
   color: var(--fx-gold);
   font-size: 14px;
-}
-
-.fx-properties-section .fx-window-create-row {
-  grid-template-columns: 1fr;
-}
-
-.fx-properties-section .fx-body-direction-toggle {
-  min-width: 0;
 }
 
 .fx-builder-panel {
@@ -470,8 +471,19 @@
   white-space: nowrap;
 }
 
-.fx-layout-settings__grid {
+.fx-layout-settings__group {
   margin-top: 10px;
+}
+
+.fx-layout-settings__group-title {
+  margin-bottom: 6px;
+  color: var(--fx-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.fx-layout-settings__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -483,6 +495,10 @@
 
 .fx-layout-settings__grid .fx-field:last-child {
   grid-column: 1 / -1;
+}
+
+.fx-layout-settings__grid--window .fx-field:last-child {
+  grid-column: auto;
 }
 
 .fx-layout-settings__grid .fx-text-input {
@@ -1309,7 +1325,14 @@
     flex-direction: column;
   }
 
+  .fx-editor-command-bar__window {
+    width: 100%;
+    flex-basis: auto;
+    grid-template-columns: 1fr;
+  }
+
   .fx-editor-command-bar__actions {
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 

@@ -1677,7 +1677,10 @@ test.describe("Layout builder canvas preview", () => {
   test("resize mode updates Window width and height through exported style fields", async ({ page }) => {
     await seedEditorState(
       page,
-      stateWithSelection(ONE_FRAME_STATE, "gui_window", { showLuaOutput: true })
+      stateWithSelection(ONE_FRAME_STATE, "gui_window", {
+        showLayoutSettings: true,
+        showLuaOutput: true
+      })
     );
     await page.locator('[data-anchor="resize_mode_toggle"]').click();
 

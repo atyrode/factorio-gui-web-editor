@@ -979,14 +979,18 @@ function LayoutSettingsPanel({
   expanded,
   onToggle,
   settings,
+  windowSize,
   onChange,
   onEditCommit,
   onEditStart,
   onReset,
+  onWindowHeightChange,
+  onWindowWidthChange,
   showComponentTreeShell,
   onShowComponentTreeShellChange
 }) {
   const normalizedSettings = normalizeLayoutSettings(settings);
+  const normalizedWindowSize = normalizeWindowSize(windowSize);
   const ToggleIcon = expanded ? ChevronDown : ChevronRight;
 
   return (
@@ -1012,25 +1016,61 @@ function LayoutSettingsPanel({
           >
             Show generated Window shell
           </FxCheckbox>
-          <div className="fx-layout-settings__grid">
-            {LAYOUT_SETTING_FIELDS.map((field) => {
-              const limits = LAYOUT_SETTING_LIMITS[field.key];
-              return (
-                <label className="fx-field" data-anchor={field.anchor} key={field.key}>
-                  <span>{field.label}</span>
-                  <FxTextInput
-                    max={limits.max}
-                    min={limits.min}
-                    onBlur={onEditCommit}
-                    onChange={(event) => onChange(field.key, event.target.value)}
-                    onFocus={onEditStart}
-                    step="1"
-                    type="number"
-                    value={normalizedSettings[field.key]}
-                  />
-                </label>
-              );
-            })}
+          <div className="fx-layout-settings__group" data-anchor="layout_settings_window_size">
+            <div className="fx-layout-settings__group-title">Window size</div>
+            <div className="fx-layout-settings__grid fx-layout-settings__grid--window">
+              <label className="fx-field" data-anchor="layout_setting_window_width">
+                <span>Width</span>
+                <FxTextInput
+                  id="window-width"
+                  max={WINDOW_SIZE_LIMITS.maxWidth}
+                  min={WINDOW_SIZE_LIMITS.minWidth}
+                  onBlur={onEditCommit}
+                  onChange={onWindowWidthChange}
+                  onFocus={onEditStart}
+                  step="10"
+                  type="number"
+                  value={normalizedWindowSize.width}
+                />
+              </label>
+              <label className="fx-field" data-anchor="layout_setting_window_height">
+                <span>Height</span>
+                <FxTextInput
+                  id="window-height"
+                  max={WINDOW_SIZE_LIMITS.maxHeight}
+                  min={WINDOW_SIZE_LIMITS.minHeight}
+                  onBlur={onEditCommit}
+                  onChange={onWindowHeightChange}
+                  onFocus={onEditStart}
+                  step="10"
+                  type="number"
+                  value={normalizedWindowSize.height}
+                />
+              </label>
+            </div>
+          </div>
+          <div className="fx-layout-settings__group">
+            <div className="fx-layout-settings__group-title">Layout defaults</div>
+            <div className="fx-layout-settings__grid">
+              {LAYOUT_SETTING_FIELDS.map((field) => {
+                const limits = LAYOUT_SETTING_LIMITS[field.key];
+                return (
+                  <label className="fx-field" data-anchor={field.anchor} key={field.key}>
+                    <span>{field.label}</span>
+                    <FxTextInput
+                      max={limits.max}
+                      min={limits.min}
+                      onBlur={onEditCommit}
+                      onChange={(event) => onChange(field.key, event.target.value)}
+                      onFocus={onEditStart}
+                      step="1"
+                      type="number"
+                      value={normalizedSettings[field.key]}
+                    />
+                  </label>
+                );
+              })}
+            </div>
           </div>
           <div className="fx-actions">
             <FxButton
@@ -1043,6 +1083,29 @@ function LayoutSettingsPanel({
         </>
       ) : null}
     </section>
+  );
+}
+
+function BodyDirectionToggle({ selectedDirection, onChange }) {
+  return (
+    <div className="fx-body-direction-toggle" role="group" aria-label="Default body flow">
+      <button
+        aria-pressed={selectedDirection === HORIZONTAL_FLOW_DIRECTION}
+        className={selectedDirection === HORIZONTAL_FLOW_DIRECTION ? "is-active" : ""}
+        onClick={() => onChange(HORIZONTAL_FLOW_DIRECTION)}
+        type="button"
+      >
+        Horizontal
+      </button>
+      <button
+        aria-pressed={selectedDirection === VERTICAL_FLOW_DIRECTION}
+        className={selectedDirection === VERTICAL_FLOW_DIRECTION ? "is-active" : ""}
+        onClick={() => onChange(VERTICAL_FLOW_DIRECTION)}
+        type="button"
+      >
+        Vertical
+      </button>
+    </div>
   );
 }
 
@@ -2526,9 +2589,26 @@ export function EditorPage() {
       style={{ "--fx-editor-sidebar-width": `${sidebarWidth}px` }}
     >
       <header className="fx-editor-command-bar" data-anchor="editor_command_bar">
-        <div className="fx-editor-command-bar__title">
-          <span>Editor</span>
-          <strong>{currentWindow ? currentWindow.title : "No window"}</strong>
+        <div className="fx-editor-command-bar__window">
+          <label className="fx-editor-command-bar__field fx-editor-command-bar__title">
+            <span>Title</span>
+            <FxTextInput
+              id="window-title"
+              type="text"
+              value={title}
+              autoComplete="off"
+              onBlur={commitAuthoredEditSession}
+              onChange={updateTitle}
+              onFocus={beginAuthoredEditSession}
+            />
+          </label>
+          <div className="fx-editor-command-bar__field fx-editor-command-bar__body">
+            <span>Body</span>
+            <BodyDirectionToggle
+              selectedDirection={selectedBodyDirection}
+              onChange={updateWindowBodyDirection}
+            />
+          </div>
         </div>
         <div className="fx-editor-command-bar__actions" aria-label="Editor commands">
           <FxActionButton
@@ -2555,8 +2635,11 @@ export function EditorPage() {
             <PanelBottomOpen aria-hidden="true" />
             Export
           </FxButton>
-          <FxButton data-anchor="create_window_command" onClick={createWindow}>
+          <FxButton id="create-window" data-anchor="create_window_command" onClick={createWindow}>
             {currentWindow ? "Recreate window" : "Create window"}
+          </FxButton>
+          <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
+            Reset
           </FxButton>
         </div>
       </header>
@@ -2684,88 +2767,6 @@ export function EditorPage() {
 
             {selectedPropertiesTab === PROPERTIES_TAB_PROPERTIES ? (
               <div className="fx-properties-stack">
-                <section className="fx-properties-section" data-anchor="window_properties">
-                  <h3>Window</h3>
-                  <label className="fx-field">
-                    <span>Title</span>
-                    <FxTextInput
-                      id="window-title"
-                      type="text"
-                      value={title}
-                      autoComplete="off"
-                      onBlur={commitAuthoredEditSession}
-                      onChange={updateTitle}
-                      onFocus={beginAuthoredEditSession}
-                    />
-                  </label>
-                  <div className="fx-field-grid fx-field-grid--two">
-                    <label className="fx-field">
-                      <span>Width</span>
-                      <FxTextInput
-                        id="window-width"
-                        type="number"
-                        min={WINDOW_SIZE_LIMITS.minWidth}
-                        max={WINDOW_SIZE_LIMITS.maxWidth}
-                        step="10"
-                        value={windowSize.width}
-                        onBlur={commitAuthoredEditSession}
-                        onChange={updateWindowWidth}
-                        onFocus={beginAuthoredEditSession}
-                      />
-                    </label>
-                    <label className="fx-field">
-                      <span>Height</span>
-                      <FxTextInput
-                        id="window-height"
-                        type="number"
-                        min={WINDOW_SIZE_LIMITS.minHeight}
-                        max={WINDOW_SIZE_LIMITS.maxHeight}
-                        step="10"
-                        value={windowSize.height}
-                        onBlur={commitAuthoredEditSession}
-                        onChange={updateWindowHeight}
-                        onFocus={beginAuthoredEditSession}
-                      />
-                    </label>
-                  </div>
-                  <div className="fx-window-create-row">
-                    <FxButton id="create-window" onClick={createWindow}>
-                      {currentWindow ? "Recreate window" : "Create window"}
-                    </FxButton>
-                    <div
-                      className="fx-body-direction-toggle"
-                      role="group"
-                      aria-label="Default body flow"
-                    >
-                      <button
-                        aria-pressed={selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION}
-                        className={
-                          selectedBodyDirection === HORIZONTAL_FLOW_DIRECTION ? "is-active" : ""
-                        }
-                        onClick={() => updateWindowBodyDirection(HORIZONTAL_FLOW_DIRECTION)}
-                        type="button"
-                      >
-                        Horizontal
-                      </button>
-                      <button
-                        aria-pressed={selectedBodyDirection === VERTICAL_FLOW_DIRECTION}
-                        className={
-                          selectedBodyDirection === VERTICAL_FLOW_DIRECTION ? "is-active" : ""
-                        }
-                        onClick={() => updateWindowBodyDirection(VERTICAL_FLOW_DIRECTION)}
-                        type="button"
-                      >
-                        Vertical
-                      </button>
-                    </div>
-                  </div>
-                  <div className="fx-actions">
-                    <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
-                      Reset
-                    </FxButton>
-                  </div>
-                </section>
-
                 <section className="fx-properties-section" data-anchor="view_properties">
                   <h3>View</h3>
                   <FxCheckbox
@@ -2784,9 +2785,12 @@ export function EditorPage() {
                   onEditCommit={commitAuthoredEditSession}
                   onEditStart={beginAuthoredEditSession}
                   onReset={resetLayoutSettings}
+                  onWindowHeightChange={updateWindowHeight}
+                  onWindowWidthChange={updateWindowWidth}
                   onShowComponentTreeShellChange={updateComponentTreeShellVisible}
                   onToggle={toggleLayoutSettings}
                   settings={normalizedLayoutSettings}
+                  windowSize={windowSize}
                   showComponentTreeShell={showComponentTreeShell}
                 />
               </div>
