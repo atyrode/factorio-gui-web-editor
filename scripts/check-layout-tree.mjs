@@ -19,10 +19,13 @@ import {
   createFillerSpec,
   createFrameSpec,
   createHorizontalFlowSpec,
+  duplicateLayoutSubtree,
   insertLayoutNode,
   moveLayoutNode,
   normalizeLayoutState,
+  pasteLayoutSubtree,
   removeLayoutNode,
+  resolveLayoutPasteTarget,
   updateLayoutNodeSize
 } from "../src/factorioLayoutTree.js";
 import {
@@ -267,6 +270,129 @@ assert.deepEqual(ids(tree[1].children), ["gui_horizontal_flow_2"]);
 const removal = removeLayoutNode(tree, "gui_frame_1");
 assert.equal(removal.changed, true);
 assert.deepEqual(ids(removal.layoutChildren), ["gui_frame_3"]);
+
+const clipboardState = normalizeLayoutState({
+  nextLayoutNodeNumber: 10,
+  layoutChildren: [
+    {
+      id: "gui_frame_1",
+      atom: "frame",
+      size: {
+        minimalWidth: 260,
+        minimalHeight: 90
+      },
+      children: [
+        {
+          id: "gui_horizontal_flow_2",
+          atom: "horizontal-flow",
+          size: {
+            minimalWidth: 310,
+            minimalHeight: 88
+          },
+          children: [
+            {
+              id: "gui_frame_3",
+              atom: "frame",
+              size: {
+                minimalWidth: 180,
+                minimalHeight: 99
+              },
+              children: []
+            },
+            {
+              id: "gui_filler_4",
+              atom: "filler",
+              children: [
+                {
+                  id: "gui_frame_99",
+                  atom: "frame",
+                  children: []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: "gui_filler_5",
+      atom: "filler",
+      children: []
+    }
+  ]
+});
+const copiedFrame = clipboardState.layoutChildren[0];
+const duplicatedFrame = duplicateLayoutSubtree(
+  clipboardState.layoutChildren,
+  copiedFrame,
+  clipboardState.nextLayoutNodeNumber
+);
+assert.equal(duplicatedFrame.node.id, "gui_frame_10");
+assert.equal(duplicatedFrame.node.styleVariant, INSIDE_DEEP_FRAME_STYLE_VARIANT);
+assert.deepEqual(duplicatedFrame.node.size, { minimalWidth: 260, minimalHeight: 90 });
+assert.equal(duplicatedFrame.node.children[0].id, "gui_horizontal_flow_11");
+assert.equal(duplicatedFrame.node.children[0].styleVariant, GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT);
+assert.deepEqual(duplicatedFrame.node.children[0].size, {
+  minimalWidth: 310,
+  minimalHeight: 88
+});
+assert.deepEqual(ids(duplicatedFrame.node.children[0].children), [
+  "gui_frame_12",
+  "gui_filler_13"
+]);
+assert.deepEqual(duplicatedFrame.node.children[0].children[0].size, {
+  minimalWidth: 180,
+  minimalHeight: 99
+});
+assert.deepEqual(duplicatedFrame.node.children[0].children[1].children, []);
+assert.equal(duplicatedFrame.nextLayoutNodeNumber, 14);
+assert.equal(duplicateLayoutSubtree(clipboardState.layoutChildren, { atom: "label" }, 10).node, null);
+assert.deepEqual(
+  resolveLayoutPasteTarget(clipboardState.layoutChildren, "gui_frame_1", FRAME_ATOM_ID),
+  {
+    parentId: "gui_frame_1",
+    index: 1
+  }
+);
+assert.deepEqual(
+  resolveLayoutPasteTarget(clipboardState.layoutChildren, "gui_filler_5", FRAME_ATOM_ID),
+  {
+    parentId: BODY_LAYOUT_ROOT_ID,
+    index: 2
+  }
+);
+assert.deepEqual(
+  resolveLayoutPasteTarget(clipboardState.layoutChildren, "gui_window_title", FRAME_ATOM_ID),
+  {
+    parentId: BODY_LAYOUT_ROOT_ID,
+    index: 2
+  }
+);
+assert.equal(
+  resolveLayoutPasteTarget(clipboardState.layoutChildren, "gui_window_body", "label"),
+  null
+);
+
+const pastedFrame = pasteLayoutSubtree(
+  clipboardState.layoutChildren,
+  copiedFrame,
+  "gui_filler_5",
+  clipboardState.nextLayoutNodeNumber
+);
+assert.equal(pastedFrame.changed, true);
+assert.equal(pastedFrame.pastedNode.id, "gui_frame_10");
+assert.deepEqual(ids(pastedFrame.layoutChildren), [
+  "gui_frame_1",
+  "gui_filler_5",
+  "gui_frame_10"
+]);
+assert.equal(pastedFrame.layoutChildren[2].children[0].id, "gui_horizontal_flow_11");
+assert.equal(pastedFrame.nextLayoutNodeNumber, 14);
+assert.equal(
+  pasteLayoutSubtree(clipboardState.layoutChildren, { atom: "label" }, "gui_window_body", 10)
+    .changed,
+  false
+);
 
 const variableNodeIds = collectWindowLuaVariableNodeIds({
   layoutChildren: [

@@ -119,6 +119,19 @@ const BODY_FILLER_STATE = {
     nextLayoutNodeNumber: 2
   }
 };
+const MANY_BODY_FRAMES_STATE = {
+  ...ONE_FRAME_STATE,
+  currentWindow: {
+    ...ONE_FRAME_STATE.currentWindow,
+    layoutChildren: Array.from({ length: 14 }, (_, index) => ({
+      id: `gui_frame_${index + 1}`,
+      atom: "frame",
+      styleVariant: "inside-deep-frame",
+      children: []
+    })),
+    nextLayoutNodeNumber: 15
+  }
+};
 
 function stateWithSelection(state, anchor, overrides = {}) {
   return {
@@ -674,6 +687,32 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="filler_palette_item"]')).toBeVisible();
   });
 
+  test("component tree scrollbar has a dedicated right gutter", async ({ page }) => {
+    await seedEditorState(page, MANY_BODY_FRAMES_STATE);
+
+    const geometry = await page.locator('[data-anchor="builder_body_tree"]').evaluate((tree) => {
+      const firstRow = tree.querySelector('[data-anchor="builder_tree_item_gui_frame_1"]');
+      if (!firstRow) {
+        throw new Error("Missing first builder row");
+      }
+
+      const treeRect = tree.getBoundingClientRect();
+      const rowRect = firstRow.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(tree);
+      return {
+        hasVerticalScroll: tree.scrollHeight > tree.clientHeight,
+        rightGap: treeRect.right - rowRect.right,
+        gutter: computedStyle.getPropertyValue("--fx-builder-scrollbar-gutter").trim(),
+        paddingRight: computedStyle.paddingRight
+      };
+    });
+
+    expect(geometry.hasVerticalScroll).toBe(true);
+    expect(geometry.gutter).toBe("16px");
+    expect(geometry.paddingRight).toBe("16px");
+    expect(geometry.rightGap).toBeGreaterThanOrEqual(12);
+  });
+
   test("component tree can show the generated Window shell", async ({ page }) => {
     await seedEditorState(page, {
       ...ONE_FRAME_STATE,
@@ -781,6 +820,162 @@ test.describe("Layout builder canvas preview", () => {
     const luaOutput = page.locator(".fx-editor-output__code code");
     await expect(luaOutput).toContainText("local gui_frame_4 = gui_window_body.add{");
     await expect(luaOutput).toContainText("local gui_frame_3 = gui_horizontal_flow_2.add{");
+  });
+
+  test("component tree copy and paste duplicates a subtree across all projections", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showInspector: true,
+      showLuaOutput: true
+    });
+
+    await expect(page.locator('[data-anchor="builder_paste_gui_window_body"]')).toHaveCount(0);
+
+    await page.locator('[data-anchor="builder_copy_gui_frame_1"]').click();
+    await page.locator('[data-anchor="builder_paste_gui_window_body"]').click();
+
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_5"]'))
+      .toHaveClass(/is-selected/);
+    await expect(page.locator('[data-anchor="inspector_gui_frame_5"]')).toBeVisible();
+
+    const bodyFrames = await page.locator('[data-anchor="gui_window_body"] > [data-fx-role="body-frame"]')
+      .evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(bodyFrames).toEqual(["gui_frame_1", "gui_frame_5"]);
+    await expect(
+      page.locator('[data-anchor="gui_frame_5"] > [data-anchor="gui_horizontal_flow_6"]')
+    ).toHaveCount(1);
+    const pastedNestedFrames = await page.locator(
+      '[data-anchor="gui_horizontal_flow_6"] > [data-fx-role="body-frame"]'
+    ).evaluateAll((elements) => elements.map((element) => element.dataset.anchor));
+    expect(pastedNestedFrames).toEqual(["gui_frame_7", "gui_frame_8"]);
+
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText("local gui_frame_5 = gui_window_body.add{");
+    await expect(luaOutput).toContainText("local gui_horizontal_flow_6 = gui_frame_5.add{");
+    await expect(luaOutput).toContainText("local gui_frame_7 = gui_horizontal_flow_6.add{");
+    await expect(luaOutput).toContainText("local gui_frame_8 = gui_horizontal_flow_6.add{");
+
+    const storedWindow = await page.evaluate((key) => {
+      const state = JSON.parse(window.localStorage.getItem(key));
+      return state.currentWindow;
+    }, EDITOR_STORAGE_KEY);
+    expect(storedWindow.inspectedAnchor).toBeUndefined();
+    expect(storedWindow.layoutChildren.map((node) => node.id)).toEqual([
+      "gui_frame_1",
+      "gui_frame_5"
+    ]);
+    expect(storedWindow.layoutChildren[1].children[0].id).toBe("gui_horizontal_flow_6");
+    expect(storedWindow.nextLayoutNodeNumber).toBe(9);
+  });
+
+  test("keyboard copy and paste use selected-aware placement outside text fields", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+
+    await page.keyboard.press("ControlOrMeta+C");
+    await page.keyboard.press("ControlOrMeta+V");
+
+    await expect(
+      page.locator('[data-anchor="gui_frame_1"] > [data-anchor="gui_frame_2"]')
+    ).toHaveCount(1);
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_2"]'))
+      .toHaveClass(/is-selected/);
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "local gui_frame_2 = gui_frame_1.add{"
+    );
+
+    const frameCountAfterPaste = await page.locator('[data-anchor^="gui_frame_"]').count();
+    await page.locator("#window-title").click();
+    await page.keyboard.press("ControlOrMeta+C");
+    await page.keyboard.press("ControlOrMeta+X");
+    await page.keyboard.press("ControlOrMeta+V");
+    await expect(page.locator('[data-anchor^="gui_frame_"]')).toHaveCount(frameCountAfterPaste);
+  });
+
+  test("keyboard cut removes the selected subtree and keeps it pasteable", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(NESTED_TREE_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+
+    await page.keyboard.press("ControlOrMeta+X");
+
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_window_body"]'))
+      .toHaveClass(/is-selected/);
+    await expect(page.locator('[data-anchor="builder_paste_gui_window_body"]')).toBeVisible();
+    await expect(page.locator(".fx-editor-output__code")).not.toContainText("gui_frame_1");
+
+    await page.keyboard.press("ControlOrMeta+V");
+
+    await expect(page.locator('[data-anchor="gui_frame_5"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_5"]'))
+      .toHaveClass(/is-selected/);
+    await expect(
+      page.locator('[data-anchor="gui_frame_5"] > [data-anchor="gui_horizontal_flow_6"]')
+    ).toHaveCount(1);
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "local gui_frame_5 = gui_window_body.add{"
+    );
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      "local gui_horizontal_flow_6 = gui_frame_5.add{"
+    );
+
+    const storedWindow = await page.evaluate((key) => {
+      const state = JSON.parse(window.localStorage.getItem(key));
+      return state.currentWindow;
+    }, EDITOR_STORAGE_KEY);
+    expect(storedWindow.layoutChildren.map((node) => node.id)).toEqual(["gui_frame_5"]);
+    expect(storedWindow.nextLayoutNodeNumber).toBe(9);
+  });
+
+  test("pasted subtrees reset copied Lua variable-name overrides", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showLuaOutput: true,
+      currentWindow: {
+        ...NESTED_TREE_STATE.currentWindow,
+        luaVariableNames: {
+          gui_frame_1: "main_frame",
+          gui_horizontal_flow_2: "main_flow",
+          gui_frame_3: "left_frame",
+          gui_frame_4: "right_frame"
+        }
+      }
+    });
+
+    await page.locator('[data-anchor="builder_copy_gui_frame_1"]').click();
+    await page.locator('[data-anchor="builder_paste_gui_window_body"]').click();
+
+    await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]'))
+      .toHaveText("main_frame");
+    await expect(page.locator('[data-anchor="builder_lua_variable_gui_frame_5"]'))
+      .toHaveText("gui_frame_5");
+
+    const luaOutput = page.locator(".fx-editor-output__code code");
+    await expect(luaOutput).toContainText("local main_frame = gui_window_body.add{");
+    await expect(luaOutput).toContainText("local main_flow = main_frame.add{");
+    await expect(luaOutput).toContainText("local gui_frame_5 = gui_window_body.add{");
+    await expect(luaOutput).toContainText("local gui_horizontal_flow_6 = gui_frame_5.add{");
+    await expect(luaOutput).not.toContainText("local main_frame = gui_frame_5.add{");
+    await expect(luaOutput).not.toContainText("local main_flow = gui_frame_5.add{");
+  });
+
+  test("paste controls are unavailable without a clipboard or current Window", async ({ page }) => {
+    await seedOneFrameWindow(page);
+    await expect(page.locator('[data-anchor^="builder_paste_"]')).toHaveCount(0);
+
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      currentWindow: null,
+      inspectedAnchor: null,
+      inspectorLocked: false
+    });
+    await expect(page.locator('[data-anchor^="builder_paste_"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor^="builder_copy_"]')).toHaveCount(0);
   });
 
   test("component tree keeps generated shell rows locked while still selectable", async ({ page }) => {

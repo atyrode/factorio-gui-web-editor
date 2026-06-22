@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  ClipboardPaste,
   CornerDownRight,
+  Copy,
   ListPlus,
   Plus,
   Trash2,
@@ -50,9 +52,11 @@ const actionButtonIcons = {
   "add-after": ListPlus,
   "add-child": CornerDownRight,
   back: ChevronLeft,
+  copy: Copy,
   forward: ChevronRight,
   "lock-closed": Lock,
   "lock-open": Unlock,
+  paste: ClipboardPaste,
   plus: Plus,
   trash: Trash2,
   search: Search

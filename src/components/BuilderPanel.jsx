@@ -58,6 +58,14 @@ function removeLabel(node) {
   return `Remove ${atomLabel(node.atom)} subtree`;
 }
 
+function copyLabel(node) {
+  return `Copy ${atomLabel(node.atom)} subtree`;
+}
+
+function pasteLabel(label) {
+  return `Paste copied subtree near ${label}`;
+}
+
 function collectModelNodes(model) {
   const nodes = new Map();
 
@@ -375,7 +383,9 @@ function BuilderNodeRow({
   invalidDropTarget = false,
   onAddAfter,
   onAddChild,
+  onCopy,
   onEditLuaVariableName,
+  onPaste,
   onRemove,
   onSelect,
   rowProps = {}
@@ -433,6 +443,28 @@ function BuilderNodeRow({
         />
       </div>
       <div className="fx-builder-row__actions" aria-label={`${node.id} actions`}>
+        {onCopy ? (
+          <FxActionButton
+            data-anchor={`builder_copy_${node.id}`}
+            icon="copy"
+            label={copyLabel(node)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onCopy(node.id);
+            }}
+          />
+        ) : null}
+        {onPaste ? (
+          <FxActionButton
+            data-anchor={`builder_paste_${node.id}`}
+            icon="paste"
+            label={pasteLabel(label)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onPaste(node.id);
+            }}
+          />
+        ) : null}
         {onAddChild ? (
           <FxActionButton
             icon="add-child"
@@ -521,11 +553,14 @@ function BuilderHeadlessTree({
   inspectedAnchor,
   layoutChildren,
   model,
+  canPaste,
   onAddAfter,
   onAddChild,
+  onCopy,
   onEditLuaVariableName,
   onInsertPalette,
   onMoveNode,
+  onPaste,
   onRemove,
   onSelect,
   showGeneratedShell = false
@@ -655,6 +690,9 @@ function BuilderHeadlessTree({
           ...itemProps
         } = item.getProps();
         const draggable = Boolean(itemData.draggable);
+        const canPasteHere = Boolean(
+          (itemData.id === BODY_LAYOUT_ROOT_ID || draggable) && canPaste?.(itemData.id)
+        );
         const dragging = draggedIds.has(item.getId());
         const invalidDropTarget = item.isDraggingOver() && !item.isDragTarget();
         const visualShifted =
@@ -697,7 +735,9 @@ function BuilderHeadlessTree({
                 node={itemData.node}
                 onAddAfter={draggable ? onAddAfter : null}
                 onAddChild={itemData.canReceiveChildren ? onAddChild : null}
+                onCopy={draggable ? onCopy : null}
                 onEditLuaVariableName={onEditLuaVariableName}
+                onPaste={canPasteHere ? onPaste : null}
                 onRemove={draggable ? onRemove : null}
                 onSelect={onSelect}
                 treeItem={item}
@@ -719,12 +759,15 @@ export function BuilderPanel({
   currentWindow,
   inspectedAnchor,
   paletteDraggingAtom = null,
+  canPaste,
   model,
   onAddAfter,
   onAddChild,
+  onCopy,
   onEditLuaVariableName,
   onInsertPalette,
   onMoveNode,
+  onPaste,
   onPaletteDragEnd,
   onPaletteDragStart,
   onRemove,
@@ -756,11 +799,14 @@ export function BuilderPanel({
           inspectedAnchor={inspectedAnchor}
           layoutChildren={layoutChildren}
           model={model}
+          canPaste={canPaste}
           onAddAfter={onAddAfter}
           onAddChild={onAddChild}
+          onCopy={onCopy}
           onEditLuaVariableName={onEditLuaVariableName}
           onInsertPalette={onInsertPalette}
           onMoveNode={onMoveNode}
+          onPaste={onPaste}
           onRemove={onRemove}
           onSelect={onSelect}
           showGeneratedShell={showGeneratedShell}

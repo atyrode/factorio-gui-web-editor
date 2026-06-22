@@ -169,6 +169,12 @@ structurally compatible with the generated Lua skeleton.
 Lua variable names are export-facing aliases only: they change generated local
 identifiers in `gui.lua`, while stable node ids, DOM anchors, Inspector targets,
 and Factorio element `name` fields stay unchanged.
+Copy/cut/paste is a session-local editor operation over the same constrained
+`layoutChildren` specs and does not add a persisted clipboard schema. Pasted
+subtrees receive fresh stable ids; copied Lua variable-name overrides are not
+duplicated, so pasted nodes fall back to generated default local names until the
+user edits them. Cutting removes the original specs and their overrides after
+placing the normalized subtree snapshot in the in-app clipboard.
 
 Legacy cached windows normalize to an empty `layoutChildren` array with
 `nextLayoutNodeNumber: 1`. Existing Frame and Horizontal Flow specs keep their

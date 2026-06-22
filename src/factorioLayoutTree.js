@@ -475,3 +475,158 @@ export function updateLayoutNodeSize(layoutChildren = [], nodeId, sizePatch = {}
   const nextChildren = updateIn(layoutChildren);
   return changed ? { layoutChildren: nextChildren, changed } : { layoutChildren, changed: false };
 }
+
+function collectLayoutNodeIds(layoutChildren = [], usedIds = new Set()) {
+  for (const node of layoutChildren) {
+    if (node?.id) {
+      usedIds.add(node.id);
+    }
+    collectLayoutNodeIds(node?.children, usedIds);
+  }
+
+  return usedIds;
+}
+
+export function duplicateLayoutSubtree(
+  layoutChildren = [],
+  sourceNode,
+  nextLayoutNodeNumber = 1
+) {
+  const sourceAtom = normalizeAtom(sourceNode?.atom);
+  if (!sourceAtom) {
+    return {
+      node: null,
+      nextLayoutNodeNumber: normalizeNextNumber(nextLayoutNodeNumber)
+    };
+  }
+
+  const usedIds = collectLayoutNodeIds(layoutChildren);
+  let nextNumber = normalizeNextNumber(nextLayoutNodeNumber);
+
+  function allocateId(atom) {
+    const prefix = prefixForAtom(atom);
+    let id = `${prefix}${nextNumber}`;
+    while (usedIds.has(id)) {
+      nextNumber += 1;
+      id = `${prefix}${nextNumber}`;
+    }
+    usedIds.add(id);
+    nextNumber += 1;
+    return id;
+  }
+
+  function duplicateNode(node, parentAtom = BODY_LAYOUT_ROOT_ID) {
+    const atom = normalizeAtom(node?.atom);
+    if (!atom || !canParentAtomAcceptChildAtom(parentAtom, atom)) {
+      return null;
+    }
+
+    const id = allocateId(atom);
+    const size = normalizeLayoutNodeSize(node.size);
+    const children = canLayoutAtomHaveChildren(atom) && Array.isArray(node.children)
+      ? node.children
+          .map((child) => duplicateNode(child, atom))
+          .filter(Boolean)
+      : [];
+
+    return {
+      id,
+      atom,
+      styleVariant: canonicalStyleVariant(atom),
+      ...(size ? { size } : {}),
+      children
+    };
+  }
+
+  return {
+    node: duplicateNode(sourceNode),
+    nextLayoutNodeNumber: nextNumber
+  };
+}
+
+export function resolveLayoutPasteTarget(
+  layoutChildren = [],
+  selectedAnchor = BODY_LAYOUT_ROOT_ID,
+  sourceAtom = null
+) {
+  const atom = normalizeAtom(sourceAtom);
+  if (!atom) {
+    return null;
+  }
+
+  const selectedParentChildren = findLayoutParentChildren(layoutChildren, selectedAnchor);
+  if (
+    selectedParentChildren &&
+    canParentAcceptAtom(layoutChildren, selectedAnchor, atom)
+  ) {
+    return {
+      parentId: selectedAnchor,
+      index: selectedParentChildren.length
+    };
+  }
+
+  const selectedNode = findLayoutNode(layoutChildren, selectedAnchor);
+  if (
+    selectedNode &&
+    canParentAcceptAtom(layoutChildren, selectedNode.parentId, atom)
+  ) {
+    return {
+      parentId: selectedNode.parentId,
+      index: selectedNode.index + 1
+    };
+  }
+
+  return canParentAcceptAtom(layoutChildren, BODY_LAYOUT_ROOT_ID, atom)
+    ? {
+        parentId: BODY_LAYOUT_ROOT_ID,
+        index: layoutChildren.length
+      }
+    : null;
+}
+
+export function pasteLayoutSubtree(
+  layoutChildren = [],
+  sourceNode,
+  selectedAnchor = BODY_LAYOUT_ROOT_ID,
+  nextLayoutNodeNumber = 1
+) {
+  const target = resolveLayoutPasteTarget(layoutChildren, selectedAnchor, sourceNode?.atom);
+  if (!target) {
+    return {
+      layoutChildren,
+      changed: false,
+      pastedNode: null,
+      nextLayoutNodeNumber: normalizeNextNumber(nextLayoutNodeNumber)
+    };
+  }
+
+  const duplication = duplicateLayoutSubtree(layoutChildren, sourceNode, nextLayoutNodeNumber);
+  if (!duplication.node) {
+    return {
+      layoutChildren,
+      changed: false,
+      pastedNode: null,
+      nextLayoutNodeNumber: duplication.nextLayoutNodeNumber
+    };
+  }
+
+  const insertion = insertLayoutNode(
+    layoutChildren,
+    target.parentId,
+    target.index,
+    duplication.node
+  );
+
+  return insertion.changed
+    ? {
+        ...insertion,
+        pastedNode: duplication.node,
+        nextLayoutNodeNumber: duplication.nextLayoutNodeNumber
+      }
+    : {
+        layoutChildren,
+        changed: false,
+        pastedNode: null,
+        nextLayoutNodeNumber: normalizeNextNumber(nextLayoutNodeNumber)
+      };
+}
