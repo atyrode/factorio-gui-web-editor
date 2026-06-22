@@ -46,6 +46,8 @@ under a proposed parent in the constrained recursive layout model.
 - Remove a Frame, Horizontal Flow, or Filler subtree.
 - Copy, cut, and paste an authored atom subtree using visible Builder row
   copy/paste actions or `Ctrl/Cmd+C`, `Ctrl/Cmd+X`, and `Ctrl/Cmd+V`.
+- Undo and redo authored editor/model changes with visible controls or
+  `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, and `Ctrl/Cmd+Y`.
 - Select a builder row and inspect the same model node in the inspector,
   Builder tree, canvas, and Lua output.
 - Navigate implemented Frame, Horizontal Flow, and Filler children from the
@@ -200,6 +202,28 @@ paste.
 - The browser system clipboard is not read or written in this slice, so copied
   subtrees do not transfer across tabs, sessions, or reloads.
 
+## Undo/Redo Rules
+
+- Undo/redo history is session-local and bounded to 50 entries. Reloading the
+  page keeps only the current persisted editor state, not the undo stack.
+- History covers authored state that changes the model or export projection:
+  Window creation/reset, title, size, body direction, canvas Window location,
+  layout add/remove/move/cut/paste/drop, resize commits, Lua variable names,
+  and layout settings.
+- History does not record copy-only operations, hover/preview state, Inspector
+  navigation, Inspector/Lua/shadow/resize visibility toggles, settings-panel
+  expansion, generated-shell visibility, sidebar width, drag ghosts, or drop
+  previews.
+- Text and number field edits are coalesced into one history entry per focused
+  edit session. Resize and Window-location drags are coalesced into one entry
+  on pointer release.
+- Undo/redo restores the shared editor state and keeps canvas, Builder tree,
+  Inspector selection, Lua output, and localStorage synchronized. If a restored
+  selection no longer exists, the editor selects `gui_window_body` when a
+  Window exists, otherwise it clears selection.
+- Undo/redo shortcuts are ignored while focus is inside an editable field so
+  browser text editing semantics remain intact.
+
 ## Drop Rules
 
 - Canvas palette drops create a new spec from the dragged atom metadata.
@@ -281,12 +305,15 @@ paste.
 | `cross-parent-move` | Two root Frames, one nested Frame | Tree drag can move a Frame between body and another compatible flow, preserving order. |
 | `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and keeps the model unchanged. |
 | `copy-paste-subtree` | Frame -> Horizontal Flow -> two Frames, copied from the root Frame | Paste creates a sibling subtree with fresh ids, selects the pasted root, updates Lua output/localStorage, and leaves copied Lua variable overrides behind. |
+| `undo-redo-authored-state` | Window with authored layout, size, title, settings, and Lua aliases | Undo and redo restore shared model state across canvas, Builder tree, Inspector selection, Lua output, and localStorage while excluding transient view state. |
 | `resize-frame` | Selected root Frame with resize mode enabled | Handles resize authored `minimal_width`/`minimal_height`, update preview, persist `size`, and export Lua style fields. |
 | `resize-unsupported-shell-node` | Selected generated title label with resize mode enabled | Resize overlay reports unsupported and does not mutate Window or layout specs. |
 
 ## Stable Anchors
 
 - `builder_panel`
+- `editor_undo`
+- `editor_redo`
 - `layout_settings_panel`
 - `layout_settings_toggle`
 - `component_tree_shell_toggle`

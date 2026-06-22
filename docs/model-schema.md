@@ -175,6 +175,11 @@ subtrees receive fresh stable ids; copied Lua variable-name overrides are not
 duplicated, so pasted nodes fall back to generated default local names until the
 user edits them. Cutting removes the original specs and their overrides after
 placing the normalized subtree snapshot in the in-app clipboard.
+Undo/redo is also session-local editor history and does not add persisted
+schema. The stored `localStorage` value remains only the current editor state.
+History snapshots cover authored model/export state plus restorable Inspector
+selection metadata, while transient hover, drag preview, visibility toggles,
+sidebar width, and Inspector navigation remain outside the schema.
 
 Legacy cached windows normalize to an empty `layoutChildren` array with
 `nextLayoutNodeNumber: 1`. Existing Frame and Horizontal Flow specs keep their

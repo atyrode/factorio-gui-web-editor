@@ -5,11 +5,13 @@ import {
   Copy,
   ListPlus,
   Plus,
+  Redo2,
   Trash2,
   ChevronLeft,
   ChevronRight,
   Lock,
   Search,
+  Undo2,
   Unlock
 } from "lucide-react";
 import { createBuilderDropTarget } from "../factorioLayoutBuilderDnd.js";
@@ -58,8 +60,10 @@ const actionButtonIcons = {
   "lock-open": Unlock,
   paste: ClipboardPaste,
   plus: Plus,
+  redo: Redo2,
   trash: Trash2,
-  search: Search
+  search: Search,
+  undo: Undo2
 };
 
 export function FxActionButton({

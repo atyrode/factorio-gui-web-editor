@@ -285,6 +285,24 @@ async function dragResizeHandle(page, handle, deltaX, deltaY) {
   await page.mouse.up();
 }
 
+async function dragWindowBy(page, deltaX, deltaY) {
+  const titlebar = page.locator('[data-anchor="gui_window_titlebar"]');
+  await expect(titlebar).toBeVisible();
+  const titlebarBox = await titlebar.boundingBox();
+  expect(titlebarBox).not.toBeNull();
+
+  const startX = titlebarBox.x + titlebarBox.width / 2;
+  const startY = titlebarBox.y + titlebarBox.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + deltaX, startY + deltaY);
+  await page.mouse.up();
+}
+
+async function readStoredEditorState(page) {
+  return page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)), EDITOR_STORAGE_KEY);
+}
+
 async function startNativePaletteDrag(page, paletteAnchor) {
   const source = page.locator(`[data-anchor="${paletteAnchor}"]`);
   await expect(source).toBeVisible();
@@ -621,6 +639,108 @@ function expectSharedFlowSize(actual, expected, label) {
 }
 
 test.describe("Layout builder canvas preview", () => {
+  test("undo and redo controls restore Window creation and reset", async ({ page }) => {
+    await page.addInitScript((key) => window.localStorage.removeItem(key), EDITOR_STORAGE_KEY);
+    await page.goto("/");
+
+    const undo = page.locator('[data-anchor="editor_undo"]');
+    const redo = page.locator('[data-anchor="editor_redo"]');
+    await expect(undo).toBeDisabled();
+    await expect(redo).toBeDisabled();
+
+    await page.locator("#create-window").click();
+    await expect(page.locator('[data-anchor="gui_window"]')).toBeVisible();
+    await expect(undo).toBeEnabled();
+    await expect(redo).toBeDisabled();
+
+    await undo.click();
+    await expect(page.locator('[data-anchor="editor_empty_state"]')).toBeVisible();
+    await expect(undo).toBeDisabled();
+    await expect(redo).toBeEnabled();
+
+    await redo.click();
+    await expect(page.locator('[data-anchor="gui_window"]')).toBeVisible();
+
+    await page.locator("#reset-window").click();
+    await expect(page.locator('[data-anchor="editor_empty_state"]')).toBeVisible();
+    await undo.click();
+    await expect(page.locator('[data-anchor="gui_window"]')).toBeVisible();
+    await redo.click();
+    await expect(page.locator('[data-anchor="editor_empty_state"]')).toBeVisible();
+
+    const state = await readStoredEditorState(page);
+    expect(state.currentWindow).toBeNull();
+  });
+
+  test("authored field edits coalesce and clear the redo branch", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showLayoutSettings: true,
+      showLuaOutput: true
+    });
+
+    const undo = page.locator('[data-anchor="editor_undo"]');
+    const redo = page.locator('[data-anchor="editor_redo"]');
+    const titleInput = page.locator("#window-title");
+    const widthInput = page.locator("#window-width");
+
+    await titleInput.fill("Alpha");
+    await titleInput.fill("Beta");
+    await page.keyboard.press("Tab");
+    await undo.click();
+    await expect(titleInput).toHaveValue("Machin truc lab");
+    await redo.click();
+    await expect(titleInput).toHaveValue("Beta");
+
+    await undo.click();
+    await expect(titleInput).toHaveValue("Machin truc lab");
+    await expect(redo).toBeEnabled();
+
+    await widthInput.fill("900");
+    await widthInput.fill("760");
+    await page.keyboard.press("Tab");
+    await expect(redo).toBeDisabled();
+    await undo.click();
+    await expect(widthInput).toHaveValue("1100");
+    await redo.click();
+    await expect(widthInput).toHaveValue("760");
+
+    const minWidthInput = page.locator(
+      '[data-anchor="layout_setting_horizontal_flow_min_width"] input'
+    );
+    await minWidthInput.fill("210");
+    await minWidthInput.fill("220");
+    await page.keyboard.press("Tab");
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
+      "data-fx-minimal-width",
+      "220"
+    );
+    await undo.click();
+    await expect(minWidthInput).toHaveValue("168");
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
+      "data-fx-minimal-width",
+      "168"
+    );
+    await redo.click();
+    await expect(minWidthInput).toHaveValue("220");
+  });
+
+  test("undo and redo shortcuts ignore editable fields", async ({ page }) => {
+    await seedOneFrameWindow(page);
+
+    await dropPaletteTileOverTreeRow(page, "horizontal_flow_palette_item", "gui_frame_1");
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
+
+    await page.locator("#window-title").click();
+    await page.keyboard.press("ControlOrMeta+Z");
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
+
+    await page.locator('[data-anchor="editor_undo"]').click();
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toHaveCount(0);
+    await page.keyboard.press("ControlOrMeta+Shift+Z");
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]')).toBeVisible();
+  });
+
   test("component tree edits Lua variable names without changing stable element names", async ({ page }) => {
     await seedEditorState(page, {
       ...ONE_FRAME_STATE,
@@ -665,6 +785,35 @@ test.describe("Layout builder canvas preview", () => {
 
     await expect(variableControl).toHaveText("gui_frame_1");
     await expect(luaOutput).toContainText("local gui_frame_1 = gui_window_body.add{");
+  });
+
+  test("Lua variable-name history ignores invalid edits", async ({ page }) => {
+    await seedEditorState(page, {
+      ...ONE_FRAME_STATE,
+      showLuaOutput: true
+    });
+
+    const variableControl = page.locator('[data-anchor="builder_lua_variable_gui_frame_1"]');
+    await variableControl.click();
+    await page.getByLabel("Edit Lua variable for gui_frame_1").fill("main_controls");
+    await page.getByLabel("Edit Lua variable for gui_frame_1").press("Enter");
+    await expect(variableControl).toHaveText("main_controls");
+
+    await variableControl.click();
+    const duplicateInput = page.getByLabel("Edit Lua variable for gui_frame_1");
+    await duplicateInput.fill("gui_window_body");
+    await duplicateInput.press("Enter");
+    await expect(duplicateInput).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByRole("alert")).toContainText("already used");
+    await duplicateInput.press("Escape");
+
+    await page.locator('[data-anchor="editor_undo"]').click();
+    await expect(variableControl).toHaveText("gui_frame_1");
+    await expect(page.locator(".fx-editor-output__code code")).toContainText(
+      "local gui_frame_1 = gui_window_body.add{"
+    );
+    await page.locator('[data-anchor="editor_redo"]').click();
+    await expect(variableControl).toHaveText("main_controls");
   });
 
   test("component tree defaults to the Window body flow", async ({ page }) => {
@@ -930,6 +1079,89 @@ test.describe("Layout builder canvas preview", () => {
     }, EDITOR_STORAGE_KEY);
     expect(storedWindow.layoutChildren.map((node) => node.id)).toEqual(["gui_frame_5"]);
     expect(storedWindow.nextLayoutNodeNumber).toBe(9);
+  });
+
+  test("undo and redo restore component tree move and remove mutations", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showInspector: true,
+      showLuaOutput: true
+    });
+
+    await dragTreeNodeToRow(page, "gui_frame_4", "gui_window_body");
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_4"]'))
+      .toHaveClass(/is-selected/);
+    await expect(page.locator(".fx-editor-output__code code")).toContainText(
+      "local gui_frame_4 = gui_window_body.add{"
+    );
+
+    await page.keyboard.press("ControlOrMeta+Z");
+    await expect(page.locator('[data-anchor="gui_window_body"] > [data-anchor="gui_frame_4"]'))
+      .toHaveCount(0);
+    await expect(
+      page.locator('[data-anchor="gui_horizontal_flow_2"] > [data-anchor="gui_frame_4"]')
+    ).toHaveCount(1);
+
+    await page.keyboard.press("ControlOrMeta+Shift+Z");
+    await expect(page.locator('[data-anchor="gui_window_body"] > [data-anchor="gui_frame_4"]'))
+      .toHaveCount(1);
+
+    await page
+      .locator('[data-anchor="builder_tree_item_gui_frame_4"]')
+      .getByRole("button", { name: "Remove Frame subtree" })
+      .click();
+    await expect(page.locator('[data-anchor="gui_frame_4"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_window_body"]'))
+      .toHaveClass(/is-selected/);
+
+    await page.locator('[data-anchor="editor_undo"]').click();
+    await expect(page.locator('[data-anchor="gui_window_body"] > [data-anchor="gui_frame_4"]'))
+      .toHaveCount(1);
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_4"]'))
+      .toHaveClass(/is-selected/);
+
+    await page.locator('[data-anchor="editor_redo"]').click();
+    await expect(page.locator('[data-anchor="gui_frame_4"]')).toHaveCount(0);
+
+    const state = await readStoredEditorState(page);
+    expect(state.currentWindow.layoutChildren.map((node) => node.id)).toEqual(["gui_frame_1"]);
+  });
+
+  test("undo and redo restore paste and cut mutations", async ({ page }) => {
+    await seedEditorState(page, {
+      ...NESTED_TREE_STATE,
+      showLuaOutput: true
+    });
+
+    await page.locator('[data-anchor="builder_copy_gui_frame_1"]').click();
+    await page.locator('[data-anchor="builder_paste_gui_window_body"]').click();
+    await expect(page.locator('[data-anchor="gui_frame_5"]')).toBeVisible();
+    await expect(page.locator(".fx-editor-output__code code")).toContainText(
+      "local gui_frame_5 = gui_window_body.add{"
+    );
+
+    await page.locator('[data-anchor="editor_undo"]').click();
+    await expect(page.locator('[data-anchor="gui_frame_5"]')).toHaveCount(0);
+    await page.locator('[data-anchor="editor_redo"]').click();
+    await expect(page.locator('[data-anchor="gui_frame_5"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_5"]'))
+      .toHaveClass(/is-selected/);
+
+    await page.keyboard.press("ControlOrMeta+X");
+    await expect(page.locator('[data-anchor="gui_frame_5"]')).toHaveCount(0);
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_window_body"]'))
+      .toHaveClass(/is-selected/);
+
+    await page.keyboard.press("ControlOrMeta+Z");
+    await expect(page.locator('[data-anchor="gui_frame_5"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="builder_tree_item_gui_frame_5"]'))
+      .toHaveClass(/is-selected/);
+
+    await page.keyboard.press("ControlOrMeta+Y");
+    await expect(page.locator('[data-anchor="gui_frame_5"]')).toHaveCount(0);
+
+    const state = await readStoredEditorState(page);
+    expect(state.currentWindow.layoutChildren.map((node) => node.id)).toEqual(["gui_frame_1"]);
   });
 
   test("pasted subtrees reset copied Lua variable-name overrides", async ({ page }) => {
@@ -1289,6 +1521,39 @@ test.describe("Layout builder canvas preview", () => {
     expect(storedSize).toEqual({ minimalWidth: 308, minimalHeight: 122 });
   });
 
+  test("undo and redo restore one committed layout-node resize", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+    await page.locator('[data-anchor="resize_mode_toggle"] input').click({ force: true });
+
+    await dragResizeHandle(page, "se", 140, 50);
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
+      "data-fx-minimal-width",
+      "308"
+    );
+
+    await page.locator('[data-anchor="editor_undo"]').click();
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
+      "data-fx-minimal-width",
+      "168"
+    );
+    let state = await readStoredEditorState(page);
+    expect(state.currentWindow.layoutChildren[0].size).toBeUndefined();
+
+    await page.locator('[data-anchor="editor_redo"]').click();
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toHaveAttribute(
+      "data-fx-minimal-width",
+      "308"
+    );
+    state = await readStoredEditorState(page);
+    expect(state.currentWindow.layoutChildren[0].size).toEqual({
+      minimalWidth: 308,
+      minimalHeight: 122
+    });
+  });
+
   test("resize mode updates Window width and height through exported style fields", async ({ page }) => {
     await seedEditorState(
       page,
@@ -1309,6 +1574,30 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator(".fx-editor-output__code")).toContainText(
       "gui_window.style.height = 490"
     );
+  });
+
+  test("undo and redo restore one committed Window location drag", async ({ page }) => {
+    await seedEditorState(page, ONE_FRAME_STATE);
+
+    await dragWindowBy(page, 80, 30);
+    const movedState = await readStoredEditorState(page);
+    expect(movedState.currentWindow.location).toEqual(
+      expect.objectContaining({
+        x: expect.any(Number),
+        y: expect.any(Number)
+      })
+    );
+    await expect(page.locator('[data-anchor="gui_window"]')).toHaveClass(/is-positioned/);
+
+    await page.locator('[data-anchor="editor_undo"]').click();
+    let state = await readStoredEditorState(page);
+    expect(state.currentWindow.location).toBeNull();
+    await expect(page.locator('[data-anchor="gui_window"]')).not.toHaveClass(/is-positioned/);
+
+    await page.locator('[data-anchor="editor_redo"]').click();
+    state = await readStoredEditorState(page);
+    expect(state.currentWindow.location).toEqual(movedState.currentWindow.location);
+    await expect(page.locator('[data-anchor="gui_window"]')).toHaveClass(/is-positioned/);
   });
 
   test("downloads a Factorio preview mod zip from the current Lua output", async ({ page }) => {

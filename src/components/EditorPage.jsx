@@ -62,6 +62,7 @@ function windowTitle(value) {
 }
 
 const EDITOR_STORAGE_KEY = "labtorio.editorState.v1";
+const HISTORY_LIMIT = 50;
 const SIDEBAR_MIN_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 640;
 const SIDEBAR_STAGE_MIN_WIDTH = 420;
@@ -209,6 +210,93 @@ function isEditableShortcutTarget(target) {
     target.isContentEditable ||
     target.closest("input, textarea, select, [contenteditable='true']")
   );
+}
+
+function cloneHistoryValue(value) {
+  return value === null || value === undefined ? value : JSON.parse(JSON.stringify(value));
+}
+
+function snapshotEditorState(state) {
+  const currentWindow = normalizeWindow(state.currentWindow);
+  const windowSize = normalizeWindowSize(state.windowSize ?? currentWindow?.size);
+  const windowBodyDirection = normalizeWindowBodyDirection(
+    state.windowBodyDirection ?? currentWindow?.bodyDirection
+  );
+
+  return {
+    title: String(state.title ?? DEFAULT_EDITOR_STATE.title),
+    windowSize,
+    windowBodyDirection,
+    currentWindow: cloneHistoryValue(currentWindow),
+    layoutSettings: cloneHistoryValue(normalizeLayoutSettings(state.layoutSettings)),
+    inspectedAnchor: typeof state.inspectedAnchor === "string" ? state.inspectedAnchor : null,
+    inspectorLocked: Boolean(state.inspectorLocked)
+  };
+}
+
+function historySnapshotsEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function normalizeHistorySelection({
+  currentWindow,
+  layoutSettings,
+  inspectedAnchor,
+  inspectorLocked
+}) {
+  if (!currentWindow) {
+    return {
+      inspectedAnchor: null,
+      inspectorLocked: false
+    };
+  }
+
+  if (typeof inspectedAnchor === "string") {
+    const model = createWindowModel({
+      ...currentWindow,
+      layoutSettings
+    });
+
+    if (findModelNode(model, inspectedAnchor)) {
+      return {
+        inspectedAnchor,
+        inspectorLocked: Boolean(inspectorLocked)
+      };
+    }
+
+    return {
+      inspectedAnchor: BODY_LAYOUT_ROOT_ID,
+      inspectorLocked: true
+    };
+  }
+
+  return {
+    inspectedAnchor: null,
+    inspectorLocked: false
+  };
+}
+
+function restoreHistorySnapshot(state, snapshot) {
+  const currentWindow = normalizeWindow(snapshot.currentWindow);
+  const layoutSettings = normalizeLayoutSettings(snapshot.layoutSettings);
+  const selection = normalizeHistorySelection({
+    currentWindow,
+    layoutSettings,
+    inspectedAnchor: snapshot.inspectedAnchor,
+    inspectorLocked: snapshot.inspectorLocked
+  });
+
+  return {
+    ...state,
+    title: String(snapshot.title ?? DEFAULT_EDITOR_STATE.title),
+    windowSize: normalizeWindowSize(snapshot.windowSize ?? currentWindow?.size),
+    windowBodyDirection: normalizeWindowBodyDirection(
+      snapshot.windowBodyDirection ?? currentWindow?.bodyDirection
+    ),
+    currentWindow,
+    layoutSettings,
+    ...selection
+  };
 }
 
 function currentWindowWithResizeDraft(currentWindow, draft) {
@@ -513,6 +601,7 @@ function EditorCanvas({
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
   const [measurementBox, setMeasurementBox] = useState(null);
+  const [locationDraft, setLocationDraft] = useState(null);
 
   useEffect(() => {
     if (!inspectorActive || inspectorPreview?.kind !== "geometry" || !canvasRef.current) {
@@ -607,8 +696,10 @@ function EditorCanvas({
       startX: currentWindow.location?.x ?? windowRect.left - canvasRect.left,
       startY: currentWindow.location?.y ?? windowRect.top - canvasRect.top,
       maxX: Math.max(0, canvasRect.width - windowRect.width),
-      maxY: Math.max(0, canvasRect.height - windowRect.height)
+      maxY: Math.max(0, canvasRect.height - windowRect.height),
+      latestLocation: null
     };
+    setLocationDraft(null);
   }
 
   function moveWindowDrag(event) {
@@ -619,10 +710,12 @@ function EditorCanvas({
 
     const nextX = dragState.startX + event.clientX - dragState.originX;
     const nextY = dragState.startY + event.clientY - dragState.originY;
-    onWindowLocationChange({
+    const nextLocation = {
       x: Math.min(Math.max(0, Math.round(nextX)), dragState.maxX),
       y: Math.min(Math.max(0, Math.round(nextY)), dragState.maxY)
-    });
+    };
+    dragState.latestLocation = nextLocation;
+    setLocationDraft(nextLocation);
   }
 
   function endWindowDrag(event) {
@@ -632,12 +725,16 @@ function EditorCanvas({
     }
 
     dragRef.current = null;
+    if (dragState.latestLocation) {
+      onWindowLocationChange(dragState.latestLocation);
+      setLocationDraft(null);
+    }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   }
 
-  const location = currentWindow?.location;
+  const location = locationDraft ?? currentWindow?.location;
   const windowStyle = location ? { left: `${location.x}px`, top: `${location.y}px` } : undefined;
   const styleReference = model?.root?.styleReference;
   const previewAnchor = inspectorPreview?.anchor ?? inspectedAnchor;
@@ -804,6 +901,8 @@ function LayoutSettingsPanel({
   onToggle,
   settings,
   onChange,
+  onEditCommit,
+  onEditStart,
   onReset,
   showComponentTreeShell,
   onShowComponentTreeShellChange
@@ -843,7 +942,9 @@ function LayoutSettingsPanel({
                   <FxTextInput
                     max={limits.max}
                     min={limits.min}
+                    onBlur={onEditCommit}
                     onChange={(event) => onChange(field.key, event.target.value)}
+                    onFocus={onEditStart}
                     step="1"
                     type="number"
                     value={normalizedSettings[field.key]}
@@ -1289,14 +1390,20 @@ function StyleInspector({
 
 export function EditorPage() {
   const [editorState, setEditorState] = useState(readCachedEditorState);
+  const [editorHistory, setEditorHistory] = useState({ undo: [], redo: [] });
   const [inspectorHistory, setInspectorHistory] = useState({ back: [], forward: [] });
   const [inspectorPreview, setInspectorPreview] = useState(null);
   const [layoutClipboard, setLayoutClipboard] = useState(null);
   const [builderDrag, setBuilderDrag] = useState(null);
   const [builderDropTarget, setBuilderDropTarget] = useState(null);
   const [resizeDraft, setResizeDraft] = useState(null);
+  const editorStateRef = useRef(editorState);
+  const editorHistoryRef = useRef(editorHistory);
+  const editSessionSnapshotRef = useRef(null);
   const shellRef = useRef(null);
   const sidebarResizeRef = useRef(null);
+  editorStateRef.current = editorState;
+  editorHistoryRef.current = editorHistory;
   const {
     title,
     windowSize,
@@ -1322,6 +1429,118 @@ export function EditorPage() {
       })
     : null;
   const selectedBodyDirection = normalizeWindowBodyDirection(windowBodyDirection);
+  const canUndo = editorHistory.undo.length > 0;
+  const canRedo = editorHistory.redo.length > 0;
+
+  function replaceEditorState(nextState) {
+    editorStateRef.current = nextState;
+    setEditorState(nextState);
+  }
+
+  function replaceEditorHistory(nextHistory) {
+    editorHistoryRef.current = nextHistory;
+    setEditorHistory(nextHistory);
+  }
+
+  function recordHistoryEntry(beforeSnapshot, afterSnapshot = snapshotEditorState(editorStateRef.current)) {
+    if (!beforeSnapshot || historySnapshotsEqual(beforeSnapshot, afterSnapshot)) {
+      return false;
+    }
+
+    const history = editorHistoryRef.current;
+    replaceEditorHistory({
+      undo: [...history.undo, cloneHistoryValue(beforeSnapshot)].slice(-HISTORY_LIMIT),
+      redo: []
+    });
+    return true;
+  }
+
+  function clearTransientEditorState() {
+    setInspectorPreview(null);
+    setResizeDraft(null);
+    setBuilderDrag(null);
+    setBuilderDropTarget(null);
+  }
+
+  function updateEditorState(updater) {
+    const state = editorStateRef.current;
+    const nextState = updater(state);
+    if (!nextState || nextState === state) {
+      return false;
+    }
+
+    replaceEditorState(nextState);
+    return true;
+  }
+
+  function applyAuthoredEditorUpdate(updater) {
+    clearTransientEditorState();
+    editSessionSnapshotRef.current = null;
+
+    const state = editorStateRef.current;
+    const beforeSnapshot = snapshotEditorState(state);
+    const nextState = updater(state);
+    if (!nextState || nextState === state) {
+      return false;
+    }
+
+    const afterSnapshot = snapshotEditorState(nextState);
+    replaceEditorState(nextState);
+    return recordHistoryEntry(beforeSnapshot, afterSnapshot);
+  }
+
+  function beginAuthoredEditSession() {
+    if (!editSessionSnapshotRef.current) {
+      editSessionSnapshotRef.current = snapshotEditorState(editorStateRef.current);
+    }
+  }
+
+  function commitAuthoredEditSession() {
+    const beforeSnapshot = editSessionSnapshotRef.current;
+    editSessionSnapshotRef.current = null;
+    if (beforeSnapshot) {
+      recordHistoryEntry(beforeSnapshot);
+    }
+  }
+
+  function restoreEditorFromHistory(snapshot) {
+    clearTransientEditorState();
+    editSessionSnapshotRef.current = null;
+    setInspectorHistory({ back: [], forward: [] });
+    replaceEditorState(restoreHistorySnapshot(editorStateRef.current, snapshot));
+  }
+
+  function undoEditor() {
+    const history = editorHistoryRef.current;
+    const targetSnapshot = history.undo.at(-1);
+    if (!targetSnapshot) {
+      return false;
+    }
+
+    const currentSnapshot = snapshotEditorState(editorStateRef.current);
+    replaceEditorHistory({
+      undo: history.undo.slice(0, -1),
+      redo: [currentSnapshot, ...history.redo].slice(0, HISTORY_LIMIT)
+    });
+    restoreEditorFromHistory(targetSnapshot);
+    return true;
+  }
+
+  function redoEditor() {
+    const history = editorHistoryRef.current;
+    const targetSnapshot = history.redo[0];
+    if (!targetSnapshot) {
+      return false;
+    }
+
+    const currentSnapshot = snapshotEditorState(editorStateRef.current);
+    replaceEditorHistory({
+      undo: [...history.undo, currentSnapshot].slice(-HISTORY_LIMIT),
+      redo: history.redo.slice(1)
+    });
+    restoreEditorFromHistory(targetSnapshot);
+    return true;
+  }
 
   useEffect(() => {
     writeCachedEditorState(editorState);
@@ -1342,11 +1561,36 @@ export function EditorPage() {
     };
   }, [builderDrag]);
 
+  useEffect(() => {
+    function handleHistoryShortcut(event) {
+      if (
+        event.defaultPrevented ||
+        isEditableShortcutTarget(event.target) ||
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const handled =
+        (key === "z" && (event.shiftKey ? redoEditor() : undoEditor())) ||
+        (key === "y" && redoEditor());
+
+      if (handled) {
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener("keydown", handleHistoryShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleHistoryShortcut);
+    };
+  }, []);
+
   function createWindow() {
     setInspectorHistory({ back: [], forward: [] });
-    setInspectorPreview(null);
-    setResizeDraft(null);
-    setEditorState((state) => {
+    applyAuthoredEditorUpdate((state) => {
       const layoutState = normalizeLayoutState(state.currentWindow ?? {});
       const currentWindow = {
         title: windowTitle(state.title),
@@ -1371,7 +1615,7 @@ export function EditorPage() {
   }
 
   function updateWindowBodyDirection(direction) {
-    setEditorState((state) => ({
+    applyAuthoredEditorUpdate((state) => ({
       ...state,
       windowBodyDirection: normalizeWindowBodyDirection(direction)
     }));
@@ -1379,11 +1623,7 @@ export function EditorPage() {
 
   function resetWindow() {
     setInspectorHistory({ back: [], forward: [] });
-    setInspectorPreview(null);
-    setBuilderDrag(null);
-    setBuilderDropTarget(null);
-    setResizeDraft(null);
-    setEditorState((state) => ({
+    applyAuthoredEditorUpdate((state) => ({
       ...state,
       currentWindow: null,
       inspectorLocked: false,
@@ -1393,7 +1633,8 @@ export function EditorPage() {
 
   function updateTitle(event) {
     const nextTitle = event.target.value;
-    setEditorState((state) => ({
+    beginAuthoredEditSession();
+    updateEditorState((state) => ({
       ...state,
       title: nextTitle,
       currentWindow: state.currentWindow
@@ -1403,7 +1644,8 @@ export function EditorPage() {
   }
 
   function updateWindowSize(dimension, value) {
-    setEditorState((state) => {
+    beginAuthoredEditSession();
+    updateEditorState((state) => {
       const nextSize = normalizeWindowSize({
         ...state.windowSize,
         [dimension]: value
@@ -1431,7 +1673,7 @@ export function EditorPage() {
   }
 
   function updateInspectorEnabled(event) {
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       showInspector: event.target.checked,
       inspectorLocked: event.target.checked ? state.inspectorLocked : false
@@ -1439,14 +1681,14 @@ export function EditorPage() {
   }
 
   function updateLuaOutputEnabled(event) {
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       showLuaOutput: event.target.checked
     }));
   }
 
   function updateGuiShadowsEnabled(event) {
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       showGuiShadows: event.target.checked
     }));
@@ -1455,7 +1697,7 @@ export function EditorPage() {
   function updateResizeModeEnabled(event) {
     const enabled = event.target.checked;
     setResizeDraft(null);
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       resizeMode: enabled,
       inspectedAnchor:
@@ -1475,7 +1717,7 @@ export function EditorPage() {
       return;
     }
 
-    setEditorState((state) => {
+    applyAuthoredEditorUpdate((state) => {
       if (!state.currentWindow) {
         return state;
       }
@@ -1523,14 +1765,15 @@ export function EditorPage() {
   }
 
   function updateComponentTreeShellVisible(event) {
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       showComponentTreeShell: event.target.checked
     }));
   }
 
   function updateLayoutSetting(key, value) {
-    setEditorState((state) => ({
+    beginAuthoredEditSession();
+    updateEditorState((state) => ({
       ...state,
       layoutSettings: normalizeLayoutSettings({
         ...state.layoutSettings,
@@ -1540,21 +1783,21 @@ export function EditorPage() {
   }
 
   function resetLayoutSettings() {
-    setEditorState((state) => ({
+    applyAuthoredEditorUpdate((state) => ({
       ...state,
       layoutSettings: DEFAULT_LAYOUT_SETTINGS
     }));
   }
 
   function toggleLayoutSettings() {
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       showLayoutSettings: !state.showLayoutSettings
     }));
   }
 
   function updateInspectedAnchor(nextAnchor) {
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       inspectedAnchor: state.inspectorLocked ? state.inspectedAnchor : nextAnchor
     }));
@@ -1562,7 +1805,7 @@ export function EditorPage() {
 
   function clearHoveredInspection() {
     setInspectorPreview(null);
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       inspectedAnchor: state.inspectorLocked ? state.inspectedAnchor : null
     }));
@@ -1574,7 +1817,7 @@ export function EditorPage() {
     }
 
     setInspectorPreview(null);
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
       inspectorLocked: state.inspectedAnchor === nextAnchor ? !state.inspectorLocked : true
@@ -1587,7 +1830,7 @@ export function EditorPage() {
     }
 
     setInspectorPreview(null);
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
       inspectorLocked: true
@@ -1607,7 +1850,7 @@ export function EditorPage() {
       }));
     }
 
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
       inspectorLocked: true
@@ -1627,7 +1870,7 @@ export function EditorPage() {
         ? [inspectedAnchor, ...history.forward].slice(0, 40)
         : history.forward
     }));
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
       inspectorLocked: true
@@ -1645,7 +1888,7 @@ export function EditorPage() {
       back: inspectedAnchor ? [...history.back, inspectedAnchor].slice(-40) : history.back,
       forward: history.forward.slice(1)
     }));
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       inspectedAnchor: nextAnchor,
       inspectorLocked: true
@@ -1665,7 +1908,7 @@ export function EditorPage() {
       return { ok: true };
     }
 
-    setEditorState((state) => ({
+    applyAuthoredEditorUpdate((state) => ({
       ...state,
       title: value,
       currentWindow: state.currentWindow
@@ -1687,7 +1930,7 @@ export function EditorPage() {
       return validation;
     }
 
-    setEditorState((state) => {
+    applyAuthoredEditorUpdate((state) => {
       if (!state.currentWindow) {
         return state;
       }
@@ -1907,9 +2150,7 @@ export function EditorPage() {
   }
 
   function applyLayoutUpdate(updater) {
-    setInspectorPreview(null);
-    setResizeDraft(null);
-    setEditorState((state) => {
+    applyAuthoredEditorUpdate((state) => {
       if (!state.currentWindow) {
         return state;
       }
@@ -2048,7 +2289,7 @@ export function EditorPage() {
   }
 
   function updateWindowLocation(location) {
-    setEditorState((state) =>
+    applyAuthoredEditorUpdate((state) =>
       state.currentWindow
         ? {
             ...state,
@@ -2083,7 +2324,7 @@ export function EditorPage() {
     }
 
     const nextWidth = resizeState.startWidth + event.clientX - resizeState.originX;
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       sidebarWidth: clampSidebarWidth(nextWidth, resizeState.shellWidth)
     }));
@@ -2103,7 +2344,7 @@ export function EditorPage() {
 
   function resizeSidebarBy(delta) {
     const shellWidth = shellRef.current?.getBoundingClientRect().width;
-    setEditorState((state) => ({
+    updateEditorState((state) => ({
       ...state,
       sidebarWidth: clampSidebarWidth(state.sidebarWidth + delta, shellWidth)
     }));
@@ -2118,14 +2359,14 @@ export function EditorPage() {
       resizeSidebarBy(24);
     } else if (event.key === "Home") {
       event.preventDefault();
-      setEditorState((state) => ({
+      updateEditorState((state) => ({
         ...state,
         sidebarWidth: SIDEBAR_MIN_WIDTH
       }));
     } else if (event.key === "End") {
       event.preventDefault();
       const shellWidth = shellRef.current?.getBoundingClientRect().width;
-      setEditorState((state) => ({
+      updateEditorState((state) => ({
         ...state,
         sidebarWidth: clampSidebarWidth(SIDEBAR_MAX_WIDTH, shellWidth)
       }));
@@ -2140,6 +2381,22 @@ export function EditorPage() {
     >
         <aside className="fx-editor-rail" aria-label="Editor controls">
           <FxFrame title="Window" className="fx-editor-panel">
+            <div className="fx-editor-history-actions" aria-label="Editor history">
+              <FxActionButton
+                data-anchor="editor_undo"
+                disabled={!canUndo}
+                icon="undo"
+                label="Undo"
+                onClick={undoEditor}
+              />
+              <FxActionButton
+                data-anchor="editor_redo"
+                disabled={!canRedo}
+                icon="redo"
+                label="Redo"
+                onClick={redoEditor}
+              />
+            </div>
             <label className="fx-field">
               <span>Title</span>
               <FxTextInput
@@ -2147,7 +2404,9 @@ export function EditorPage() {
                 type="text"
                 value={title}
                 autoComplete="off"
+                onBlur={commitAuthoredEditSession}
                 onChange={updateTitle}
+                onFocus={beginAuthoredEditSession}
               />
             </label>
             <div className="fx-field-grid fx-field-grid--two">
@@ -2160,7 +2419,9 @@ export function EditorPage() {
                   max={WINDOW_SIZE_LIMITS.maxWidth}
                   step="10"
                   value={windowSize.width}
+                  onBlur={commitAuthoredEditSession}
                   onChange={updateWindowWidth}
+                  onFocus={beginAuthoredEditSession}
                 />
               </label>
               <label className="fx-field">
@@ -2172,7 +2433,9 @@ export function EditorPage() {
                   max={WINDOW_SIZE_LIMITS.maxHeight}
                   step="10"
                   value={windowSize.height}
+                  onBlur={commitAuthoredEditSession}
                   onChange={updateWindowHeight}
+                  onFocus={beginAuthoredEditSession}
                 />
               </label>
             </div>
@@ -2292,6 +2555,8 @@ export function EditorPage() {
           <LayoutSettingsPanel
             expanded={showLayoutSettings}
             onChange={updateLayoutSetting}
+            onEditCommit={commitAuthoredEditSession}
+            onEditStart={beginAuthoredEditSession}
             onReset={resetLayoutSettings}
             onShowComponentTreeShellChange={updateComponentTreeShellVisible}
             onToggle={toggleLayoutSettings}
