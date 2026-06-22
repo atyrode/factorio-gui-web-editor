@@ -1009,28 +1009,150 @@ export const factorioAtomRegistry = Object.freeze([
     name: "Label",
     primitive: "label",
     style: "frame_title",
-    availability: "Editor seed",
-    summary: "Text label component; current capture covers the frame title style variant.",
+    availability: "Official / Editor seed / builder palette",
+    summary: "Text label component; implemented as the generated Window title and as an authored builder leaf atom.",
     className: "agui::Label",
     derivedFrom: "frame_title",
-    progress: {
-      evidence: 78,
-      model: 70,
-      renderer: 68,
-      luaExport: 60,
-      behavior: 45
-    },
     fields: [
-      field("className", "captured", "`agui::Label`."),
-      field("style", "captured", "`frame_title`."),
-      field("caption", "editorOwned", "Editable title text owned by the title label node, not the root Window."),
-      field("font", "captured", "`heading-1`."),
-      field("fontColor", "captured", "{1, 0.901961, 0.752941}."),
-      field("topMargin", "captured", "-4."),
-      field("bottomPadding", "captured", "4."),
-      field("width", "hardcoded", "Estimated from caption length; not measured like Factorio text."),
-      field("singleLine", "captured", "true."),
-      field("hover text behavior", "missing", "No full label hover/disabled color model yet.")
+      field("className", "captured", "`agui::Label` from the Blueprint Library title capture.", {
+        type: className,
+        example: "agui::Label",
+        source: "blueprint-library-title-label"
+      }),
+      field("primitive", "official", "Mapped to Factorio `label`, which the official runtime docs define as a text GUI element.", {
+        type: guiPrimitive,
+        example: "label",
+        source: "factorio-runtime-docs-2.0.77"
+      }),
+      field("style variants", "implemented", "`label`, `frame_title`, `caption_label`, `heading_2_label`, `subheader_caption_label`, and `clickable_label` are represented as source-backed style variants.", {
+        type: styleName,
+        example: "label / frame_title / caption_label / heading_2_label / subheader_caption_label / clickable_label",
+        source: "wube-factorio-data-style-lua"
+      }),
+      field("caption", "implemented", "Generated Window title labels and authored builder Labels own editable caption text.", {
+        type: string,
+        example: "Untitled window",
+        source: "editor-model"
+      }),
+      field("font", "implemented", "`frame_title` resolves to `heading-1`; base `label` resolves to `default`; `caption_label` resolves through `bold_label`.", {
+        type: string,
+        example: "heading-1 / default / default-bold",
+        source: "wube-factorio-data-style-lua"
+      }),
+      field("fontColor", "implemented", "`frame_title`, `caption_label`, and `heading_2_label` use Factorio caption color `{1, 0.901961, 0.752941}`.", {
+        type: color,
+        example: "{1, 0.901961, 0.752941}",
+        source: "wube-factorio-data-style-lua"
+      }),
+      field("state font colors", "implemented", "Base disabled, parent-hovered, game-controller-hovered, and clickable hover/click colors are tracked from source, but browser visual parity is still approximate.", {
+        type: color,
+        example: "disabled={1, 1, 1, 0.5}; clickable hover={1, 0.74, 0.40}",
+        source: "wube-factorio-data-style-lua"
+      }),
+      field("topMargin", "captured", "The Blueprint Library title label capture reports `-4`, overriding the upstream source default for this captured 150% UI scale fixture.", {
+        type: integer,
+        example: -4,
+        source: "blueprint-library-title-label"
+      }),
+      field("bottomPadding", "captured", "The Blueprint Library title label capture reports `4`, overriding the upstream source default for this captured 150% UI scale fixture.", {
+        type: integer,
+        example: 4,
+        source: "blueprint-library-title-label"
+      }),
+      field("width", "hardcoded", "The reference title uses captured width when caption matches; other title captions still use an editor estimate until a text measurement strategy exists.", {
+        type: integer,
+        example: "captured 191 or estimated",
+        source: "editor-model"
+      }),
+      field("singleLine", "implemented", "Base `label` source and current title label model both carry `single_line=true`.", {
+        type: boolean,
+        example: true,
+        source: "wube-factorio-data-style-lua"
+      }),
+      field("ignoredByInteraction", "implemented", "The generated Window title label exports `ignored_by_interaction=true` for titlebar dragging, matching Raiguard guidance and public mod practice.", {
+        type: boolean,
+        example: true,
+        source: "raiguard-style-guide-and-public-mods"
+      }),
+      field("builder availability", "implemented", "Label is exposed in the builder palette as a leaf atom with editable caption and base `label` style export.", {
+        type: string,
+        example: "Label palette tile",
+        source: "no-code-layout-builder"
+      })
+    ],
+    progressChecks: [
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Official `label` primitive checked"
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "wube/factorio-data label style variants inspected",
+        note: "`label`, `frame_title`, `caption_label`, `heading_2_label`, `subheader_caption_label`, and `clickable_label` are tracked as source-backed variants."
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "done",
+        label: "Titlebar label usage checked in style guide and public mods"
+      }),
+      progressCheck({
+        dimension: "evidence",
+        state: "partial",
+        label: "In-game Label visual captures",
+        note: "Current capture covers only the Blueprint Library `frame_title` title label. Plain, caption, subheader, disabled, and hovered captures are still needed."
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Source-backed Label style variants represented"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Generated Window title uses the Label variant model"
+      }),
+      progressCheck({
+        dimension: "model",
+        state: "done",
+        label: "Generic authored Label model",
+        note: "Builder insertion and per-node caption editing are implemented for the base `label` style."
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "done",
+        label: "Window title label renders through reusable Label styling"
+      }),
+      progressCheck({
+        dimension: "renderer",
+        state: "partial",
+        label: "Label atlas variants render as source-backed approximations",
+        note: "Browser visuals are not marked parity-complete until fresh in-game crops are compared."
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Window title exports as Factorio `label` with `frame_title`"
+      }),
+      progressCheck({
+        dimension: "luaExport",
+        state: "done",
+        label: "Generic Label export",
+        note: "Authored Labels export as Factorio `label` nodes with captions and base `label` style."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "done",
+        label: "Titlebar interaction bypass exported",
+        note: "`ignored_by_interaction=true` lets the title participate in dragging behavior."
+      }),
+      progressCheck({
+        dimension: "behavior",
+        state: "partial",
+        label: "Hover/disabled state behavior",
+        note: "Source colors are tracked; in-game state captures are still needed before parity claims."
+      })
     ],
     captures: [
       atomCapture({

@@ -52,7 +52,7 @@ offer constrained operations that preserve translatability.
 
 The first implemented no-code slice is the constrained layout builder described
 in [no-code-layout-builder.md](no-code-layout-builder.md). It
-adds a Builder panel, draggable Frame, Horizontal Flow, and Filler palette
+adds a Builder panel, draggable Frame, Horizontal Flow, Label, and Filler palette
 items, ordered body/nested insertion, subtree removal, Headless Tree-backed
 component-tree drag/drop, canvas ghost previews, recursive preview, inspector
 projection, authored layout settings with reset, and Lua export. It still edits
@@ -134,7 +134,10 @@ with a title bar, reserved drag handle, and empty body.
             "id": "gui_window_title",
             "primitive": "label",
             "style": "frame_title",
-            "caption": "Untitled window"
+            "caption": "Untitled window",
+            "addOptions": {
+              "ignoredByInteraction": true
+            }
           },
           {
             "id": "gui_window_drag_handle",

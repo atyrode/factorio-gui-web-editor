@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ClipboardPaste,
   CornerDownRight,
   Copy,
   ListPlus,
+  Pencil,
   Plus,
   Redo2,
   Trash2,
@@ -15,7 +16,12 @@ import {
   Unlock
 } from "lucide-react";
 import { createBuilderDropTarget } from "../factorioLayoutBuilderDnd.js";
-import { FILLER_ATOM_ID, FRAME_ATOM_ID, HORIZONTAL_FLOW_ATOM_ID } from "../factorioLayoutTree.js";
+import {
+  FILLER_ATOM_ID,
+  FRAME_ATOM_ID,
+  HORIZONTAL_FLOW_ATOM_ID,
+  LABEL_ATOM_ID
+} from "../factorioLayoutTree.js";
 import {
   frameStyleReference,
   getFrameBodySize,
@@ -23,7 +29,8 @@ import {
   getFrameContentSize,
   getFrameTitlebarClipSize,
   getFrameTitlebarContentSize,
-  getFrameTitlebarSize
+  getFrameTitlebarSize,
+  labelStyleVariant
 } from "../factorioModel.js";
 
 export function FxButton({
@@ -59,6 +66,7 @@ const actionButtonIcons = {
   "lock-closed": Lock,
   "lock-open": Unlock,
   paste: ClipboardPaste,
+  "edit-text": Pencil,
   plus: Plus,
   redo: Redo2,
   trash: Trash2,
@@ -277,6 +285,62 @@ function pixelStyleValue(value) {
   return typeof value === "number" && Number.isFinite(value) ? `${value}px` : undefined;
 }
 
+function labelStyleVariables(styleVariant = {}) {
+  return {
+    "--fx-label-color": styleVariant.browserColor,
+    "--fx-label-disabled-color": styleVariant.browserDisabledColor,
+    "--fx-label-hover-color": styleVariant.browserHoveredColor,
+    "--fx-label-clicked-color": styleVariant.browserClickedColor,
+    "--fx-label-left-padding": pixelStyleValue(styleVariant.leftPadding)
+  };
+}
+
+export function FxLabel({
+  children,
+  variant = "label",
+  state = "default",
+  disabled = false,
+  className = "",
+  as: Element = "span",
+  style = null,
+  ...props
+}) {
+  const styleVariant = labelStyleVariant(variant);
+  const classes = [
+    "fx-label",
+    `fx-label--${styleVariant.id}`,
+    state !== "default" ? `is-${state}` : "",
+    disabled ? "is-disabled" : "",
+    className
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <Element
+      {...props}
+      className={classes}
+      data-fx-primitive="label"
+      data-fx-style={styleVariant.style}
+      data-fx-style-variant={styleVariant.id}
+      data-fx-style-source={styleVariant.source}
+      data-fx-parent-style={styleVariant.parent}
+      data-fx-font={styleVariant.font}
+      data-fx-font-color={styleVariant.fontColor}
+      data-fx-single-line={String(styleVariant.singleLine)}
+      data-fx-ignored-by-search={styleVariant.ignoredBySearch}
+      data-fx-state={state !== "default" ? state : undefined}
+      aria-disabled={disabled ? "true" : undefined}
+      style={{
+        ...labelStyleVariables(styleVariant),
+        ...style
+      }}
+    >
+      {children}
+    </Element>
+  );
+}
+
 function horizontalFlowStyleVariables(styleReference = {}) {
   const reference = styleReference ?? {};
 
@@ -416,9 +480,35 @@ function createFillerPreviewNode() {
   };
 }
 
+function createLabelPreviewNode() {
+  return {
+    id: "builder_ghost_marker",
+    atom: LABEL_ATOM_ID,
+    primitive: "label",
+    className: "agui::Label",
+    style: "label",
+    caption: "Label",
+    derivedFrom: "label",
+    role: "text-label-preview",
+    styleReference: {
+      variantId: "label",
+      source: "wube-factorio-data-style-lua",
+      font: "default",
+      fontColor: "{1, 1, 1}",
+      browserColor: "#ffffff",
+      singleLine: true
+    },
+    children: []
+  };
+}
+
 function createPreviewNode(previewAtom, parentStyleReference = {}) {
   if (previewAtom === HORIZONTAL_FLOW_ATOM_ID) {
     return createHorizontalFlowPreviewNode(parentStyleReference);
+  }
+
+  if (previewAtom === LABEL_ATOM_ID) {
+    return createLabelPreviewNode();
   }
 
   if (previewAtom === FILLER_ATOM_ID) {
@@ -508,6 +598,78 @@ function GuiFrameShell({
     >
       {children}
     </div>
+  );
+}
+
+function GuiLabelShell({
+  node,
+  className = "",
+  children,
+  style,
+  ...props
+}) {
+  return (
+    <FxLabel
+      variant={node.style}
+      className={["fx-gui-label", className].filter(Boolean).join(" ")}
+      data-anchor={node.id}
+      data-fx-atom={node.atom ?? LABEL_ATOM_ID}
+      data-fx-class={node.className}
+      data-fx-role={node.role ?? undefined}
+      style={style}
+      {...props}
+    >
+      {children ?? node.caption}
+    </FxLabel>
+  );
+}
+
+function GuiLabelTextEditor({
+  node,
+  onCancel,
+  onCommit
+}) {
+  const [draftValue, setDraftValue] = useState(node.caption ?? "");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  function commitEdit() {
+    onCommit?.(node.id, draftValue);
+  }
+
+  function cancelEdit() {
+    onCancel?.(node.id);
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitEdit();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+    }
+  }
+
+  return (
+    <input
+      aria-label={`Edit text for ${node.id}`}
+      className="fx-gui-label__edit"
+      data-anchor={`gui_label_text_edit_${node.id}`}
+      onBlur={commitEdit}
+      onChange={(event) => setDraftValue(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onKeyDown={handleKeyDown}
+      onPointerDown={(event) => event.stopPropagation()}
+      ref={inputRef}
+      style={{ width: `${Math.max(5, draftValue.length + 1)}ch` }}
+      value={draftValue}
+    />
   );
 }
 
@@ -685,7 +847,9 @@ function CanvasDropPreviewSlot({
     ? GuiFrameShell
     : previewNode.primitive === "flow"
       ? GuiHorizontalFlowShell
-      : GuiFillerShell;
+      : previewNode.primitive === "label"
+        ? GuiLabelShell
+        : GuiFillerShell;
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setExpanded(true));
@@ -724,7 +888,11 @@ function FlowChildren({
   builderDragActive,
   builderDropTarget,
   parentStyleReference,
-  builderDragAtom = null
+  builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
 }) {
   const ghostIndex =
     builderDropTarget?.surface === "canvas" && builderDropTarget.parentId === parentId
@@ -776,6 +944,10 @@ function FlowChildren({
         onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
+        editingLabelId={editingLabelId}
+        onLabelTextEditCancel={onLabelTextEditCancel}
+        onLabelTextEditCommit={onLabelTextEditCommit}
+        onLabelTextEditStart={onLabelTextEditStart}
       />
     );
 
@@ -805,7 +977,70 @@ function GuiLayoutNode(props) {
     return <GuiHorizontalFlow {...props} />;
   }
 
+  if (props.node?.primitive === "label") {
+    return <GuiLabel {...props} />;
+  }
+
   return <GuiFiller {...props} />;
+}
+
+export function GuiLabel({
+  node,
+  inspectorActive = false,
+  inspectorLocked = false,
+  inspectedAnchor = node.id,
+  onInspect,
+  onInspectLock,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
+}) {
+  const editing = editingLabelId === node.id;
+  const labelInspector = inspectorProps({
+    active: inspectorActive,
+    locked: inspectorLocked,
+    anchor: node.id,
+    inspectedAnchor,
+    onInspect,
+    onInspectLock
+  });
+
+  function startTextEdit(event) {
+    if (!onLabelTextEditStart || editing) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onLabelTextEditStart(node.id);
+  }
+
+  return (
+    <GuiLabelShell
+      node={node}
+      className={[
+        labelInspector.className,
+        editing ? "is-editing" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      tabIndex={labelInspector.tabIndex}
+      onClick={labelInspector.onClick}
+      onDoubleClick={startTextEdit}
+      onFocus={labelInspector.onFocus}
+      onMouseEnter={labelInspector.onMouseEnter}
+      onMouseMove={labelInspector.onMouseMove}
+    >
+      {editing ? (
+        <GuiLabelTextEditor
+          node={node}
+          onCancel={onLabelTextEditCancel}
+          onCommit={onLabelTextEditCommit}
+        />
+      ) : null}
+    </GuiLabelShell>
+  );
 }
 
 export function GuiFiller({
@@ -849,7 +1084,11 @@ export function GuiFrame({
   onInspectLock,
   builderDragActive = false,
   builderDropTarget = null,
-  builderDragAtom = null
+  builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
 }) {
   const frameInspector = inspectorProps({
     active: inspectorActive,
@@ -904,6 +1143,10 @@ export function GuiFrame({
         onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
+        editingLabelId={editingLabelId}
+        onLabelTextEditCancel={onLabelTextEditCancel}
+        onLabelTextEditCommit={onLabelTextEditCommit}
+        onLabelTextEditStart={onLabelTextEditStart}
         parentId={node.id}
         parentPrimitive={node.primitive}
         parentStyleReference={node.styleReference}
@@ -923,7 +1166,11 @@ export function GuiHorizontalFlow({
   onInspectLock,
   builderDragActive = false,
   builderDropTarget = null,
-  builderDragAtom = null
+  builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
 }) {
   const flowInspector = inspectorProps({
     active: inspectorActive,
@@ -978,6 +1225,10 @@ export function GuiHorizontalFlow({
         onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
+        editingLabelId={editingLabelId}
+        onLabelTextEditCancel={onLabelTextEditCancel}
+        onLabelTextEditCommit={onLabelTextEditCommit}
+        onLabelTextEditStart={onLabelTextEditStart}
         parentId={node.id}
         parentPrimitive={node.primitive}
         parentStyleReference={node.styleReference}
@@ -1009,6 +1260,10 @@ export function GuiWindow({
   builderDragActive = false,
   builderDropTarget = null,
   builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart,
   styleReference = frameStyleReference,
   shadowsVisible = true
 }) {
@@ -1157,17 +1412,18 @@ export function GuiWindow({
         onPointerCancel={onTitlebarPointerCancel}
         onFocus={titlebarInspector.onFocus}
       >
-        <strong
+        <FxLabel
+          as="strong"
+          variant={styleReference.titleLabelStyle}
           className={["fx-gui-window__title-label", titleInspector.className]
             .filter(Boolean)
             .join(" ")}
           data-anchor={titleAnchor}
-          data-fx-primitive="label"
-          data-fx-style={styleReference.titleLabelStyle}
           data-fx-top-margin={styleReference.titleLabelTopMargin}
           data-fx-bottom-padding={styleReference.titleLabelBottomPadding}
           data-fx-horizontally-squashable="true"
           data-fx-vertically-stretchable="true"
+          data-fx-ignored-by-interaction="true"
           tabIndex={titleInspector.tabIndex}
           onMouseEnter={titleInspector.onMouseEnter}
           onMouseMove={titleInspector.onMouseMove}
@@ -1175,7 +1431,7 @@ export function GuiWindow({
           onFocus={titleInspector.onFocus}
         >
           {title}
-        </strong>
+        </FxLabel>
         <div
           className={["fx-gui-window__drag-handle", dragInspector.className]
             .filter(Boolean)
@@ -1251,6 +1507,10 @@ export function GuiWindow({
           onBuilderDropTargetOver={onBuilderDropTargetOver}
           onInspect={onInspect}
           onInspectLock={onInspectLock}
+          editingLabelId={editingLabelId}
+          onLabelTextEditCancel={onLabelTextEditCancel}
+          onLabelTextEditCommit={onLabelTextEditCommit}
+          onLabelTextEditStart={onLabelTextEditStart}
           parentId={bodyAnchor}
           parentPrimitive="flow"
           parentStyleReference={bodyStyleReference}

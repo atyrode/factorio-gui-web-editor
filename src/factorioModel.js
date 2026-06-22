@@ -5,6 +5,7 @@ import {
   INSIDE_DEEP_FRAME_STYLE_VARIANT,
   GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
   HORIZONTAL_FLOW_ATOM_ID,
+  LABEL_ATOM_ID,
   normalizeLayoutState
 } from "./factorioLayoutTree.js";
 import {
@@ -167,6 +168,94 @@ export const frameStyleVariants = Object.freeze({
     captureId: "blueprint-library-content-flow"
   })
 });
+
+export const labelStyleVariants = Object.freeze({
+  base: freezeStyleVariant({
+    id: "label",
+    style: "label",
+    styleDescription: "Base label_style from wube/factorio-data",
+    source: "wube-factorio-data-style-lua",
+    font: "default",
+    fontColor: "{1, 1, 1}",
+    browserColor: "#ffffff",
+    disabledFontColor: "{1, 1, 1, 0.5}",
+    browserDisabledColor: "rgba(255, 255, 255, 0.5)",
+    parentHoveredFontColor: "{0, 0, 0}",
+    gameControllerHoveredFontColor: "{1, 0.68, 0}",
+    richTextSetting: "enabled",
+    singleLine: true
+  }),
+  frameTitle: freezeStyleVariant({
+    id: "frame-title",
+    style: "frame_title",
+    styleDescription: "Frame title label_style from wube/factorio-data",
+    source: "wube-factorio-data-style-lua",
+    parent: "label",
+    font: "heading-1",
+    fontColor: "{1, 0.901961, 0.752941}",
+    browserColor: "#ffe6c0",
+    singleLine: true
+  }),
+  caption: freezeStyleVariant({
+    id: "caption-label",
+    style: "caption_label",
+    styleDescription: "Caption label_style from wube/factorio-data",
+    source: "wube-factorio-data-style-lua",
+    parent: "bold_label",
+    font: "default-bold",
+    fontColor: "{1, 0.901961, 0.752941}",
+    browserColor: "#ffe6c0",
+    ignoredBySearch: true,
+    singleLine: true
+  }),
+  heading2: freezeStyleVariant({
+    id: "heading-2-label",
+    style: "heading_2_label",
+    styleDescription: "Heading 2 label_style from wube/factorio-data",
+    source: "wube-factorio-data-style-lua",
+    parent: "label",
+    font: "heading-2",
+    fontColor: "{1, 0.901961, 0.752941}",
+    browserColor: "#ffe6c0",
+    singleLine: true
+  }),
+  subheaderCaption: freezeStyleVariant({
+    id: "subheader-caption-label",
+    style: "subheader_caption_label",
+    styleDescription: "Subheader caption label_style from wube/factorio-data",
+    source: "wube-factorio-data-style-lua",
+    parent: "heading_2_label",
+    font: "heading-2",
+    fontColor: "{1, 0.901961, 0.752941}",
+    browserColor: "#ffe6c0",
+    leftPadding: 8,
+    singleLine: true
+  }),
+  clickable: freezeStyleVariant({
+    id: "clickable-label",
+    style: "clickable_label",
+    styleDescription: "Clickable label_style from wube/factorio-data",
+    source: "wube-factorio-data-style-lua",
+    parent: "label",
+    hoveredFontColor: "{1, 0.74, 0.40}",
+    browserHoveredColor: "#ffbd66",
+    clickedFontColor: "{0.98, 0.66, 0.22}",
+    browserClickedColor: "#faa838",
+    singleLine: true
+  })
+});
+
+export function labelStyleVariant(id = "label") {
+  const variant =
+    Object.values(labelStyleVariants).find(
+      (candidate) => candidate.id === id || candidate.style === id
+    ) ?? labelStyleVariants.base;
+
+  return {
+    ...labelStyleVariants.base,
+    ...variant
+  };
+}
 
 function freezeHorizontalFlowStyleReference(styleReference = {}) {
   return Object.freeze({
@@ -786,7 +875,9 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     titlebarIgnoredBySearch: reference.header.ignoredBySearch ?? true,
     titlebarChildRows: reference.header.childRows ?? Object.freeze([]),
     titlebarOptionalSlotRows: reference.header.optionalSlotRows ?? Object.freeze([]),
-    titleLabelStyle: "frame_title",
+    titleLabelStyle: labelStyleVariants.frameTitle.style,
+    titleLabelStyleDescription: labelStyleVariants.frameTitle.styleDescription,
+    titleLabelStyleSource: labelStyleVariants.frameTitle.source,
     titleLabelCapturedSize: reference.header.titleLabel?.capturedSize,
     titleLabelCapturedContentSize: reference.header.titleLabel?.capturedContentSize,
     titleLabelCapturedClipSize: reference.header.titleLabel?.capturedClipSize,
@@ -801,6 +892,16 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     titleLabelContentHeight: reference.header.titleLabel?.capturedContentSize?.height ?? 42,
     titleLabelTopMargin: -4,
     titleLabelBottomPadding: 4,
+    titleLabelFont: labelStyleVariants.frameTitle.font,
+    titleLabelFontColor: labelStyleVariants.frameTitle.fontColor,
+    titleLabelBrowserColor: labelStyleVariants.frameTitle.browserColor,
+    titleLabelSingleLine: labelStyleVariants.frameTitle.singleLine,
+    titleLabelBaseFont: labelStyleVariants.base.font,
+    titleLabelBaseFontColor: labelStyleVariants.base.fontColor,
+    titleLabelDisabledFontColor: labelStyleVariants.base.disabledFontColor,
+    titleLabelParentHoveredFontColor: labelStyleVariants.base.parentHoveredFontColor,
+    titleLabelGameControllerHoveredFontColor:
+      labelStyleVariants.base.gameControllerHoveredFontColor,
     dragHandleStyle: "draggable_space_header",
     dragHandleStyleDescription: "Part of frame definition",
     dragHandleDerivedFrom: "draggable_space_header",
@@ -1301,9 +1402,40 @@ function createLayoutFillerNode(spec, _layoutSettings, luaVariableNames = {}) {
   };
 }
 
+function createLayoutLabelNode(spec, _layoutSettings, luaVariableNames = {}) {
+  const variant = labelStyleVariant(spec.styleVariant);
+
+  return {
+    id: spec.id,
+    luaVariableName: luaVariableNameForNode(spec.id, luaVariableNames),
+    atom: LABEL_ATOM_ID,
+    primitive: "label",
+    className: "agui::Label",
+    caption: spec.caption ?? "Label",
+    style: variant.style,
+    styleDescription: variant.styleDescription,
+    derivedFrom: variant.parent ?? variant.style,
+    role: "text-label",
+    styleReference: Object.freeze({
+      variantId: variant.id,
+      source: variant.source,
+      font: variant.font,
+      fontColor: variant.fontColor,
+      browserColor: variant.browserColor,
+      disabledFontColor: variant.disabledFontColor,
+      parentHoveredFontColor: variant.parentHoveredFontColor,
+      gameControllerHoveredFontColor: variant.gameControllerHoveredFontColor,
+      singleLine: variant.singleLine,
+      ignoredBySearch: variant.ignoredBySearch ?? false
+    }),
+    children: []
+  };
+}
+
 const LAYOUT_ATOM_HYDRATORS = Object.freeze({
   [FRAME_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutFrameNode }),
   [HORIZONTAL_FLOW_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutHorizontalFlowNode }),
+  [LABEL_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutLabelNode }),
   [FILLER_ATOM_ID]: Object.freeze({ hydrateSpec: createLayoutFillerNode })
 });
 
@@ -1314,6 +1446,38 @@ function createLayoutNode(spec, layoutSettings, luaVariableNames = {}, depth = 0
     luaVariableNames,
     depth
   ) ?? null;
+}
+
+function getLabelStyleProperties(node) {
+  const styleReference = node.styleReference ?? {};
+
+  return [
+    {
+      label: "caption",
+      value: node.caption ?? "",
+      editable: { field: "layoutCaption", nodeId: node.id },
+      tone: "default"
+    },
+    { label: "font", value: styleReference.font, indent: 1 },
+    { label: "font_color", value: styleReference.fontColor, indent: 1 },
+    {
+      label: "disabled_font_color",
+      value: styleReference.disabledFontColor,
+      indent: 1
+    },
+    {
+      label: "parent_hovered_font_color",
+      value: styleReference.parentHoveredFontColor,
+      indent: 1
+    },
+    {
+      label: "game_controller_hovered_font_color",
+      value: styleReference.gameControllerHoveredFontColor,
+      indent: 1
+    },
+    { label: "single_line", value: styleReference.singleLine, indent: 1 },
+    { label: "ignored_by_search", value: styleReference.ignoredBySearch, indent: 1 }
+  ].filter((property) => property.value != null);
 }
 
 function createLayoutInspectorRows(node) {
@@ -1332,7 +1496,10 @@ function createLayoutInspectorRows(node) {
       sizeBeforeStretching: FACTORIO_NOT_IMPLEMENTED,
       maximumHorizontalSquashSize: FACTORIO_NOT_IMPLEMENTED,
       maximumVerticalSquashSize: FACTORIO_NOT_IMPLEMENTED,
-      properties: getFlowStyleProperties(node.styleReference),
+      properties:
+        node.primitive === "label"
+          ? getLabelStyleProperties(node)
+          : getFlowStyleProperties(node.styleReference),
       childRows: childRows.length ? childRows : [{ label: "children", value: "" }]
     },
     ...node.children.flatMap(createLayoutInspectorRows)
@@ -1494,19 +1661,32 @@ export function createWindowModel({
               className: "agui::Label",
               caption,
               style: styleReference.titleLabelStyle,
+              styleDescription: styleReference.titleLabelStyleDescription,
+              addOptions: {
+                ignoredByInteraction: true
+              },
               referenceSize: {
                 width: titleLabelWidth,
                 height: styleReference.titleLabelHeight,
                 contentHeight: styleReference.titleLabelContentHeight
               },
               styleReference: {
+                variantId: labelStyleVariants.frameTitle.id,
+                source: styleReference.titleLabelStyleSource,
                 topMargin: styleReference.titleLabelTopMargin,
                 bottomPadding: styleReference.titleLabelBottomPadding,
                 verticallyStretchable: true,
                 horizontallySquashable: true,
-                font: "heading-1",
-                fontColor: "{1, 0.901961, 0.752941}",
-                singleLine: true
+                font: styleReference.titleLabelFont,
+                fontColor: styleReference.titleLabelFontColor,
+                browserColor: styleReference.titleLabelBrowserColor,
+                singleLine: styleReference.titleLabelSingleLine,
+                baseFont: styleReference.titleLabelBaseFont,
+                baseFontColor: styleReference.titleLabelBaseFontColor,
+                disabledFontColor: styleReference.titleLabelDisabledFontColor,
+                parentHoveredFontColor: styleReference.titleLabelParentHoveredFontColor,
+                gameControllerHoveredFontColor:
+                  styleReference.titleLabelGameControllerHoveredFontColor
               }
             },
             {
@@ -1704,7 +1884,7 @@ export function getWindowInspectorRows(model) {
     {
       id: titleLabel.id,
       title: "class agui::Label",
-      style: "Part of frame definition",
+      style: titleLabel.styleDescription ?? "Part of frame definition",
       derivedFrom: titleLabel.style,
       relative: `[${style.titleLabelRelative.x}, ${style.titleLabelRelative.y}]`,
       size: `{${titleLabelWidth}, ${titleLabel.referenceSize.height}}`,
@@ -1728,11 +1908,23 @@ export function getWindowInspectorRows(model) {
         { label: "top_margin", value: titleLabel.styleReference.topMargin, indent: 1 },
         { label: "font", value: titleLabel.styleReference.font, indent: 1 },
         { label: "font_color", value: titleLabel.styleReference.fontColor, indent: 1 },
-        { label: "font", value: "default", indent: 1 },
-        { label: "font_color", value: "{1, 1, 1}", indent: 1 },
-        { label: "disabled_font_color", value: "{0.5, 0.5, 0.5, 0.5}", indent: 1 },
-        { label: "parent_hovered_font_color", value: "{0, 0, 0}", indent: 1 },
-        { label: "game_controller_hovered_font_color", value: "{1, 0.68, 0}", indent: 1 },
+        { label: "font", value: titleLabel.styleReference.baseFont, indent: 1 },
+        { label: "font_color", value: titleLabel.styleReference.baseFontColor, indent: 1 },
+        {
+          label: "disabled_font_color",
+          value: titleLabel.styleReference.disabledFontColor,
+          indent: 1
+        },
+        {
+          label: "parent_hovered_font_color",
+          value: titleLabel.styleReference.parentHoveredFontColor,
+          indent: 1
+        },
+        {
+          label: "game_controller_hovered_font_color",
+          value: titleLabel.styleReference.gameControllerHoveredFontColor,
+          indent: 1
+        },
         { label: "single_line", value: titleLabel.styleReference.singleLine, indent: 1 }
       ]
     },

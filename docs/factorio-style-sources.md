@@ -10,6 +10,7 @@ renderer and future Factorio exports:
 - <https://lua-api.factorio.com/latest/classes/LuaGuiElement.html>
 - <https://lua-api.factorio.com/latest/classes/LuaStyle.html>
 - <https://lua-api.factorio.com/latest/concepts/GuiElementType.html>
+- <https://github.com/wube/factorio-data/blob/master/core/prototypes/style.lua>
 - <https://man.sr.ht/~raiguard/factorio-gui-style-guide/>
 - <https://mods.factorio.com/user/raiguard>
 - <https://mods.factorio.com/mod/flib>
@@ -18,6 +19,10 @@ renderer and future Factorio exports:
 - <https://codeberg.org/raiguard?q=&tab=repositories&sort=recentupdate>
 - <https://github.com/JanSharp/FactorioGUIEditor>
 - <https://github.com/ClaudeMetz/UntitledGuiGuide/wiki>
+- <https://github.com/ClaudeMetz/FactoryPlanner/blob/356bb911aa12c8fd67cded33b6d48fab14821d1a/modfiles/ui/main/title_bar.lua#L62-L68>
+- <https://github.com/ClaudeMetz/FactoryPlanner/blob/356bb911aa12c8fd67cded33b6d48fab14821d1a/modfiles/prototypes/styles.lua#L247-L251>
+- <https://github.com/nihilistzsche/LtnManager/blob/539329ddf7ddcb98e99b65ff9001189573cc77bd/scripts/gui/index.lua#L162-L166>
+- <https://github.com/nihilistzsche/LtnManager/blob/539329ddf7ddcb98e99b65ff9001189573cc77bd/scripts/gui/index.lua#L203-L226>
 - <https://github.com/Refactorio/RedMew/blob/develop/utils/gui.lua#L205-L223>
 - <https://github.com/pyanodon/pycoalprocessing/blob/master/scripts/wiki/wiki.lua#L66-L75>
 - <https://github.com/galgtonold/ai_combinator/blob/main/src/gui/dialogs/set_task_dialog.lua#L60-L67>
@@ -45,6 +50,39 @@ Concrete rules should still be cited to the specific page, repository, or file
 that was inspected. Editor Extensions is especially relevant to future testing
 workflow research because its Mod Portal page describes a separate editor lab
 used to design and test away from the main factory.
+
+The public `wube/factorio-data` repository is tracked as the most useful source
+for base game GUI style definitions. Its `core/prototypes/style.lua` file
+defines the default `gui-style` table and source-backed label variants such as
+`label`, `frame_title`, `caption_label`, `heading_2_label`,
+`subheader_caption_label`, and `clickable_label`. Treat that file as
+authoritative for style names, inheritance, and declarative style fields. Do
+not vendor Wube image assets or graphical sets from it; re-express only the
+defensible structural facts and local browser approximations.
+
+For the Label atom specifically, official runtime docs identify `label` as a
+GUI element for text and expose label-compatible `LuaStyle` fields including
+font, font color, disabled/hover/clicked font colors, padding, margins,
+squash/stretch flags, rich-text handling, and `single_line`. Raiguard's style
+guide recommends custom titlebars use a `label` with the `frame_title` style and
+`ignored_by_interaction=true`. Factory Planner's title bar file uses a `label`
+with a custom `fp_label_frame_title` style and `ignored_by_interaction=true`,
+with that style parented from `frame_title` in its prototype style file. LTN
+Manager uses `label` with `frame_title` and `ignored_by_interaction=true` in
+its titlebar and also uses `subheader_caption_label` and `caption_label` in its
+toolbar. This evidence is enough to scaffold Label style variants, export the
+titlebar Label, and expose an authored base `label` component with editable
+caption. It is not enough to close visual parity for every Label state without
+fresh in-game captures.
+
+Remaining Label evidence needed before claiming full parity:
+
+- `Ctrl+F6` rows for plain `label`, `caption_label`, `subheader_caption_label`,
+  and `frame_title`;
+- `Ctrl+F5` bounding-box crops for those same styles;
+- normal screenshot crops without overlays for browser-vs-Factorio comparison;
+- disabled and hovered captures if disabled/hover behavior is promoted from
+  source-backed approximation to completed renderer behavior.
 
 For the Filler atom specifically, the official `GuiElementType` docs identify
 `empty-widget` as an empty GUI element, `LuaStyle` exposes stretch and margin
@@ -405,9 +443,10 @@ without modifying the history stacks. Geometry rows such as `size` and
 `content_size` can show an inspector measurement overlay with a small label
 attached to the preview rectangle.
 Editable values must opt in through row metadata and may only mutate state the
-editor owns; currently that means the title label caption, while captured
-Factorio style facts remain read-only. The root Window atom does not own a
-caption field.
+editor owns; currently that means the title label caption and authored Label
+captions, while captured Factorio style facts remain read-only. Authored Label
+captions are also editable from the component tree and Select-mode canvas
+double-click. The root Window atom does not own a caption field.
 
 The Inspector section also includes a compact component tree using the same
 stable model anchors as hover inspection. Clicking a tree row locks the selected

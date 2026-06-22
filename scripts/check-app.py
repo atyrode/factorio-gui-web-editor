@@ -83,13 +83,17 @@ REQUIRED_ANCHORS = [
     "layout_setting_horizontal_flow_min_width",
     "frame_palette_item",
     "horizontal_flow_palette_item",
+    "label_palette_item",
     "filler_palette_item",
     "builder_ghost_marker",
     "builder_copy_",
     "builder_paste_",
+    "builder_edit_label_text_",
+    "gui_label_text_edit_",
     "resize_mode_toggle",
     "resize_overlay",
     "gui_shadow_toggle",
+    "atlas_labels_samples",
 ]
 
 FORBIDDEN_PAYLOADS = [
@@ -174,6 +178,8 @@ def main() -> int:
     assert_contains(source_blob, "fx-builder-row__drag-handle", "app source")
     assert_contains(source_blob, "GuiFrameShell", "app source")
     assert_contains(source_blob, "GuiFillerShell", "app source")
+    assert_contains(source_blob, "FxLabel", "app source")
+    assert_contains(source_blob, "fx-label--clickable-label", "app source")
     assert_contains(source_blob, "FRAME_ATOM_ID", "app source")
     assert_contains(source_blob, "FILLER_ATOM_ID", "app source")
     assert_contains(source_blob, "data-fx-class={styleReference.bodyClassName}", "app source")

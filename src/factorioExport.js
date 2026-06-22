@@ -104,6 +104,9 @@ function renderLayoutNodeLua(parentVariableName, node, depth = 1) {
   const directionLine = node.direction
     ? `${indent}  direction = ${luaString(node.direction)},\n`
     : "";
+  const captionLine = node.caption != null
+    ? `${indent}  caption = ${luaString(node.caption)},\n`
+    : "";
   const addOptionsLines = addOptionLines(node, indent);
   const addOptionsBlock = addOptionsLines.length
     ? `${addOptionsLines.join("\n")}\n`
@@ -112,7 +115,7 @@ function renderLayoutNodeLua(parentVariableName, node, depth = 1) {
   return `${indent}local ${variableName} = ${parentVariableName}.add{
 ${indent}  type = ${luaString(node.primitive)},
 ${indent}  name = ${luaString(node.id)},
-${directionLine}${addOptionsBlock}${indent}  style = ${luaString(node.style)}
+${directionLine}${captionLine}${addOptionsBlock}${indent}  style = ${luaString(node.style)}
 ${indent}}
 ${styleLines}${childLines ? `\n${childLines}` : ""}`;
 }
@@ -137,6 +140,10 @@ export function renderWindowLua(model) {
   const bodyChildLines = (bodyNode.children ?? [])
     .map((child) => renderLayoutNodeLua(body, child))
     .join("\n");
+  const titleAddOptionsLines = addOptionLines(titleNode, "  ");
+  const titleAddOptionsBlock = titleAddOptionsLines.length
+    ? `${titleAddOptionsLines.join("\n")}\n`
+    : "";
 
   const locationLua = root.location
     ? `  ${frame}.auto_center = false
@@ -181,7 +188,7 @@ ${titlebarStyleLines.join("\n")}
     type = "label",
     name = ${luaString(titleNode.id)},
     caption = ${luaString(titleNode.caption)},
-    style = ${luaString(titleNode.style)}
+${titleAddOptionsBlock}    style = ${luaString(titleNode.style)}
   }
   ${title}.style.top_margin = ${titleNode.styleReference.topMargin}
   ${title}.style.bottom_padding = ${titleNode.styleReference.bottomPadding}

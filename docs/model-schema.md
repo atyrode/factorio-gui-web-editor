@@ -77,6 +77,9 @@ visible container atom used for body split children. Role-specific styles such
 as `frame_header_flow`, `inset_frame_container_horizontal_flow`,
 `inside_deep_frame`, and the captured 72 x 36 header action group are variant
 data on their real atoms, not separate atom identities.
+Label maps to the official Factorio `label` primitive. The generated Window
+titlebar uses `style: frame_title`; authored builder Labels use the base
+`style: label` variant and own editable caption text.
 Filler maps to the official Factorio `empty-widget` primitive. The generated
 Window titlebar uses one Filler instance with `style: draggable_space_header`
 and `role: header-filler`; generic spacer roles such as `pusher` or `spacer`
@@ -194,19 +197,25 @@ Editor-created root Frame specs hydrate to `primitive: frame`,
 fill/split available space. Editor-created `generic-horizontal-flow` specs
 hydrate to `primitive: flow`, `direction: horizontal`, `style:
 horizontal_flow`, the current `layoutSettings` spacing and padding values, and
-ordered implemented children. Editor-created Filler specs hydrate to
+ordered implemented children. Editor-created Label specs hydrate to
+`primitive: label`, `style: label`, and editable `caption`. Editor-created
+Filler specs hydrate to
 `primitive: empty-widget`, `style: draggable_space`, `role: spacer`, stretch
 flags, and `ignored_by_interaction = true`.
 
 Legal parents are declared by builder atom capability metadata. The Window body
 accepts implemented authored atoms. Frame and Horizontal Flow accept Frame,
-Horizontal Flow, and Filler children. Filler is a leaf and accepts no children.
+Horizontal Flow, Label, and Filler children. Label and Filler are leaves and
+accept no children.
 The old Frame -> Horizontal Flow -> Frame alternation was a temporary
-implementation slice, not a Factorio rule. The Window root, titlebar, title
-label, generated header Filler, a moved node itself, and descendants of the
-moved node are not legal drop parents. Headless Tree supplies component-tree
-drag/drop targets and accessibility state, but it does not change the persisted
-schema; accepted drops still commit only ordered mutations to `layoutChildren`.
+implementation slice, not a Factorio rule. The generated Window title label
+uses the Factorio `label` primitive with `style: frame_title` and
+`ignored_by_interaction = true` so the titlebar remains draggable. The Window
+root, titlebar, title label, generated header Filler, a moved node itself, and
+descendants of the moved node are not legal drop parents. Headless Tree supplies
+component-tree drag/drop targets and accessibility state, but it does not change
+the persisted schema; accepted drops still commit only ordered mutations to
+`layoutChildren`.
 
 Resize mode is a generic editor operation over explicit resize capabilities. It
 does not add arbitrary CSS sizing to the schema. `gui_window` resizes through
@@ -264,9 +273,10 @@ The generic editor Window intentionally keeps optional header actions and body
 children out of the rendered/exported baseline until those children have
 explicit model and export rules. Window still owns the stable captured slots
 for those children so later child atoms can be inserted without changing the
-Window shell contract. The no-code interface now exposes the `Frame` atom
-because it is the observed direct child used for body splits. Other body child
-atoms should be exposed only after their own model and export rules exist.
+Window shell contract. The no-code interface now exposes `Frame`, `Horizontal
+Flow`, `Label`, and `Filler` atoms because each has constrained model,
+renderer, and export rules. Other body child atoms should be exposed only after
+their own model and export rules exist.
 
 For the Blueprint Library reference, the header slot math is captured:
 
@@ -375,8 +385,10 @@ exported until the model has a rule for when Factorio expects them to be set.
 
 Editable rows must be opt-in. They should mutate only values the editor model
 actually owns. Captured Factorio style facts remain read-only until the model
-defines how changing them maps to valid Factorio Lua/style behavior. The current
-editable Inspector field is the title label caption; Lua variable names are
+defines how changing them maps to valid Factorio Lua/style behavior. Current
+editable caption fields are the generated title label and authored Label nodes.
+Authored Label captions can also be edited from the component-tree edit action
+or by double-clicking the Label in Select mode. Lua variable names are
 intentionally edited in the component tree instead of this Ctrl+F6-style
 projection. The root Window atom still does not own a visible caption field.
 
