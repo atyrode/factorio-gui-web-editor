@@ -755,36 +755,20 @@ function BuilderHeadlessTree({
   );
 }
 
-export function BuilderPanel({
+export function BuilderPaletteBar({
   currentWindow,
-  inspectedAnchor,
   paletteDraggingAtom = null,
-  canPaste,
-  model,
-  historyActions = null,
-  onAddAfter,
-  onAddChild,
-  onCopy,
-  onEditLuaVariableName,
-  onInsertPalette,
-  onMoveNode,
-  onPaste,
   onPaletteDragEnd,
-  onPaletteDragStart,
-  onRemove,
-  onSelect,
-  showGeneratedShell = false
+  onPaletteDragStart
 }) {
-  const layoutChildren = currentWindow?.layoutChildren ?? [];
-
   return (
-    <FxFrame
-      title="Builder"
-      titleActions={historyActions}
-      className="fx-editor-panel fx-builder-panel"
+    <section
+      className="fx-editor-atom-bar"
       data-anchor="builder_panel"
+      aria-label="Builder atoms"
     >
-      <div className="fx-builder-palette" aria-label="Builder palette">
+      <div className="fx-editor-atom-bar__label">Atoms</div>
+      <div className="fx-builder-palette fx-builder-palette--bar" aria-label="Builder palette">
         {BUILDER_PALETTE_ATOMS.map((atom) => (
           <BuilderPaletteItem
             atom={atom}
@@ -796,10 +780,35 @@ export function BuilderPanel({
           />
         ))}
       </div>
+    </section>
+  );
+}
+
+export function BuilderTreePanel({
+  currentWindow,
+  inspectedAnchor,
+  canPaste,
+  model,
+  onAddAfter,
+  onAddChild,
+  onCopy,
+  onEditLuaVariableName,
+  onInsertPalette,
+  onMoveNode,
+  onPaste,
+  onRemove,
+  onSelect,
+  showGeneratedShell = false
+}) {
+  const layoutChildren = currentWindow?.layoutChildren ?? [];
+
+  return (
+    <FxFrame
+      title="Component Tree"
+      className="fx-editor-panel fx-builder-tree-panel"
+      data-anchor="component_tree_panel"
+    >
       <div className="fx-builder-body" data-anchor="builder_body_tree">
-        <div className="fx-builder-body__header">
-          <span>Component tree</span>
-        </div>
         <BuilderHeadlessTree
           currentWindow={currentWindow}
           inspectedAnchor={inspectedAnchor}

@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  Eye,
   Maximize2,
   MousePointer2,
   PanelBottomOpen,
@@ -64,7 +65,7 @@ import {
   normalizeLuaVariableNames,
   validateLuaVariableNameEdit
 } from "../factorioLuaNames.js";
-import { BuilderPanel } from "./BuilderPanel.jsx";
+import { BuilderPaletteBar, BuilderTreePanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
   return value.trim() || "Untitled window";
@@ -1902,15 +1903,11 @@ export function EditorPage() {
     }));
   }
 
-  function updateGuiShadowsEnabled(event) {
+  function toggleGuiShadowsEnabled() {
     updateEditorState((state) => ({
       ...state,
-      showGuiShadows: event.target.checked
+      showGuiShadows: !state.showGuiShadows
     }));
-  }
-
-  function updateResizeModeEnabled(event) {
-    activateCanvasTool(event.target.checked ? CANVAS_TOOL_RESIZE : CANVAS_TOOL_SELECT);
   }
 
   function commitResizeDraft(draft) {
@@ -2644,67 +2641,48 @@ export function EditorPage() {
         </div>
       </header>
 
+      <BuilderPaletteBar
+        currentWindow={currentWindow}
+        onPaletteDragEnd={clearBuilderDrag}
+        onPaletteDragStart={handlePaletteDragStart}
+        paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
+      />
+
       <div className="fx-editor-workbench">
         <nav className="fx-editor-tool-strip" aria-label="Canvas tools">
-          <EditorToolButton
-            active={activeTool === CANVAS_TOOL_SELECT}
-            anchor="editor_tool_select"
-            icon={MousePointer2}
-            label="Select"
-            onClick={() => activateCanvasTool(CANVAS_TOOL_SELECT)}
-          />
-          <EditorToolButton
-            active={inspectToolActive}
-            anchor="editor_tool_inspect"
-            icon={ScanSearch}
-            label="Inspect Factorio style"
-            onClick={() => activateCanvasTool(CANVAS_TOOL_INSPECT)}
-          />
-          <EditorToolButton
-            active={resizeToolActive}
-            anchor="resize_mode_toggle"
-            icon={Maximize2}
-            label="Resize"
-            onClick={() => activateCanvasTool(CANVAS_TOOL_RESIZE)}
-          />
+          <div className="fx-editor-tool-strip__tools">
+            <EditorToolButton
+              active={activeTool === CANVAS_TOOL_SELECT}
+              anchor="editor_tool_select"
+              icon={MousePointer2}
+              label="Select"
+              onClick={() => activateCanvasTool(CANVAS_TOOL_SELECT)}
+            />
+            <EditorToolButton
+              active={inspectToolActive}
+              anchor="editor_tool_inspect"
+              icon={ScanSearch}
+              label="Inspect Factorio style"
+              onClick={() => activateCanvasTool(CANVAS_TOOL_INSPECT)}
+            />
+            <EditorToolButton
+              active={resizeToolActive}
+              anchor="resize_mode_toggle"
+              icon={Maximize2}
+              label="Resize"
+              onClick={() => activateCanvasTool(CANVAS_TOOL_RESIZE)}
+            />
+          </div>
+          <div className="fx-editor-tool-strip__toggles">
+            <EditorToolButton
+              active={showGuiShadows}
+              anchor="gui_shadow_toggle"
+              icon={Eye}
+              label="GUI shadows"
+              onClick={toggleGuiShadowsEnabled}
+            />
+          </div>
         </nav>
-
-        <aside className="fx-editor-rail" aria-label="Editor controls">
-          <BuilderPanel
-            canPaste={canPasteLayoutClipboard}
-            currentWindow={currentWindow}
-            inspectedAnchor={inspectedAnchor}
-            onAddAfter={addLayoutNodeAfter}
-            onAddChild={addLayoutNodeChild}
-            onCopy={copyLayoutSubtree}
-            onEditLuaVariableName={updateLuaVariableName}
-            onInsertPalette={insertPaletteLayoutNode}
-            onMoveNode={moveLayoutNodeFromTree}
-            onPaste={pasteLayoutClipboard}
-            onPaletteDragEnd={clearBuilderDrag}
-            onPaletteDragStart={handlePaletteDragStart}
-            onRemove={removeLayoutSubtree}
-            paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
-            onSelect={selectBuilderNode}
-            model={currentModel}
-            showGeneratedShell={showComponentTreeShell}
-          />
-          <div
-            aria-label="Resize editor sidebar"
-            aria-orientation="vertical"
-            aria-valuemax={SIDEBAR_MAX_WIDTH}
-            aria-valuemin={SIDEBAR_MIN_WIDTH}
-            aria-valuenow={sidebarWidth}
-            className="fx-editor-rail__resize"
-            onKeyDown={handleSidebarResizeKey}
-            onPointerCancel={endSidebarResize}
-            onPointerDown={startSidebarResize}
-            onPointerMove={moveSidebarResize}
-            onPointerUp={endSidebarResize}
-            role="separator"
-            tabIndex={0}
-          />
-        </aside>
 
         <section className="fx-editor-stage" aria-label="Editor canvas">
           <div id="editor-root">
@@ -2742,7 +2720,7 @@ export function EditorPage() {
           </div>
         </section>
 
-        <aside className="fx-editor-properties-rail" aria-label="Editor properties">
+        <aside className="fx-editor-right-rail" aria-label="Editor inspector and structure">
           <FxFrame
             title="Properties"
             className="fx-editor-panel fx-editor-panel--properties"
@@ -2767,18 +2745,6 @@ export function EditorPage() {
 
             {selectedPropertiesTab === PROPERTIES_TAB_PROPERTIES ? (
               <div className="fx-properties-stack">
-                <section className="fx-properties-section" data-anchor="view_properties">
-                  <h3>View</h3>
-                  <FxCheckbox
-                    checked={showGuiShadows}
-                    data-anchor="gui_shadow_toggle"
-                    readOnly={false}
-                    onChange={updateGuiShadowsEnabled}
-                  >
-                    GUI shadows
-                  </FxCheckbox>
-                </section>
-
                 <LayoutSettingsPanel
                   expanded={showLayoutSettings}
                   onChange={updateLayoutSetting}
@@ -2811,6 +2777,22 @@ export function EditorPage() {
               />
             )}
           </FxFrame>
+          <BuilderTreePanel
+            canPaste={canPasteLayoutClipboard}
+            currentWindow={currentWindow}
+            inspectedAnchor={inspectedAnchor}
+            model={currentModel}
+            onAddAfter={addLayoutNodeAfter}
+            onAddChild={addLayoutNodeChild}
+            onCopy={copyLayoutSubtree}
+            onEditLuaVariableName={updateLuaVariableName}
+            onInsertPalette={insertPaletteLayoutNode}
+            onMoveNode={moveLayoutNodeFromTree}
+            onPaste={pasteLayoutClipboard}
+            onRemove={removeLayoutSubtree}
+            onSelect={selectBuilderNode}
+            showGeneratedShell={showComponentTreeShell}
+          />
         </aside>
       </div>
 

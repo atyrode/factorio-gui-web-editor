@@ -744,34 +744,40 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="editor_export_drawer"]')).toHaveCount(0);
     const geometry = await page.evaluate(() => {
       const canvas = document.querySelector('[data-anchor="editor_canvas"]');
-      const builder = document.querySelector('[data-anchor="builder_panel"]');
+      const atomBar = document.querySelector('[data-anchor="builder_panel"]');
       const properties = document.querySelector('[data-anchor="properties_panel"]');
+      const tree = document.querySelector('[data-anchor="component_tree_panel"]');
       const canvasRect = canvas.getBoundingClientRect();
-      const builderRect = builder.getBoundingClientRect();
+      const atomBarRect = atomBar.getBoundingClientRect();
       const propertiesRect = properties.getBoundingClientRect();
+      const treeRect = tree.getBoundingClientRect();
       return {
         canvas: {
+          top: canvasRect.top,
           left: canvasRect.left,
           right: canvasRect.right,
           width: canvasRect.width
         },
-        builder: {
-          left: builderRect.left,
-          right: builderRect.right,
-          width: builderRect.width
+        atomBar: {
+          bottom: atomBarRect.bottom
         },
         properties: {
           left: propertiesRect.left,
           right: propertiesRect.right,
           width: propertiesRect.width
+        },
+        tree: {
+          left: treeRect.left,
+          width: treeRect.width
         }
       };
     });
 
-    expect(geometry.canvas.width).toBeGreaterThan(geometry.builder.width);
     expect(geometry.canvas.width).toBeGreaterThan(geometry.properties.width);
-    expect(geometry.builder.right).toBeLessThanOrEqual(geometry.canvas.left);
+    expect(geometry.canvas.width).toBeGreaterThan(geometry.tree.width);
+    expect(geometry.atomBar.bottom).toBeLessThanOrEqual(geometry.canvas.top);
     expect(geometry.canvas.right).toBeLessThanOrEqual(geometry.properties.left);
+    expect(geometry.properties.left).toBe(geometry.tree.left);
   });
 
   test("authored field edits coalesce and clear the redo branch", async ({ page }) => {
@@ -1567,14 +1573,15 @@ test.describe("Layout builder canvas preview", () => {
       };
     });
 
-    await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).toBeChecked();
+    const shadowToggle = page.locator('[data-anchor="gui_shadow_toggle"]');
+    await expect(shadowToggle).toHaveAttribute("aria-pressed", "true");
     expect(shadowOn.root).not.toBe("none");
     expect(shadowOn.body).toBe("none");
     expect(shadowOn.frame).toBe("none");
     expect(shadowOn.frameBevel).toContain("inset");
 
-    await page.locator('[data-anchor="gui_shadow_toggle"] input').click({ force: true });
-    await expect(page.locator('[data-anchor="gui_shadow_toggle"] input')).not.toBeChecked();
+    await shadowToggle.click();
+    await expect(shadowToggle).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator('[data-anchor="gui_window"]')).toHaveAttribute(
       "data-fx-shadows",
       "hidden"

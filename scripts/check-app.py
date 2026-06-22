@@ -71,6 +71,7 @@ REQUIRED_ANCHORS = [
     "editor_tool_inspect",
     "editor_export_drawer",
     "builder_panel",
+    "component_tree_panel",
     "properties_panel",
     "properties_tab_properties",
     "properties_tab_factorio",

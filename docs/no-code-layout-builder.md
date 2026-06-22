@@ -65,10 +65,19 @@ control rail. Its default desktop structure is:
   create/recreate Window, reset
 
 [Tool strip]
-  Select, Inspect, Resize
+  [Tools: Select, Inspect, Resize]
+  [View toggles: GUI shadows]
 
-[Build rail]
+[Atom bar]
   [Palette: drag/drop Frame, Horizontal Flow, Filler]
+
+[Right rail]
+  [Properties panel]
+    [Properties tab]
+      Layout Settings, collapsed by default, including exact Window size
+    [Factorio tab]
+      Ctrl+F6-style structured facts for selected/hovered GUI node
+  [Component tree]
   [Scroll: component tree, starting at Window body flow by default]
     [Optional non-deletable Window frame root]
     [Optional non-deletable titlebar flow, title label, header filler]
@@ -78,13 +87,6 @@ control rail. Its default desktop structure is:
 
 [Canvas]
   visual preview, canvas drops, Window movement, resize overlays
-
-[Properties rail]
-  [Properties tab]
-    GUI shadow view toggle
-    Layout Settings, collapsed by default, including exact Window size
-  [Factorio tab]
-    Ctrl+F6-style structured facts for selected/hovered GUI node
 
 [Export drawer]
   hidden by default; generated gui.lua and preview-mod download
@@ -101,7 +103,7 @@ starts at the locked `gui_window_body` flow by default, followed by editable
 authored layout specs under the body flow. A Settings toggle can expose the full
 generated shell, including locked nodes such as `gui_window`,
 `gui_window_titlebar`, `gui_window_title`, and `gui_window_drag_handle`. It has
-a bounded height inside the build rail and scrolls when nested layout would
+a bounded height under the right-side Properties panel and scrolls when nested layout would
 otherwise crowd the canvas. The scroll area reserves a right-side gutter so the
 vertical scrollbar does not cover row labels or actions.
 
@@ -113,9 +115,11 @@ buttons, orange active affordances, and blue structural guide color.
 
 The top command bar owns high-frequency Window commands: title, body-flow
 direction, creation/recreation, reset, undo/redo, and export drawer visibility.
-The Properties rail owns lower-frequency root/global settings. The View section
-owns the GUI shadow display toggle. The Layout Settings section is collapsed by
-default and owns exact Window width/height plus authored Horizontal Flow
+The atom bar owns creation from the builder palette. The left tool strip keeps
+exclusive canvas tools at the top and view toggles, including GUI shadows, at
+the bottom. The Properties panel owns lower-frequency root/global settings. The
+Layout Settings section is collapsed by default and owns exact Window
+width/height plus authored Horizontal Flow
 assumptions until Factorio defaults are proven: generic flow spacing, top-level
 minimum width, nested minimum width, minimum height, and padding. It also owns
 the presentation toggle for showing or hiding generated Window shell rows in the
