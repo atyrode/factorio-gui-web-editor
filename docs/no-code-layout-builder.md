@@ -44,7 +44,8 @@ under a proposed parent in the constrained recursive layout model.
 - Add a Filler spacer to the Window body, user-created Frame, or user-created
   Horizontal Flow.
 - Add a Label to the Window body, user-created Frame, or user-created
-  Horizontal Flow and edit its caption.
+  Horizontal Flow and edit its caption from the Inspector, component tree, or
+  Select-mode canvas double-click.
 - Reorder authored atoms across the body and compatible nested containers.
 - Remove a Frame, Horizontal Flow, Label, or Filler subtree.
 - Copy, cut, and paste an authored atom subtree using visible Builder row
@@ -345,7 +346,7 @@ paste.
 | `full-shell-tree` | Window exists | Builder tree shows Window Frame -> titlebar Flow -> Label/Filler and Window body Flow -> authored children. |
 | `frame-with-flow` | Root Frame with one child Horizontal Flow | Child is visible in tree and canvas, inspector has rows for both. |
 | `nested-split` | Frame -> Horizontal Flow -> Frame | Nested split remains model-consistent and exportable. |
-| `label-caption` | Authored Label in body, Frame, or Horizontal Flow | Label is visible, selectable, movable, removable, exports as `label`, rejects children, and owns editable caption text. |
+| `label-caption` | Authored Label in body, Frame, or Horizontal Flow | Label is visible, selectable, movable, removable, exports as `label`, rejects children, and owns editable caption text through the component-tree edit action, Factorio Inspector caption row, and Select-mode canvas double-click. |
 | `filler-spacer` | Authored Filler in body, Frame, or Horizontal Flow | Filler is visible, selectable, movable, removable, exports as `empty-widget`, and rejects children. |
 | `cross-parent-move` | Two root Frames, one nested Frame | Tree drag can move a Frame between body and another compatible flow, preserving order. |
 | `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and keeps the model unchanged. |
@@ -382,6 +383,8 @@ paste.
 - `builder_tree_item_<node_id>`
 - `builder_copy_<node_id>`
 - `builder_paste_<node_id>`
+- `builder_edit_label_text_<node_id>`
+- `gui_label_text_edit_<node_id>`
 - `resize_mode_toggle`
 - `resize_overlay`
 - `gui_shadow_toggle`

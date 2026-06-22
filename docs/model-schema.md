@@ -385,8 +385,10 @@ exported until the model has a rule for when Factorio expects them to be set.
 
 Editable rows must be opt-in. They should mutate only values the editor model
 actually owns. Captured Factorio style facts remain read-only until the model
-defines how changing them maps to valid Factorio Lua/style behavior. The current
-editable Inspector field is the title label caption; Lua variable names are
+defines how changing them maps to valid Factorio Lua/style behavior. Current
+editable caption fields are the generated title label and authored Label nodes.
+Authored Label captions can also be edited from the component-tree edit action
+or by double-clicking the Label in Select mode. Lua variable names are
 intentionally edited in the component tree instead of this Ctrl+F6-style
 projection. The root Window atom still does not own a visible caption field.
 

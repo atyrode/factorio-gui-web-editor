@@ -443,9 +443,10 @@ without modifying the history stacks. Geometry rows such as `size` and
 `content_size` can show an inspector measurement overlay with a small label
 attached to the preview rectangle.
 Editable values must opt in through row metadata and may only mutate state the
-editor owns; currently that means the title label caption, while captured
-Factorio style facts remain read-only. The root Window atom does not own a
-caption field.
+editor owns; currently that means the title label caption and authored Label
+captions, while captured Factorio style facts remain read-only. Authored Label
+captions are also editable from the component tree and Select-mode canvas
+double-click. The root Window atom does not own a caption field.
 
 The Inspector section also includes a compact component tree using the same
 stable model anchors as hover inspection. Clicking a tree row locks the selected

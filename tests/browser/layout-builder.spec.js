@@ -1581,6 +1581,7 @@ test.describe("Layout builder canvas preview", () => {
     await labelRow.click();
     await expect(labelRow).toHaveClass(/is-selected/);
     await expect(labelRow.getByRole("button", { name: "Add child" })).toHaveCount(0);
+    await expect(labelRow.getByRole("button", { name: "Edit Label text" })).toBeVisible();
     await expect(page.locator('[data-anchor="inspector_gui_label_2"]')).toBeVisible();
 
     await page
@@ -1591,11 +1592,28 @@ test.describe("Layout builder canvas preview", () => {
     await page.getByLabel("Edit caption").press("Enter");
 
     await expect(bodyLabel).toHaveText("Power grid");
+
+    await page.locator('[data-anchor="builder_edit_label_text_gui_label_4"]').click();
+    const treeStartedEdit = page.locator('[data-anchor="gui_label_text_edit_gui_label_4"]');
+    await expect(treeStartedEdit).toBeVisible();
+    await treeStartedEdit.fill("Throughput");
+    await treeStartedEdit.press("Enter");
+    await expect(flowLabel).toHaveText("Throughput");
+
+    await page.locator('[data-anchor="editor_tool_select"]').click();
+    await bodyLabel.dblclick();
+    const canvasEdit = page.locator('[data-anchor="gui_label_text_edit_gui_label_2"]');
+    await expect(canvasEdit).toBeVisible();
+    await canvasEdit.fill("Power demand");
+    await canvasEdit.press("Enter");
+    await expect(bodyLabel).toHaveText("Power demand");
+
     const luaOutput = page.locator(".fx-editor-output__code code");
     await expect(luaOutput).toContainText('local gui_label_2 = gui_window_body.add{');
-    await expect(luaOutput).toContainText('caption = "Power grid"');
+    await expect(luaOutput).toContainText('caption = "Power demand"');
     await expect(luaOutput).toContainText('style = "label"');
     await expect(luaOutput).toContainText('local gui_label_4 = gui_horizontal_flow_3.add{');
+    await expect(luaOutput).toContainText('caption = "Throughput"');
   });
 
   test("authored Filler is selectable, movable, removable, and not a drop parent", async ({ page }) => {

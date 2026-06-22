@@ -88,6 +88,8 @@ REQUIRED_ANCHORS = [
     "builder_ghost_marker",
     "builder_copy_",
     "builder_paste_",
+    "builder_edit_label_text_",
+    "gui_label_text_edit_",
     "resize_mode_toggle",
     "resize_overlay",
     "gui_shadow_toggle",

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ClipboardPaste,
   CornerDownRight,
   Copy,
   ListPlus,
+  Pencil,
   Plus,
   Redo2,
   Trash2,
@@ -65,6 +66,7 @@ const actionButtonIcons = {
   "lock-closed": Lock,
   "lock-open": Unlock,
   paste: ClipboardPaste,
+  "edit-text": Pencil,
   plus: Plus,
   redo: Redo2,
   trash: Trash2,
@@ -602,6 +604,7 @@ function GuiFrameShell({
 function GuiLabelShell({
   node,
   className = "",
+  children,
   style,
   ...props
 }) {
@@ -616,8 +619,57 @@ function GuiLabelShell({
       style={style}
       {...props}
     >
-      {node.caption}
+      {children ?? node.caption}
     </FxLabel>
+  );
+}
+
+function GuiLabelTextEditor({
+  node,
+  onCancel,
+  onCommit
+}) {
+  const [draftValue, setDraftValue] = useState(node.caption ?? "");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  function commitEdit() {
+    onCommit?.(node.id, draftValue);
+  }
+
+  function cancelEdit() {
+    onCancel?.(node.id);
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitEdit();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+    }
+  }
+
+  return (
+    <input
+      aria-label={`Edit text for ${node.id}`}
+      className="fx-gui-label__edit"
+      data-anchor={`gui_label_text_edit_${node.id}`}
+      onBlur={commitEdit}
+      onChange={(event) => setDraftValue(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onKeyDown={handleKeyDown}
+      onPointerDown={(event) => event.stopPropagation()}
+      ref={inputRef}
+      style={{ width: `${Math.max(5, draftValue.length + 1)}ch` }}
+      value={draftValue}
+    />
   );
 }
 
@@ -836,7 +888,11 @@ function FlowChildren({
   builderDragActive,
   builderDropTarget,
   parentStyleReference,
-  builderDragAtom = null
+  builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
 }) {
   const ghostIndex =
     builderDropTarget?.surface === "canvas" && builderDropTarget.parentId === parentId
@@ -888,6 +944,10 @@ function FlowChildren({
         onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
+        editingLabelId={editingLabelId}
+        onLabelTextEditCancel={onLabelTextEditCancel}
+        onLabelTextEditCommit={onLabelTextEditCommit}
+        onLabelTextEditStart={onLabelTextEditStart}
       />
     );
 
@@ -930,8 +990,13 @@ export function GuiLabel({
   inspectorLocked = false,
   inspectedAnchor = node.id,
   onInspect,
-  onInspectLock
+  onInspectLock,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
 }) {
+  const editing = editingLabelId === node.id;
   const labelInspector = inspectorProps({
     active: inspectorActive,
     locked: inspectorLocked,
@@ -941,16 +1006,40 @@ export function GuiLabel({
     onInspectLock
   });
 
+  function startTextEdit(event) {
+    if (!onLabelTextEditStart || editing) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onLabelTextEditStart(node.id);
+  }
+
   return (
     <GuiLabelShell
       node={node}
-      className={labelInspector.className}
+      className={[
+        labelInspector.className,
+        editing ? "is-editing" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
       tabIndex={labelInspector.tabIndex}
       onClick={labelInspector.onClick}
+      onDoubleClick={startTextEdit}
       onFocus={labelInspector.onFocus}
       onMouseEnter={labelInspector.onMouseEnter}
       onMouseMove={labelInspector.onMouseMove}
-    />
+    >
+      {editing ? (
+        <GuiLabelTextEditor
+          node={node}
+          onCancel={onLabelTextEditCancel}
+          onCommit={onLabelTextEditCommit}
+        />
+      ) : null}
+    </GuiLabelShell>
   );
 }
 
@@ -995,7 +1084,11 @@ export function GuiFrame({
   onInspectLock,
   builderDragActive = false,
   builderDropTarget = null,
-  builderDragAtom = null
+  builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
 }) {
   const frameInspector = inspectorProps({
     active: inspectorActive,
@@ -1050,6 +1143,10 @@ export function GuiFrame({
         onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
+        editingLabelId={editingLabelId}
+        onLabelTextEditCancel={onLabelTextEditCancel}
+        onLabelTextEditCommit={onLabelTextEditCommit}
+        onLabelTextEditStart={onLabelTextEditStart}
         parentId={node.id}
         parentPrimitive={node.primitive}
         parentStyleReference={node.styleReference}
@@ -1069,7 +1166,11 @@ export function GuiHorizontalFlow({
   onInspectLock,
   builderDragActive = false,
   builderDropTarget = null,
-  builderDragAtom = null
+  builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart
 }) {
   const flowInspector = inspectorProps({
     active: inspectorActive,
@@ -1124,6 +1225,10 @@ export function GuiHorizontalFlow({
         onBuilderDropTargetOver={onBuilderDropTargetOver}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
+        editingLabelId={editingLabelId}
+        onLabelTextEditCancel={onLabelTextEditCancel}
+        onLabelTextEditCommit={onLabelTextEditCommit}
+        onLabelTextEditStart={onLabelTextEditStart}
         parentId={node.id}
         parentPrimitive={node.primitive}
         parentStyleReference={node.styleReference}
@@ -1155,6 +1260,10 @@ export function GuiWindow({
   builderDragActive = false,
   builderDropTarget = null,
   builderDragAtom = null,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart,
   styleReference = frameStyleReference,
   shadowsVisible = true
 }) {
@@ -1398,6 +1507,10 @@ export function GuiWindow({
           onBuilderDropTargetOver={onBuilderDropTargetOver}
           onInspect={onInspect}
           onInspectLock={onInspectLock}
+          editingLabelId={editingLabelId}
+          onLabelTextEditCancel={onLabelTextEditCancel}
+          onLabelTextEditCommit={onLabelTextEditCommit}
+          onLabelTextEditStart={onLabelTextEditStart}
           parentId={bodyAnchor}
           parentPrimitive="flow"
           parentStyleReference={bodyStyleReference}

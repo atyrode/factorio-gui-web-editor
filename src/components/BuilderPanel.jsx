@@ -67,6 +67,10 @@ function pasteLabel(label) {
   return `Paste copied subtree near ${label}`;
 }
 
+function editLabelTextLabel(node) {
+  return `Edit ${atomLabel(node.atom)} text`;
+}
+
 function collectModelNodes(model) {
   const nodes = new Map();
 
@@ -385,6 +389,7 @@ function BuilderNodeRow({
   onAddAfter,
   onAddChild,
   onCopy,
+  onEditLabelCaption,
   onEditLuaVariableName,
   onPaste,
   onRemove,
@@ -444,6 +449,17 @@ function BuilderNodeRow({
         />
       </div>
       <div className="fx-builder-row__actions" aria-label={`${node.id} actions`}>
+        {onEditLabelCaption ? (
+          <FxActionButton
+            data-anchor={`builder_edit_label_text_${node.id}`}
+            icon="edit-text"
+            label={editLabelTextLabel(node)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEditLabelCaption(node.id);
+            }}
+          />
+        ) : null}
         {onCopy ? (
           <FxActionButton
             data-anchor={`builder_copy_${node.id}`}
@@ -559,6 +575,7 @@ function BuilderHeadlessTree({
   onAddAfter,
   onAddChild,
   onCopy,
+  onEditLabelCaption,
   onEditLuaVariableName,
   onInsertPalette,
   onMoveNode,
@@ -738,6 +755,9 @@ function BuilderHeadlessTree({
                 onAddAfter={draggable ? onAddAfter : null}
                 onAddChild={itemData.canReceiveChildren ? onAddChild : null}
                 onCopy={draggable ? onCopy : null}
+                onEditLabelCaption={
+                  draggable && itemData.atom === LABEL_ATOM_ID ? onEditLabelCaption : null
+                }
                 onEditLuaVariableName={onEditLuaVariableName}
                 onPaste={canPasteHere ? onPaste : null}
                 onRemove={draggable ? onRemove : null}
@@ -794,6 +814,7 @@ export function BuilderTreePanel({
   onAddAfter,
   onAddChild,
   onCopy,
+  onEditLabelCaption,
   onEditLuaVariableName,
   onInsertPalette,
   onMoveNode,
@@ -820,6 +841,7 @@ export function BuilderTreePanel({
           onAddAfter={onAddAfter}
           onAddChild={onAddChild}
           onCopy={onCopy}
+          onEditLabelCaption={onEditLabelCaption}
           onEditLuaVariableName={onEditLuaVariableName}
           onInsertPalette={onInsertPalette}
           onMoveNode={onMoveNode}

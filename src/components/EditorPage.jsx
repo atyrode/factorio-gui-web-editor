@@ -43,6 +43,7 @@ import {
   findLayoutParentChildren,
   HORIZONTAL_FLOW_ATOM_ID,
   insertLayoutNode,
+  LABEL_ATOM_ID,
   LAYOUT_NODE_SIZE_LIMITS,
   moveLayoutNode,
   normalizeLayoutState,
@@ -675,6 +676,10 @@ function EditorCanvas({
   builderDragActive,
   builderDragAtom = null,
   builderDropTarget,
+  editingLabelId = null,
+  onLabelTextEditCancel,
+  onLabelTextEditCommit,
+  onLabelTextEditStart,
   resizeMode = false,
   shadowsVisible = true
 }) {
@@ -853,6 +858,10 @@ function EditorCanvas({
           builderDragActive={builderDragActive}
           builderDragAtom={builderDragAtom}
           builderDropTarget={builderDropTarget}
+          editingLabelId={editingLabelId}
+          onLabelTextEditCancel={onLabelTextEditCancel}
+          onLabelTextEditCommit={onLabelTextEditCommit}
+          onLabelTextEditStart={onLabelTextEditStart}
           shadowsVisible={shadowsVisible}
         />
       ) : (
@@ -1574,6 +1583,7 @@ export function EditorPage() {
   const [builderDrag, setBuilderDrag] = useState(null);
   const [builderDropTarget, setBuilderDropTarget] = useState(null);
   const [resizeDraft, setResizeDraft] = useState(null);
+  const [labelTextEditingId, setLabelTextEditingId] = useState(null);
   const editorStateRef = useRef(editorState);
   const editorHistoryRef = useRef(editorHistory);
   const editSessionSnapshotRef = useRef(null);
@@ -1638,6 +1648,7 @@ export function EditorPage() {
     setResizeDraft(null);
     setBuilderDrag(null);
     setBuilderDropTarget(null);
+    setLabelTextEditingId(null);
   }
 
   function updateEditorState(updater) {
@@ -1853,6 +1864,7 @@ export function EditorPage() {
   function activateCanvasTool(tool) {
     const nextTool = normalizeCanvasTool(tool);
     setResizeDraft(null);
+    setLabelTextEditingId(null);
     if (nextTool !== CANVAS_TOOL_INSPECT) {
       setInspectorPreview(null);
     }
@@ -2029,6 +2041,7 @@ export function EditorPage() {
       return;
     }
 
+    setLabelTextEditingId((editingId) => editingId === nextAnchor ? editingId : null);
     setInspectorPreview(null);
     updateEditorState((state) => ({
       ...state,
@@ -2104,22 +2117,26 @@ export function EditorPage() {
     setInspectorPreview(null);
   }
 
+  function updateLabelCaption(nodeId, value) {
+    applyLayoutUpdate((layoutState) => {
+      const update = updateLayoutNodeCaption(
+        layoutState.layoutChildren,
+        nodeId,
+        value
+      );
+      return {
+        ...update,
+        selectedAnchor: nodeId,
+        nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+      };
+    });
+
+    return { ok: true };
+  }
+
   function updateInspectorEditableValue(editable, value) {
     if (editable?.field === "layoutCaption" && editable.nodeId) {
-      applyLayoutUpdate((layoutState) => {
-        const update = updateLayoutNodeCaption(
-          layoutState.layoutChildren,
-          editable.nodeId,
-          value
-        );
-        return {
-          ...update,
-          selectedAnchor: editable.nodeId,
-          nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
-        };
-      });
-
-      return { ok: true };
+      return updateLabelCaption(editable.nodeId, value);
     }
 
     if (editable?.field !== "title") {
@@ -2176,6 +2193,38 @@ export function EditorPage() {
 
   function selectBuilderNode(nodeId) {
     selectInspectorComponent(nodeId);
+  }
+
+  function startLabelTextEdit(nodeId) {
+    const match = findLayoutNode(currentWindow?.layoutChildren ?? [], nodeId);
+    if (match?.node?.atom !== LABEL_ATOM_ID) {
+      return false;
+    }
+
+    setInspectorPreview(null);
+    setResizeDraft(null);
+    setBuilderDrag(null);
+    setBuilderDropTarget(null);
+    setLabelTextEditingId(nodeId);
+    updateEditorState((state) => ({
+      ...state,
+      activeCanvasTool: CANVAS_TOOL_SELECT,
+      showInspector: false,
+      resizeMode: false,
+      inspectedAnchor: nodeId,
+      inspectorLocked: true,
+      propertiesTab: PROPERTIES_TAB_PROPERTIES
+    }));
+    return true;
+  }
+
+  function commitLabelTextEdit(nodeId, value) {
+    setLabelTextEditingId(null);
+    return updateLabelCaption(nodeId, value);
+  }
+
+  function cancelLabelTextEdit(nodeId) {
+    setLabelTextEditingId((editingId) => editingId === nodeId ? null : editingId);
   }
 
   function copyLayoutSubtree(nodeId = inspectedAnchor) {
@@ -2726,6 +2775,12 @@ export function EditorPage() {
               }
               onBuilderDrop={handleCanvasDrop}
               onBuilderDropTargetOver={handleCanvasDropTargetOver}
+              editingLabelId={labelTextEditingId}
+              onLabelTextEditCancel={cancelLabelTextEdit}
+              onLabelTextEditCommit={commitLabelTextEdit}
+              onLabelTextEditStart={
+                activeTool === CANVAS_TOOL_SELECT ? startLabelTextEdit : undefined
+              }
               onResizeCancel={() => setResizeDraft(null)}
               onResizeCommit={commitResizeDraft}
               onResizeDraft={setResizeDraft}
@@ -2804,6 +2859,7 @@ export function EditorPage() {
             onAddAfter={addLayoutNodeAfter}
             onAddChild={addLayoutNodeChild}
             onCopy={copyLayoutSubtree}
+            onEditLabelCaption={startLabelTextEdit}
             onEditLuaVariableName={updateLuaVariableName}
             onInsertPalette={insertPaletteLayoutNode}
             onMoveNode={moveLayoutNodeFromTree}
