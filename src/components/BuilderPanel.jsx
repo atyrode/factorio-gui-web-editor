@@ -765,10 +765,10 @@ export function BuilderPaletteBar({
     <section
       className="fx-editor-atom-bar"
       data-anchor="builder_panel"
-      aria-label="Builder atoms"
+      aria-label="Builder components"
     >
-      <div className="fx-editor-atom-bar__label">Atoms</div>
-      <div className="fx-builder-palette fx-builder-palette--bar" aria-label="Builder palette">
+      <div className="fx-editor-atom-bar__label">Components</div>
+      <div className="fx-builder-palette fx-builder-palette--bar" aria-label="Builder components">
         {BUILDER_PALETTE_ATOMS.map((atom) => (
           <BuilderPaletteItem
             atom={atom}

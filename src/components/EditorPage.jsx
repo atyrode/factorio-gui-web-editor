@@ -2586,67 +2586,68 @@ export function EditorPage() {
       style={{ "--fx-editor-sidebar-width": `${sidebarWidth}px` }}
     >
       <header className="fx-editor-command-bar" data-anchor="editor_command_bar">
-        <div className="fx-editor-command-bar__window">
-          <label className="fx-editor-command-bar__field fx-editor-command-bar__title">
-            <span>Title</span>
-            <FxTextInput
-              id="window-title"
-              type="text"
-              value={title}
-              autoComplete="off"
-              onBlur={commitAuthoredEditSession}
-              onChange={updateTitle}
-              onFocus={beginAuthoredEditSession}
+        <div className="fx-editor-command-bar__primary">
+          <div className="fx-editor-command-bar__window">
+            <label className="fx-editor-command-bar__field fx-editor-command-bar__title">
+              <span>Title</span>
+              <FxTextInput
+                id="window-title"
+                type="text"
+                value={title}
+                autoComplete="off"
+                onBlur={commitAuthoredEditSession}
+                onChange={updateTitle}
+                onFocus={beginAuthoredEditSession}
+              />
+            </label>
+            <div className="fx-editor-command-bar__field fx-editor-command-bar__body">
+              <span>Body</span>
+              <BodyDirectionToggle
+                selectedDirection={selectedBodyDirection}
+                onChange={updateWindowBodyDirection}
+              />
+            </div>
+          </div>
+          <div className="fx-editor-command-bar__actions" aria-label="Editor commands">
+            <FxActionButton
+              data-anchor="editor_undo"
+              disabled={!canUndo}
+              icon="undo"
+              label="Undo"
+              onClick={undoEditor}
             />
-          </label>
-          <div className="fx-editor-command-bar__field fx-editor-command-bar__body">
-            <span>Body</span>
-            <BodyDirectionToggle
-              selectedDirection={selectedBodyDirection}
-              onChange={updateWindowBodyDirection}
+            <FxActionButton
+              data-anchor="editor_redo"
+              disabled={!canRedo}
+              icon="redo"
+              label="Redo"
+              onClick={redoEditor}
             />
+            <FxButton
+              aria-pressed={exportDrawerOpen}
+              active={exportDrawerOpen}
+              className="fx-editor-command-bar__export"
+              data-anchor="editor_export_toggle"
+              onClick={toggleExportDrawer}
+            >
+              <PanelBottomOpen aria-hidden="true" />
+              Export
+            </FxButton>
+            <FxButton id="create-window" data-anchor="create_window_command" onClick={createWindow}>
+              {currentWindow ? "Recreate window" : "Create window"}
+            </FxButton>
+            <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
+              Reset
+            </FxButton>
           </div>
         </div>
-        <div className="fx-editor-command-bar__actions" aria-label="Editor commands">
-          <FxActionButton
-            data-anchor="editor_undo"
-            disabled={!canUndo}
-            icon="undo"
-            label="Undo"
-            onClick={undoEditor}
-          />
-          <FxActionButton
-            data-anchor="editor_redo"
-            disabled={!canRedo}
-            icon="redo"
-            label="Redo"
-            onClick={redoEditor}
-          />
-          <FxButton
-            aria-pressed={exportDrawerOpen}
-            active={exportDrawerOpen}
-            className="fx-editor-command-bar__export"
-            data-anchor="editor_export_toggle"
-            onClick={toggleExportDrawer}
-          >
-            <PanelBottomOpen aria-hidden="true" />
-            Export
-          </FxButton>
-          <FxButton id="create-window" data-anchor="create_window_command" onClick={createWindow}>
-            {currentWindow ? "Recreate window" : "Create window"}
-          </FxButton>
-          <FxButton id="reset-window" disabled={!currentWindow} onClick={resetWindow}>
-            Reset
-          </FxButton>
-        </div>
+        <BuilderPaletteBar
+          currentWindow={currentWindow}
+          onPaletteDragEnd={clearBuilderDrag}
+          onPaletteDragStart={handlePaletteDragStart}
+          paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
+        />
       </header>
-
-      <BuilderPaletteBar
-        currentWindow={currentWindow}
-        onPaletteDragEnd={clearBuilderDrag}
-        onPaletteDragStart={handlePaletteDragStart}
-        paletteDraggingAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
-      />
 
       <div className="fx-editor-workbench">
         <nav className="fx-editor-tool-strip" aria-label="Canvas tools">

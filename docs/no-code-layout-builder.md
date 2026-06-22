@@ -63,13 +63,11 @@ control rail. Its default desktop structure is:
 [Top command bar]
   editable Window title, body-flow toggle, undo, redo, export drawer toggle,
   create/recreate Window, reset
+  [Components: drag/drop Frame, Horizontal Flow, Filler]
 
 [Tool strip]
   [Tools: Select, Inspect, Resize]
   [View toggles: GUI shadows]
-
-[Atom bar]
-  [Palette: drag/drop Frame, Horizontal Flow, Filler]
 
 [Right rail]
   [Properties panel]
@@ -103,9 +101,9 @@ starts at the locked `gui_window_body` flow by default, followed by editable
 authored layout specs under the body flow. A Settings toggle can expose the full
 generated shell, including locked nodes such as `gui_window`,
 `gui_window_titlebar`, `gui_window_title`, and `gui_window_drag_handle`. It has
-a bounded height under the right-side Properties panel and scrolls when nested layout would
-otherwise crowd the canvas. The scroll area reserves a right-side gutter so the
-vertical scrollbar does not cover row labels or actions.
+a bounded height under the right-side Properties panel and scrolls when nested
+layout would otherwise crowd the canvas. The scroll area reserves a right-side
+gutter so the vertical scrollbar does not cover row labels or actions.
 
 Tree row rendering remains Factorio-styled local UI, but tree interaction logic
 is not custom. Headless Tree supplies flat visible items, ARIA tree props,
@@ -113,13 +111,12 @@ separate drag-handle props, drag targets, and drag-line positioning. The
 rendered rows reuse the editor's dark panel/menu vocabulary, compact action
 buttons, orange active affordances, and blue structural guide color.
 
-The top command bar owns high-frequency Window commands: title, body-flow
-direction, creation/recreation, reset, undo/redo, and export drawer visibility.
-The atom bar owns creation from the builder palette. The left tool strip keeps
-exclusive canvas tools at the top and view toggles, including GUI shadows, at
-the bottom. The Properties panel owns lower-frequency root/global settings. The
-Layout Settings section is collapsed by default and owns exact Window
-width/height plus authored Horizontal Flow
+The command bar owns high-frequency Window commands and component creation from
+the builder palette, with a separated Components row below the Window controls.
+The left tool strip keeps exclusive canvas tools at the top and view toggles,
+including GUI shadows, at the bottom. The Properties panel owns lower-frequency
+root/global settings. The Layout Settings section is collapsed by default and
+owns exact Window width/height plus authored Horizontal Flow
 assumptions until Factorio defaults are proven: generic flow spacing, top-level
 minimum width, nested minimum width, minimum height, and padding. It also owns
 the presentation toggle for showing or hiding generated Window shell rows in the

@@ -765,11 +765,11 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="editor_export_drawer"]')).toHaveCount(0);
     const geometry = await page.evaluate(() => {
       const canvas = document.querySelector('[data-anchor="editor_canvas"]');
-      const atomBar = document.querySelector('[data-anchor="builder_panel"]');
+      const componentsRow = document.querySelector('[data-anchor="builder_panel"]');
       const properties = document.querySelector('[data-anchor="properties_panel"]');
       const tree = document.querySelector('[data-anchor="component_tree_panel"]');
       const canvasRect = canvas.getBoundingClientRect();
-      const atomBarRect = atomBar.getBoundingClientRect();
+      const componentsRowRect = componentsRow.getBoundingClientRect();
       const propertiesRect = properties.getBoundingClientRect();
       const treeRect = tree.getBoundingClientRect();
       return {
@@ -779,8 +779,8 @@ test.describe("Layout builder canvas preview", () => {
           right: canvasRect.right,
           width: canvasRect.width
         },
-        atomBar: {
-          bottom: atomBarRect.bottom
+        componentsRow: {
+          bottom: componentsRowRect.bottom
         },
         properties: {
           left: propertiesRect.left,
@@ -796,7 +796,7 @@ test.describe("Layout builder canvas preview", () => {
 
     expect(geometry.canvas.width).toBeGreaterThan(geometry.properties.width);
     expect(geometry.canvas.width).toBeGreaterThan(geometry.tree.width);
-    expect(geometry.atomBar.bottom).toBeLessThanOrEqual(geometry.canvas.top);
+    expect(geometry.componentsRow.bottom).toBeLessThanOrEqual(geometry.canvas.top);
     expect(geometry.canvas.right).toBeLessThanOrEqual(geometry.properties.left);
     expect(geometry.properties.left).toBe(geometry.tree.left);
   });
