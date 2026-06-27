@@ -1,106 +1,150 @@
-# Agent Instructions
+# Repository Instructions
 
-These instructions apply to the whole repository.
+These instructions apply to the Factorio GUI Web Editor repository. Global
+agent behavior, source-control safety, generic secret handling, and baseline
+validation discipline come from the global Codex AGENTS file.
 
-## Branch And Git Policy
+## Project Context
 
-- Fetch remote state before committing, branching, merging, or pushing when it
-  is relevant to the task.
-- Keep `main` stable and reserved for reviewed, working changes.
-- Use short-lived feature branches for substantial work.
-- Open pull requests early for visible feature work.
-- Commit meaningful steps as work progresses instead of leaving completed work
-  only in the working tree.
-- Do not force-push shared branches, delete remote refs, or rewrite shared
-  history unless the operator explicitly authorizes that exact action.
-- Never revert user changes unless explicitly requested.
-- Run GitHub CLI (`gh`) commands outside the sandbox with escalation; local
-  `gh` auth and network operations are expected to fail inside the sandbox.
+- This project builds a browser tool for designing Factorio-style GUI layouts
+  before writing Lua.
+- The current app is a React/Vite static browser app with a constrained editor,
+  style atlas, Markdown-backed docs pages, Lua output, and local Factorio
+  preview mod export.
+- Use Node.js 24.x. CI uses Node 24, and the public dev container uses
+  `node:24-trixie-slim`.
+- The source of truth is the structured Factorio GUI layout model, not browser
+  CSS, arbitrary pixel dragging, or inspector text.
+- The editor core should stay free of bundled domain examples. Future examples
+  belong outside the core model and renderer.
 
-## Product Direction
+## Repository Layout
 
-- This project builds a browser tool for designing Factorio-style GUI layouts.
-- Keep the tool constrained by Factorio GUI primitives and style behavior.
-- Prefer a model that can later render to browser DOM and Factorio Lua
+- `README.md`: project overview, local dev commands, app shape, design
+  direction, source references, validation, preview mod export, and hosting.
+- `src/App.jsx`: route orchestration.
+- `src/components/`: scoped React components for editor, docs, atlas, and site
+  chrome.
+- `src/factorioModel.js`: structured seed GUI model and inspector projection.
+- `src/factorioExport.js`: Lua export projection from the GUI model.
+- `src/factorioModExport.js`: local Factorio preview mod zip export.
+- `src/factorioAtomModel.js` and `src/factorioAtomRegistry.js`: atom model and
+  implementation-tracker source.
+- `src/styles/`: split local style layers for base, layout, atoms, editor,
+  docs, and atlas surfaces.
+- `docs/`: spec factory, model schema, roadmap, atom specs, style-source notes,
+  no-code builder spec, Factorio mod export notes, and hosting docs.
+- `scripts/check.sh`: local validation entrypoint.
+- `tests/browser/`: Playwright geometry and layout regression tests.
+- `.github/workflows/ci.yml`: pull request and `main` CI.
+
+## Local Rules
+
+- Preserve Factorio GUI constraints. Do not turn the editor into a freeform
+  pixel/CSS layout builder.
+- Prefer model changes that can later project to browser DOM and Factorio Lua
   structure from the same source.
-- Do not let arbitrary CSS or freeform pixel dragging become the source of truth
-  for Factorio GUI layout.
-- Do not vendor Wube CSS, minified page styles, Factorio images, or other
-  copyrighted assets.
-- Keep the editor core free of bundled domain examples. Future examples should
-  live outside the core model and renderer.
-
-## Documentation Rule
-
-- Update docs when changing architecture, workflows, validation, assumptions,
-  model schemas, exported formats, or user-visible behavior.
-- Keep GUI process guidance in `docs/spec-factory.md`.
-- Keep roadmap and spike sequencing in `docs/roadmap.md`.
-- Keep Factorio styling/source notes in `docs/factorio-style-sources.md`.
-- Keep future example-specific specs under `docs/examples/` only after an
-  example is intentionally introduced.
-- Do not duplicate the same guidance across many files; update the owning doc
-  and add short cross-references only when useful.
-
-## Engineering Style
-
-- Prefer small, explicit modules over broad abstractions.
-- Keep edits scoped to the requested change.
-- Use existing project patterns before inventing new ones.
-- Use structured data/models where practical instead of parsing UI text.
+- Do not vendor Wube CSS, minified page styles, Factorio image assets, sprite
+  sheets, or other copyrighted assets.
+- Public references may guide architecture and styling, but turn observations
+  into local tokens, constraints, and cited notes rather than copied assets.
+- Keep stable anchors and IDs for elements that specs, structural checks,
+  browser tests, Lua export, or future Factorio comparisons need to inspect.
 - Keep browser code dependency-light until a dependency clearly earns its cost.
-- Use stable anchors/IDs for elements that specs, checks, or future exports need
-  to reference.
-- Add comments only where they clarify non-obvious behavior or constraints.
+- Structural checks do not replace visual review for nuanced GUI work.
 
 ## Factorio GUI Research
 
 - Official Factorio API docs are authoritative for runtime behavior.
-- Raiguard's Factorio GUI style guide is a high-value style reference.
-- Public mod/source references may guide architecture, but cite exact inspected
-  pages or files before turning observations into rules.
-- Graphical Factorio style tools are important:
+- Public `wube/factorio-data` style definitions are the preferred public source
+  for base GUI style names, inheritance, and declarative prototype fields.
+- Raiguard's Factorio GUI style guide is a high-value community style reference
+  for Factorio-like composition and inspection workflow.
+- Cite exact inspected pages, repositories, files, captures, or docs before
+  turning observations into durable project rules.
+- Use graphical Factorio for visual inspection:
   - `Ctrl+F6`: GUI style inspector;
   - `Ctrl+F5`: bounding boxes;
-  - `Ctrl+F7`: shadows.
-- Factorio headless cannot provide the graphical style-inspector overlay.
-  Script-visible GUI/style fields can be dumped by a graphical companion mod,
-  but renderer-computed overlay fields still need graphical inspection.
+  - `Ctrl+F7`: shadow toggle.
+- Factorio headless cannot provide graphical style-inspector overlays. A
+  graphical companion mod may dump script-visible GUI/style fields, but
+  renderer-computed overlay fields still need graphical inspection.
 
-## Visual Work Tracking
+## Visual Work
 
 - For nuanced visual work with overlapping model, styling, shadow, or layout
-  concerns, create or update a tracked issue or owning doc section with explicit
-  acceptance criteria before implementation.
-- Keep acceptance criteria tied to the user's visual language and reference
-  crops, not only to inferred technical abstractions.
-- Treat inspection toggles and structural checks as aids, not completion, unless
-  the tracked criteria explicitly define them as the deliverable.
+  concerns, create or update an owning issue or doc section with acceptance
+  criteria before implementation.
+- Keep acceptance criteria tied to user-visible language, reference crops,
+  named anchors, and measurable geometry rather than inferred abstractions only.
 - Do not mark visual work complete without fresh screenshot evidence for the
   requested states, including shadow-disabled captures when Factorio `Ctrl+F7`
   behavior is part of the request.
+- Inspection toggles and structural checks are aids; they are not completion
+  unless the tracked criteria explicitly define them as the deliverable.
 
-## Validation
+## Documentation
 
-- Run the narrowest meaningful checks before committing.
-- For current static app changes, run `scripts/check.sh`.
-- If checks cannot be run, state why and describe the remaining risk.
-- Structural checks do not replace visual review.
+- `docs/spec-factory.md` owns the workflow for writing implementation-ready GUI
+  specs before changing renderer, editor, or Lua-export code.
+- `docs/model-schema.md` owns the shared GUI model and inspector projection
+  rules.
+- `docs/atom-specs.md` owns the evidence-to-model-to-renderer-to-Lua-export
+  completion contract for each atom.
+- `docs/roadmap.md` owns constrained builder, shared-renderer, export, and
+  style-dump roadmap sequencing.
+- `docs/factorio-style-sources.md` owns style/source research notes and
+  inspection workflow.
+- `docs/factorio-mod-export.md` owns the local Factorio preview mod export
+  workflow.
+- `docs/hosting.md` owns Docker/Caddy deployment boundaries for the static app
+  behind a shared edge proxy.
+- Update docs when changing architecture, workflows, validation, assumptions,
+  model schemas, exported formats, hosting, or user-visible behavior.
 
-## Secret Handling
+## Verification
 
-- Never write, paste, print, commit, or ask for plaintext passwords, API tokens,
-  private keys, credentials, generated secrets, or secret-bearing URLs.
-- Use ignored local env files, GitHub Secrets/Variables, password managers, or
-  equivalent secret stores for sensitive values.
-- Documentation may name variables but must use placeholders such as
-  `<example-token>`.
-- If secret material is printed, committed, or pushed, treat it as compromised
-  and discuss rotation/remediation before continuing.
+For current static app changes, run:
 
-## Working Style
+```sh
+scripts/check.sh
+```
 
-- Prefer `rg`/`rg --files` for searches.
-- Use explicit file paths when staging in mixed worktrees.
-- Keep final handoffs concrete: branch, commit, validation, remote URL, and
-  remaining review risk.
+That delegates to `npm run check`, which builds the app, runs layout-tree and
+hover/drop geometry checks, runs `scripts/check-app.py`, and runs Playwright
+browser tests.
+
+Individual commands are:
+
+```sh
+npm run build
+node scripts/check-layout-tree.mjs
+node scripts/check-hover-drop-geometry.mjs
+python3 scripts/check-app.py
+npm run test:browser
+```
+
+CI installs npm dependencies, installs Chromium with Playwright dependencies,
+and runs `scripts/check.sh`.
+
+## Hosting
+
+- The app is intended to be publicly reachable as a static app, without an
+  application login, analytics, or telemetry layer.
+- The app container serves the built React bundle on Docker-only port `8080`.
+- Keep public host ports `80` and `443` owned by one neutral edge proxy, not by
+  this app repository.
+- Public deployment routes `labtorio.tyrode.dev` through the shared edge proxy
+  to the internal app service.
+- For visible styling work, the Vite dev override can serve HMR through the
+  public HTTPS route; rebuild the static container before treating it as
+  production again.
+
+## Known Caveats
+
+- Browser geometry tests protect objective layout contracts, but human visual
+  review still owns Factorio-style parity.
+- Vanilla GUI captures are internal reconstruction evidence, not user-facing
+  presets for the current build-from-scratch editor direction.
+- The repository has no selected license yet; treat it as source-available
+  until a license is explicitly added.
