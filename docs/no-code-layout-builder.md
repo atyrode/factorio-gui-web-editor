@@ -193,6 +193,9 @@ The design-file schema is separate from local-storage state. A
 metadata, then re-enters the editor through the same normalization rules used
 for cached state. It does not persist selected Inspector rows, drawer
 visibility, hover/drag state, undo history, or other browser workbench chrome.
+The same import control also accepts a compatible zip package when it contains
+exactly one `design.labtorio-gui.json` entry; generated `gui.lua` is ignored for
+import.
 
 The model hydrates these specs into Factorio nodes only when rendering,
 inspecting, or exporting. `bodyDirection` selects the generated

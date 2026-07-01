@@ -1,3 +1,4 @@
+import { strFromU8, unzipSync } from "fflate";
 import {
   DEFAULT_WINDOW_SIZE,
   FACTORIO_GUI_MODEL_SCHEMA,
@@ -18,6 +19,7 @@ export const FACTORIO_DESIGN_FILE_SUPPORTED_SCHEMAS = Object.freeze([
   FACTORIO_DESIGN_FILE_CURRENT_SCHEMA
 ]);
 export const FACTORIO_DESIGN_FILE_EXTENSION = ".labtorio-gui.json";
+export const FACTORIO_DESIGN_FILE_PACKAGE_ENTRY = "design.labtorio-gui.json";
 export const FACTORIO_DESIGN_FILE_SOURCE = Object.freeze({
   app: "factorio-gui-web-editor",
   modelSchema: FACTORIO_GUI_MODEL_SCHEMA
@@ -158,4 +160,48 @@ export function parseFactorioDesignFileText(text) {
   }
 
   return migrateFactorioDesignFile(parsed).design;
+}
+
+function normalizeZipBytes(bytes) {
+  if (bytes instanceof Uint8Array) {
+    return bytes;
+  }
+
+  if (bytes instanceof ArrayBuffer) {
+    return new Uint8Array(bytes);
+  }
+
+  if (ArrayBuffer.isView(bytes)) {
+    return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  }
+
+  throw new Error("The selected zip could not be read.");
+}
+
+function designEntryNames(entries) {
+  return Object.keys(entries).filter(
+    (entryName) =>
+      entryName === FACTORIO_DESIGN_FILE_PACKAGE_ENTRY ||
+      entryName.endsWith(`/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`)
+  );
+}
+
+export function parseFactorioDesignFilePackage(bytes) {
+  let entries;
+  try {
+    entries = unzipSync(normalizeZipBytes(bytes));
+  } catch {
+    throw new Error("The selected zip could not be read.");
+  }
+
+  const entryNames = designEntryNames(entries);
+  if (entryNames.length === 0) {
+    throw new Error(`The selected zip does not contain ${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}.`);
+  }
+
+  if (entryNames.length > 1) {
+    throw new Error(`The selected zip contains multiple ${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY} files.`);
+  }
+
+  return parseFactorioDesignFileText(strFromU8(entries[entryNames[0]]));
 }
