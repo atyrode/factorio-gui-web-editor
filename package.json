@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "vite build && node scripts/copy-static-docs.mjs",
-    "check": "npm run build && node scripts/check-layout-tree.mjs && node scripts/check-hover-drop-geometry.mjs && python3 scripts/check-app.py && npm run test:browser",
+    "catalog:generate": "node scripts/generate-factorio-style-catalog.mjs",
+    "check": "npm run build && node scripts/check-layout-tree.mjs && node scripts/check-hover-drop-geometry.mjs && node scripts/check-style-catalog.mjs && python3 scripts/check-app.py && npm run test:browser",
     "dev": "vite --host 127.0.0.1",
     "preview": "vite preview --host 127.0.0.1",
     "test:browser": "playwright test"

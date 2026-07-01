@@ -97,6 +97,11 @@ mod can write targeted tables with `helpers.write_file` and
 `helpers.table_to_json`, including `data.raw["gui-style"]` during prototype
 loading, but such dumps are scratch evidence rather than repo assets.
 
+Issue #40 owns the first generated style-catalog spike. That spike uses local
+headless Factorio `--dump-data` output as the primary machine input when the
+binary is available, keeps raw dumps under `.cache/factorio-style-catalog/`,
+and commits only a filtered structural catalog for model validation.
+
 For the Label atom specifically, official runtime docs identify `label` as a
 GUI element for text and expose label-compatible `LuaStyle` fields including
 font, font color, disabled/hover/clicked font colors, padding, margins,

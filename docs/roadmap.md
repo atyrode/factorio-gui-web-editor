@@ -222,6 +222,8 @@ visual expansion. Manual registry entries are still useful, but they should be
 checked against generated source data instead of becoming the only record of
 Factorio style facts.
 
+Issue #40 tracks the first spike for this catalog pipeline.
+
 Target source order:
 
 1. Official prototype schema: `https://lua-api.factorio.com/latest/prototype-api.json`.
