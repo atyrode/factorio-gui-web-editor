@@ -7,7 +7,6 @@ playwright-report/
 test-results/
 .env
 .env.*
-!.env.example
 *.log
 __pycache__/
 .pytest_cache/

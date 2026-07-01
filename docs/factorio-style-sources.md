@@ -10,7 +10,16 @@ renderer and future Factorio exports:
 - <https://lua-api.factorio.com/latest/classes/LuaGuiElement.html>
 - <https://lua-api.factorio.com/latest/classes/LuaStyle.html>
 - <https://lua-api.factorio.com/latest/concepts/GuiElementType.html>
+- <https://lua-api.factorio.com/latest/prototypes/GuiStyle.html>
+- <https://lua-api.factorio.com/latest/auxiliary/prototype-tree.html>
+- <https://lua-api.factorio.com/latest/auxiliary/json-docs-prototype.html>
+- <https://lua-api.factorio.com/latest/prototype-api.json>
+- <https://lua-api.factorio.com/latest/types/StyleSpecification.html>
+- <https://lua-api.factorio.com/latest/classes/LuaPrototypes.html>
+- <https://lua-api.factorio.com/latest/classes/LuaHelpers.html>
 - <https://github.com/wube/factorio-data/blob/master/core/prototypes/style.lua>
+- <https://wiki.factorio.com/Data.raw>
+- <https://wiki.factorio.com/Command_line_parameters>
 - <https://man.sr.ht/~raiguard/factorio-gui-style-guide/>
 - <https://mods.factorio.com/user/raiguard>
 - <https://mods.factorio.com/mod/flib>
@@ -52,13 +61,41 @@ workflow research because its Mod Portal page describes a separate editor lab
 used to design and test away from the main factory.
 
 The public `wube/factorio-data` repository is tracked as the most useful source
-for base game GUI style definitions. Its `core/prototypes/style.lua` file
-defines the default `gui-style` table and source-backed label variants such as
-`label`, `frame_title`, `caption_label`, `heading_2_label`,
-`subheader_caption_label`, and `clickable_label`. Treat that file as
-authoritative for style names, inheritance, and declarative style fields. Do
-not vendor Wube image assets or graphical sets from it; re-express only the
-defensible structural facts and local browser approximations.
+for base game GUI style definitions. Its README says the repository was made
+publicly available to help mod authors and to let the public track Factorio Lua
+prototype definition changes. Its `core/prototypes/style.lua` file defines the
+default `gui-style` table and source-backed label variants such as `label`,
+`frame_title`, `caption_label`, `heading_2_label`, `subheader_caption_label`,
+and `clickable_label`. Treat that file as authoritative for public style names,
+inheritance, and declarative prototype fields. Do not vendor Wube image assets
+or graphical sets from it; re-express only the defensible structural facts and
+local browser approximations.
+
+The official `GuiStyle` prototype docs describe `gui-style` as "The available
+GUI styles" and state that styles are uniquely named `StyleSpecification`
+properties. The prototype API docs also publish a machine-readable
+`prototype-api.json`; use that schema to distinguish base style fields from
+specific style variants such as `label_style`, `frame_style`,
+`horizontal_flow_style`, `vertical_flow_style`, `empty_widget_style`, and
+`button_style`.
+
+The phrase "data.raw prototype viewer" should not be treated as one single
+tool. The official wiki `Data.raw` page says it is a complete listing of
+vanilla prototype internal names and links a full serialization of `data.raw`
+with Space Age active. The command-line `--dump-data` option is the cleaner
+machine path because it dumps `data.raw` as JSON to Factorio's script-output
+folder and exits. Both paths can expose `data.raw["gui-style"]["default"]`, the
+post-load table that contains the available GUI styles. For human audit and
+source locations, prefer `factorio-data/core/prototypes/style.lua` because it
+preserves authored helper names and parent/style declarations. For generated
+catalog input, prefer a pinned `--dump-data` JSON export when available, then
+cross-check against the public source file and the wiki serialization.
+
+Runtime `LuaPrototypes.style` is useful but narrower: it maps style names to
+style types and does not expose full `StyleSpecification` values. A local helper
+mod can write targeted tables with `helpers.write_file` and
+`helpers.table_to_json`, including `data.raw["gui-style"]` during prototype
+loading, but such dumps are scratch evidence rather than repo assets.
 
 For the Label atom specifically, official runtime docs identify `label` as a
 GUI element for text and expose label-compatible `LuaStyle` fields including
@@ -119,6 +156,14 @@ is an in-game Factorio GUI editor prototype with unreleased dependencies, not a
 browser renderer. Its useful lesson is constraint awareness: Factorio GUI
 stretch/fixed-size combinations, scroll panes, and click-event surfaces can
 behave differently from browser layout.
+
+`Osmo/gui-editor` (<https://codeberg.org/Osmo/gui-editor>) is tracked as an
+uninspected future source lead for a possible in-game GUI editor/mod with
+overlapping product goals. Only repository metadata has been verified so far:
+default branch `master`, `HEAD` at
+`b374836ae77b4be2b963e6f005d98cccbd28db09` on 2026-06-25. Inspect specific
+files before using it as evidence for model, renderer, interaction, or export
+rules.
 
 `ClaudeMetz/UntitledGuiGuide` was added as a legacy reference with caution. It
 is an older custom Factorio GUI tutorial and explicitly says it is not a style

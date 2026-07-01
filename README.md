@@ -72,9 +72,8 @@ proxy, but serves Vite with HMR configured for
 `wss://labtorio.tyrode.dev/@vite-hmr`.
 It stores container `node_modules` and Vite cache data in Docker named volumes
 so hot reload does not leave host checkout files owned by the container user.
-Public deployments require Basic Auth credentials in a local `.env`; see
-[docs/hosting.md](docs/hosting.md) for the `.env` shape and edge proxy
-boundary.
+Public deployments are plain static-app deployments behind the shared edge
+proxy; see [docs/hosting.md](docs/hosting.md) for the network boundary.
 
 ## Design Direction
 
@@ -116,9 +115,15 @@ Authoritative behavior should come from official Factorio documentation:
 - <https://lua-api.factorio.com/latest/classes/LuaGuiElement.html>
 - <https://lua-api.factorio.com/latest/classes/LuaStyle.html>
 - <https://lua-api.factorio.com/latest/concepts/GuiElementType.html>
+- <https://lua-api.factorio.com/latest/prototypes/GuiStyle.html>
+- <https://lua-api.factorio.com/latest/types/StyleSpecification.html>
 
 High-value style and architecture references:
 
+- <https://github.com/wube/factorio-data>
+- <https://github.com/wube/factorio-data/blob/master/core/prototypes/style.lua>
+- <https://wiki.factorio.com/Data.raw>
+- <https://wiki.factorio.com/Command_line_parameters>
 - <https://man.sr.ht/~raiguard/factorio-gui-style-guide/>
 - <https://mods.factorio.com/mod/flib>
 - <https://mods.factorio.com/mod/EditorExtensions>
@@ -127,8 +132,8 @@ High-value style and architecture references:
 - <https://github.com/ClaudeMetz/UntitledGuiGuide/wiki>
 - <https://github.com/JanSharp/FactorioGUIEditor>
 
-Use public references to derive local tokens and constraints. Do not copy
-copyrighted Wube assets into this repository.
+Use public references to derive local tokens and constraints. Do not vendor Wube
+image assets or graphical sets into this repository.
 
 ## Validation
 

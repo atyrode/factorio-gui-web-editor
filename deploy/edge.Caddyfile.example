@@ -1,11 +1,3 @@
 labtorio.tyrode.dev {
-	@protected {
-		not path /@vite-hmr
-	}
-
-	basicauth @protected {
-		{$LABTORIO_BASIC_AUTH_USER} {$LABTORIO_BASIC_AUTH_GENERATED_HASH}
-	}
-
 	reverse_proxy labtorio:8080
 }

@@ -2,18 +2,12 @@ services:
   caddy:
     image: caddy:2.9-alpine
     restart: unless-stopped
-    env_file:
-      - /home/alex/factorio-gui-web-editor/.env
-    entrypoint:
-      - /bin/sh
-      - /usr/local/bin/edge-basic-auth-entrypoint
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./edge-basic-auth-entrypoint.sh:/usr/local/bin/edge-basic-auth-entrypoint:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
