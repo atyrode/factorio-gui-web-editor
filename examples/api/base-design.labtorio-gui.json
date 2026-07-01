@@ -1,0 +1,68 @@
+{
+  "schema": "labtorio-gui-design.v0",
+  "exportedAt": "2026-07-01T00:00:00.000Z",
+  "source": {
+    "app": "factorio-gui-web-editor",
+    "modelSchema": "factorio-gui-layout.v0"
+  },
+  "design": {
+    "title": "Scriptable Base",
+    "windowSize": {
+      "width": 720,
+      "height": 460
+    },
+    "windowBodyDirection": "horizontal",
+    "currentWindow": {
+      "title": "Scriptable Base",
+      "location": null,
+      "size": {
+        "width": 720,
+        "height": 460
+      },
+      "bodyDirection": "horizontal",
+      "layoutChildren": [
+        {
+          "id": "gui_frame_1",
+          "atom": "frame",
+          "styleVariant": "inside-deep-frame",
+          "size": {
+            "minimalWidth": 220,
+            "minimalHeight": 120
+          },
+          "children": [
+            {
+              "id": "gui_horizontal_flow_2",
+              "atom": "horizontal-flow",
+              "styleVariant": "generic-horizontal-flow",
+              "children": [
+                {
+                  "id": "gui_label_3",
+                  "atom": "label",
+                  "styleVariant": "label",
+                  "caption": "Base label",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "nextLayoutNodeNumber": 4,
+      "luaVariableNames": {
+        "gui_label_3": "base_label"
+      }
+    },
+    "layoutSettings": {
+      "horizontalFlowSpacing": 6,
+      "horizontalFlowMinimumWidth": 168,
+      "nestedHorizontalFlowMinimumWidth": 144,
+      "horizontalFlowMinimumHeight": 72,
+      "horizontalFlowPadding": 8
+    },
+    "hooks": {
+      "schema": "labtorio-gui-hooks.v0",
+      "actions": [],
+      "events": []
+    }
+  }
+}

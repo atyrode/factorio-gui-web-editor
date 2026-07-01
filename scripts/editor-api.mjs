@@ -16,20 +16,24 @@ import {
   createFactorioModZipData
 } from "../src/factorioModExport.js";
 import {
+  FACTORIO_EDITOR_API_RUNNER_SCHEMA,
+  describeFactorioEditorApi
+} from "../src/factorioEditorApiDescription.js";
+import {
   FACTORIO_EDITOR_API_SCHEMA,
   createFactorioEditorApiState,
   runFactorioEditorCommands
 } from "../src/factorioEditorApi.js";
 import { summarizeFactorioEditorApiState } from "../src/factorioEditorApiSummary.js";
 
-const RUNNER_SCHEMA = "labtorio-editor-api-runner.v0";
-
 function usage() {
   return `Usage:
+  npm run api:run -- --describe
   npm run api:run -- --commands commands.json [options]
   node scripts/editor-api.mjs --commands - --out-design layout.labtorio-gui.json
 
 Options:
+  --describe                Print API description JSON without command input.
   --commands <path|->       JSON array, or object with a "commands" array.
   --input-design <path>     Optional *.labtorio-gui.json starting state.
   --out-design <path>       Write final design JSON.
@@ -78,6 +82,9 @@ function parseArgs(argv) {
         break;
       case "--pretty":
         options.pretty = true;
+        break;
+      case "--describe":
+        options.describe = true;
         break;
       case "--help":
       case "-h":
@@ -237,7 +244,7 @@ async function buildRunnerResult(options) {
   }
 
   return {
-    schema: RUNNER_SCHEMA,
+    schema: FACTORIO_EDITOR_API_RUNNER_SCHEMA,
     apiSchema: FACTORIO_EDITOR_API_SCHEMA,
     ok,
     mutated: apiResult.mutated,
@@ -261,6 +268,14 @@ async function main() {
       process.stdout.write(`${usage()}\n`);
       return 0;
     }
+    if (options.describe) {
+      const content = serializeJson(describeFactorioEditorApi(), options.pretty);
+      if (options.resultPath) {
+        await writeOutputFile(options.resultPath, content);
+      }
+      process.stdout.write(content);
+      return 0;
+    }
     if (!options.commandsPath) {
       throw new Error("Missing required --commands input.");
     }
@@ -275,7 +290,7 @@ async function main() {
     runnerResult = await buildRunnerResult(options);
   } catch (error) {
     runnerResult = {
-      schema: RUNNER_SCHEMA,
+      schema: FACTORIO_EDITOR_API_RUNNER_SCHEMA,
       apiSchema: FACTORIO_EDITOR_API_SCHEMA,
       ok: false,
       mutated: false,

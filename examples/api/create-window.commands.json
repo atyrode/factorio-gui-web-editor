@@ -1,0 +1,52 @@
+{
+  "commands": [
+    {
+      "type": "createWindow",
+      "title": "Scriptable API Example",
+      "size": {
+        "width": 760,
+        "height": 500
+      },
+      "bodyDirection": "horizontal"
+    },
+    {
+      "type": "insertAtom",
+      "atom": "frame",
+      "parentId": "gui_window_body"
+    },
+    {
+      "type": "insertAtom",
+      "atom": "horizontal-flow",
+      "parentId": "gui_frame_1"
+    },
+    {
+      "type": "insertAtom",
+      "atom": "label",
+      "parentId": "gui_horizontal_flow_2"
+    },
+    {
+      "type": "editCaption",
+      "nodeId": "gui_label_3",
+      "caption": "Dispatch"
+    },
+    {
+      "type": "setLuaVariableName",
+      "nodeId": "gui_label_3",
+      "name": "dispatch_label"
+    },
+    {
+      "type": "insertAtom",
+      "atom": "filler",
+      "parentId": "gui_horizontal_flow_2"
+    },
+    {
+      "type": "resizeNode",
+      "nodeId": "gui_frame_1",
+      "minimalWidth": 240,
+      "minimalHeight": 140
+    },
+    {
+      "type": "exportLua"
+    }
+  ]
+}

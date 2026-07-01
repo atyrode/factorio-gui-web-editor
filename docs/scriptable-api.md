@@ -21,8 +21,8 @@ window.labtorioEditorApi
 Code that already runs in the page can use it, such as Playwright or a browser
 console script. The facade delegates to `src/factorioEditorApi.js`, which can
 also be imported directly by tests and by `scripts/editor-api.mjs`. Both the
-browser facade and the Node runner expose the same flat summary shape for
-machine-readable inspection.
+browser facade and the Node runner expose the same API description and flat
+summary shapes for machine-readable inspection.
 
 The API must keep using existing model operations and builder constraints. It
 must not introduce arbitrary CSS layout, freeform pixel placement, unsupported
@@ -64,6 +64,33 @@ Failures do not throw for ordinary validation problems. They return
 
 Command batches are atomic from the browser facade's point of view. A failed
 batch returns diagnostics and does not update the live editor state.
+
+## Description
+
+Use the description endpoint before writing commands when a script needs to
+discover the supported surface:
+
+```sh
+npm run api:run -- --describe --pretty
+```
+
+In the browser, the same shape is available as:
+
+```js
+window.labtorioEditorApi.describe()
+```
+
+The description schema is `labtorio-editor-api-description.v0`. It includes:
+
+- command names, accepted fields, read-only versus mutating classification, and
+  command outputs;
+- known atoms, default style variants, id prefixes, resize/caption support, and
+  parent/child rules derived from the builder atom metadata;
+- body root id, Window and layout-node size limits, and supported body
+  directions;
+- runner options and output flags for design JSON, Lua, mod zip, and result
+  JSON files;
+- result envelope keys for single commands, command batches, and runner output.
 
 ## Commands
 
@@ -113,9 +140,39 @@ flat `summary.nodes` list so tooling can inspect ids, parents, order, captions,
 sizes, style variants, and Lua variable aliases without needing visual
 recognition.
 
+## Examples
+
+Create a Window with a Frame, Horizontal Flow, Label, and Filler:
+
+```sh
+npm run api:run -- \
+  --commands examples/api/create-window.commands.json \
+  --out-design /tmp/labtorio-created.labtorio-gui.json \
+  --out-lua /tmp/labtorio-created.lua \
+  --pretty
+```
+
+Revise an existing design file through commands:
+
+```sh
+npm run api:run -- \
+  --input-design examples/api/base-design.labtorio-gui.json \
+  --commands examples/api/revise-existing.commands.json \
+  --out-design /tmp/labtorio-revised.labtorio-gui.json \
+  --out-lua /tmp/labtorio-revised.lua \
+  --pretty
+```
+
+The generated design JSON can be imported through the normal editor export
+drawer. The generated Lua can be inspected in a mod project, but the editable
+source of truth remains the design JSON.
+
 ## Browser Example
 
 ```js
+const description = window.labtorioEditorApi.describe();
+console.table(description.layout.atoms);
+
 const result = window.labtorioEditorApi.runAll([
   { type: "createWindow", title: "Scripted draft", size: { width: 760, height: 500 } },
   { type: "insertAtom", atom: "frame", parentId: "gui_window_body" },

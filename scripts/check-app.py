@@ -31,6 +31,7 @@ REQUIRED_FILES = [
     "src/factorioDesignFile.js",
     "src/factorioEditorSettings.js",
     "src/factorioEditorApi.js",
+    "src/factorioEditorApiDescription.js",
     "src/factorioEditorApiSummary.js",
     "src/factorioLayoutTree.js",
     "src/factorioModExport.js",
@@ -49,6 +50,7 @@ REQUIRED_FILES = [
     "scripts/check-hover-drop-geometry.mjs",
     "scripts/check-layout-tree.mjs",
     "tests/unit/factorioDesignFile.test.mjs",
+    "tests/unit/factorioEditorApiDescription.test.mjs",
     "tests/unit/factorioPackageManifest.test.mjs",
     "tests/unit/factorioEditorApiRunner.test.mjs",
     "tests/browser/layout-builder.spec.js",
@@ -63,6 +65,9 @@ REQUIRED_FILES = [
     "docs/spec-factory.md",
     "docs/roadmap.md",
     "docs/factorio-style-sources.md",
+    "examples/api/create-window.commands.json",
+    "examples/api/base-design.labtorio-gui.json",
+    "examples/api/revise-existing.commands.json",
     "Dockerfile",
     "compose.yaml",
     "deploy/labtorio.Caddyfile",
@@ -139,8 +144,20 @@ def main() -> int:
     for relative in REQUIRED_FILES:
         read(relative)
 
-    if (ROOT / "examples").exists():
-        raise AssertionError("bundled example directory still exists")
+    examples_root = ROOT / "examples"
+    if examples_root.exists():
+        allowed_examples = {
+            Path("api/create-window.commands.json"),
+            Path("api/base-design.labtorio-gui.json"),
+            Path("api/revise-existing.commands.json"),
+        }
+        actual_examples = {
+            path.relative_to(examples_root)
+            for path in examples_root.rglob("*")
+            if path.is_file()
+        }
+        if actual_examples != allowed_examples:
+            raise AssertionError("examples directory must stay limited to API examples")
     if (ROOT / "docs" / "examples").exists():
         raise AssertionError("bundled example docs directory still exists")
 
@@ -156,6 +173,9 @@ def main() -> int:
             "scripts/check-style-catalog.mjs",
             "scripts/check-hover-drop-geometry.mjs",
             "scripts/check-layout-tree.mjs",
+            "examples/api/create-window.commands.json",
+            "examples/api/base-design.labtorio-gui.json",
+            "examples/api/revise-existing.commands.json",
             "tests/browser/layout-builder.spec.js",
             "README.md",
             "AGENTS.md",
@@ -164,6 +184,7 @@ def main() -> int:
             "docs/atom-specs.md",
             "docs/factorio-mod-export.md",
             "docs/hosting.md",
+            "docs/scriptable-api.md",
             "docs/spec-factory.md",
             "docs/roadmap.md",
             "docs/factorio-style-sources.md",
@@ -212,6 +233,10 @@ def main() -> int:
     assert_contains(source_blob, "on_gui_click", "app source")
     assert_contains(source_blob, "labtorio-editor-api.v0", "app source")
     assert_contains(source_blob, "window.labtorioEditorApi", "app source")
+    assert_contains(source_blob, "window.labtorioEditorApi.describe", "app source")
+    assert_contains(source_blob, "labtorio-editor-api-description.v0", "app source")
+    assert_contains(source_blob, "--describe", "app source")
+    assert_contains(source_blob, "examples/api/create-window.commands.json", "app source")
     assert_contains(source_blob, "scripts/editor-api.mjs", "app source")
     assert_contains(source_blob, "docs/scriptable-api.md", "app source")
     assert_contains(source_blob, "labtorio-editor-api-summary.v0", "app source")

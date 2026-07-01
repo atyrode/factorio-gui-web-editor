@@ -17,6 +17,7 @@ remain the source of truth.
   inspector, and Lua export.
 - [scriptable-api.md](scriptable-api.md): constrained browser and headless API
   for scripted layout generation.
+  See `../examples/api/` for command/design files used by tests and docs.
 - [factorio-mod-export.md](factorio-mod-export.md): local Factorio preview mod
   export loop for comparing the current editor model in-game.
 - [factorio-style-sources.md](factorio-style-sources.md): source notes for
