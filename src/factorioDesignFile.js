@@ -13,6 +13,12 @@ import {
   normalizeLuaVariableNames
 } from "./factorioLuaNames.js";
 import {
+  assertFactorioBehaviorHooks,
+  collectFactorioHookElementIds,
+  factorioBehaviorHooksEqual,
+  normalizeFactorioBehaviorHooks
+} from "./factorioBehaviorHooks.js";
+import {
   FACTORIO_PACKAGE_MANIFEST_ENTRY,
   parseFactorioPackageManifestText
 } from "./factorioPackageManifest.js";
@@ -80,10 +86,13 @@ export function normalizeDesignWindow(value, fallbackTitle = DEFAULT_DESIGN_TITL
   };
 }
 
-export function normalizeDesignState(value = {}) {
+export function normalizeDesignState(value = {}, { invalidHooks = "drop" } = {}) {
   const source = isObject(value) ? value : {};
   const title = normalizeTitle(source.title);
   const currentWindow = normalizeDesignWindow(source.currentWindow, title);
+  const designShape = {
+    currentWindow
+  };
 
   return {
     title,
@@ -92,7 +101,11 @@ export function normalizeDesignState(value = {}) {
       source.windowBodyDirection ?? currentWindow?.bodyDirection ?? HORIZONTAL_FLOW_DIRECTION
     ),
     currentWindow,
-    layoutSettings: normalizeLayoutSettings(source.layoutSettings)
+    layoutSettings: normalizeLayoutSettings(source.layoutSettings),
+    hooks: normalizeFactorioBehaviorHooks(source.hooks, {
+      validElementIds: collectFactorioHookElementIds(designShape),
+      invalid: invalidHooks
+    })
   };
 }
 
@@ -148,7 +161,7 @@ export function migrateFactorioDesignFile(value) {
         schema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA,
         exportedAt: typeof value.exportedAt === "string" ? value.exportedAt : null,
         source: isObject(value.source) ? value.source : FACTORIO_DESIGN_FILE_SOURCE,
-        design: normalizeDesignState(value.design)
+        design: normalizeDesignState(value.design, { invalidHooks: "throw" })
       };
     default:
       throw new Error(`Unsupported design file schema: ${String(value.schema ?? "missing")}.`);
@@ -233,11 +246,25 @@ export function readFactorioDesignFilePackage(bytes) {
     if (!entries[designEntryName]) {
       throw new Error(`The package manifest points to missing ${manifest.entries.design}.`);
     }
+    const design = parseFactorioDesignFileText(strFromU8(entries[designEntryName]));
+    const manifestHooks = assertFactorioBehaviorHooks(manifest.hooks, {
+      validElementIds: collectFactorioHookElementIds(design)
+    });
+    const designHasHooks = design.hooks.actions.length > 0;
+    const manifestHasHooks = manifestHooks.actions.length > 0;
+    const hooksMatch = factorioBehaviorHooksEqual(manifestHooks, design.hooks);
+    const importManifestHooks = !hooksMatch && !designHasHooks && manifestHasHooks;
 
     return {
-      design: parseFactorioDesignFileText(strFromU8(entries[designEntryName])),
-      manifest,
-      warnings: []
+      design: importManifestHooks ? { ...design, hooks: manifestHooks } : design,
+      manifest: { ...manifest, hooks: manifestHooks },
+      warnings: hooksMatch
+        ? []
+        : [
+            importManifestHooks
+              ? "The package manifest supplied hook metadata missing from the design payload; imported the manifest hook metadata."
+              : "The package manifest hook metadata differs from the design payload; imported the design hook metadata."
+          ]
     };
   }
 

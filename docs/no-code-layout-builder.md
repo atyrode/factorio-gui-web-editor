@@ -196,7 +196,10 @@ visibility, hover/drag state, undo history, or other browser workbench chrome.
 The same import control also accepts a compatible zip package when
 `labtorio-gui-package.json` points at `design.labtorio-gui.json`; generated
 `gui.lua` is ignored for import. Design-only zips remain importable as a legacy
-fallback, but the UI reports that the package manifest is missing.
+fallback, but the UI reports that the package manifest is missing. Valid
+`labtorio-gui-hooks.v0` metadata is model data: it round-trips with the design
+and package manifest, while Lua behavior implementation remains user-owned and
+outside the generated GUI skeleton.
 
 The model hydrates these specs into Factorio nodes only when rendering,
 inspecting, or exporting. `bodyDirection` selects the generated

@@ -188,19 +188,24 @@ The durable round-trip format for tool-authored layouts is
 `labtorio-gui-design.v0`, downloaded as `*.labtorio-gui.json`. The file stores
 source metadata plus the normalized authored design fields: title, Window size,
 Window body direction, current Window layout specs, Lua variable-name aliases,
-and layout settings. Import validates the schema, normalizes the payload through
-the same constrained model rules, clears transient editor state, and then
-hydrates browser preview, Inspector data, Lua output, and preview-mod export
-from the restored model. The same import path can read a zip package when it
-contains `labtorio-gui-package.json` pointing at `design.labtorio-gui.json`.
-Design-only zips from older exports can still be imported with a warning, but
+layout settings, and `labtorio-gui-hooks.v0` behavior hook metadata. Import
+validates the schema, normalizes the payload through the same constrained model
+rules, clears transient editor state, and then hydrates browser preview,
+Inspector data, Lua output, and preview-mod export from the restored model. The
+same import path can read a zip package when it contains
+`labtorio-gui-package.json` pointing at `design.labtorio-gui.json`. Design-only
+zips from older exports can still be imported with a warning, but
 manifest-backed packages are the supported reversible boundary. The package
 manifest records file ownership, generated-file provenance, style-catalog
-metadata, and a reserved `labtorio-gui-hooks.v0` section for future behavior
-hook metadata. This format is intentionally not a decompiler for arbitrary
-Factorio Lua. Existing mods that want round-trip editing should store or
-provide this tool-authored design payload instead of expecting the editor to
-recover intent from imperative Lua code.
+metadata, and a copy of normalized hook/action metadata. Hook actions store a
+stable snake_case `id`, a target `elementId`, a supported Factorio GUI `event`,
+an owner, and optional operator-facing text. Manifest events are derived route
+metadata. Unsupported hook schemas are rejected, and manifest hook references
+must point at GUI element ids that exist in the restored design. This format is
+intentionally not a decompiler for arbitrary Factorio Lua. Existing mods that
+want round-trip editing should store or provide this tool-authored design
+payload instead of expecting the editor to recover intent from imperative Lua
+code.
 
 Legacy cached windows normalize to an empty `layoutChildren` array with
 `nextLayoutNodeNumber: 1`. Existing Frame and Horizontal Flow specs keep their

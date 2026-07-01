@@ -153,8 +153,8 @@ Use `Download design` in the export drawer to save the editable structured
 layout as a `*.labtorio-gui.json` file. Use `Import` there to restore either
 that raw design file or a tool-authored preview/mod zip containing
 `labtorio-gui-package.json` and `design.labtorio-gui.json`. This is the
-supported round-trip format; it is not a Lua decompiler for arbitrary Factorio
-mods.
+supported round-trip format; it can preserve validated hook/action metadata,
+but it is not a Lua decompiler for arbitrary Factorio mods.
 
 After creating a Window, use `Download mod` in the Lua Output panel to download
 a local `labtorio_gui_preview_0.1.0.zip`. Copy it to the Factorio mods

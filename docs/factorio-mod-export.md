@@ -29,8 +29,9 @@ the Lua Output panel. `design.labtorio-gui.json` is the same structured design
 payload used by the export drawer, included so a preview zip can carry the
 tool-authored source model and be imported back into the editor.
 `labtorio-gui-package.json` declares the package schema, file ownership,
-design-file entry, style-catalog provenance, and reserved hook metadata. The
-wrapper files only make the Lua loadable as a local Factorio mod.
+design-file entry, style-catalog provenance, and behavior hook metadata copied
+from the design payload. The wrapper files only make the Lua loadable as a
+local Factorio mod.
 
 ## Package Boundary
 
@@ -49,16 +50,31 @@ info.json:
   tool-owned preview mod metadata
 ```
 
-The manifest also includes a reserved `labtorio-gui-hooks.v0` section with
-empty `actions` and `events` arrays. That section is a forward-compatible slot
-for behavior hook names and event/action metadata; the current preview export
-does not implement behavior wiring.
+The design payload and manifest both include a `labtorio-gui-hooks.v0` section.
+In v0, each action records:
+
+- `id`: stable snake_case action hook name;
+- `elementId`: generated or authored GUI element id that must exist in the
+  restored design;
+- `event`: supported Factorio GUI event name, such as `on_gui_click`;
+- `owner`: `user` or `tool`, defaulting to `user`;
+- optional `label` and `description` text for operator/API context.
+
+`events` is derived from the action list as `{ event, elementId, actionId,
+owner }` route metadata. The preview export preserves this contract but does
+not generate behavior code or register event handlers. User-owned mod code can
+attach behavior beside the generated GUI by listening for Factorio GUI events
+and matching the stable element/action metadata after review.
 
 Manual mod code should live outside the tool-owned preview files, or in a later
 documented user-owned package location. Editing `gui.lua` can still be useful
 for experiments, but those changes are generated-code edits and are not
 imported back into the editor. The editable source of truth remains the design
-payload referenced by the package manifest.
+payload referenced by the package manifest. Imported packages reject unsupported
+hook schema versions and stale manifest hook references that point at missing
+GUI element ids. If a compatible package has valid manifest hooks but an older
+design payload without hooks, import preserves the manifest hook metadata and
+reports that compatibility warning.
 
 The generated mod uses Factorio `2.0` metadata and depends only on `base`. It
 does not include Factorio images, Wube CSS, bundled examples, or any generated
@@ -80,13 +96,14 @@ inspector, `Ctrl+F5` for bounding boxes, and `Ctrl+F7` for shadows.
 ## Limits
 
 This export only proves that the current shared model can be wrapped quickly for
-in-game inspection. The embedded design file is inert as far as Factorio is
-concerned; it is not read by `control.lua`, and the editor imports the package
-manifest/design JSON rather than parsing generated Lua. Design-only zips from
-older exports can still be imported with a warning, but manifest-backed
-packages are the supported boundary. This export does not automate
-Factorio launch, screenshot capture, pixel comparison, or visual acceptance.
-Those remain future parity-harness work.
+in-game inspection. The embedded design and manifest files are inert as far as
+Factorio is concerned; they are not read by `control.lua`, and the editor
+imports the package manifest/design JSON rather than parsing generated Lua.
+Design-only zips from older exports can still be imported with a warning, but
+manifest-backed packages are the supported boundary. This export does not
+automate Factorio launch, screenshot capture, pixel comparison, visual
+acceptance, or Lua behavior generation. Those remain future parity-harness and
+runtime-integration work.
 
 If a browser/in-game difference appears, treat the generated mod as evidence for
 the model-to-Lua path and inspect whether the mismatch comes from browser

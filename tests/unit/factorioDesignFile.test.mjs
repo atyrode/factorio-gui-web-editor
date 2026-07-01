@@ -14,6 +14,7 @@ import {
   readFactorioDesignFilePackage
 } from "../../src/factorioDesignFile.js";
 import {
+  FACTORIO_PACKAGE_HOOKS_SCHEMA,
   FACTORIO_PACKAGE_MANIFEST_ENTRY,
   renderFactorioPackageManifestJson
 } from "../../src/factorioPackageManifest.js";
@@ -94,6 +95,55 @@ test("createFactorioDesignFileDownload serializes a normalized durable design", 
     gui_frame_1: "main_frame"
   });
   assert.equal(designFile.design.layoutSettings.horizontalFlowSpacing, 64);
+  assert.deepEqual(designFile.design.hooks, {
+    schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+    actions: [],
+    events: []
+  });
+});
+
+test("createFactorioDesignFileDownload serializes normalized behavior hooks", () => {
+  const { content } = createFactorioDesignFileDownload({
+    ...roughDesignState(),
+    hooks: {
+      schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+      actions: [
+        {
+          id: "open_dispatch",
+          elementId: "gui_label_2",
+          event: "on_gui_click",
+          label: "Open dispatch"
+        },
+        {
+          id: "stale_hook",
+          elementId: "missing_node",
+          event: "on_gui_click"
+        }
+      ]
+    }
+  });
+  const designFile = JSON.parse(content);
+
+  assert.deepEqual(designFile.design.hooks, {
+    schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+    actions: [
+      {
+        id: "open_dispatch",
+        elementId: "gui_label_2",
+        event: "on_gui_click",
+        owner: "user",
+        label: "Open dispatch"
+      }
+    ],
+    events: [
+      {
+        event: "on_gui_click",
+        elementId: "gui_label_2",
+        actionId: "open_dispatch",
+        owner: "user"
+      }
+    ]
+  });
 });
 
 test("parseFactorioDesignFileText returns migrated normalized design state", () => {
@@ -111,7 +161,19 @@ test("parseFactorioDesignFileText returns migrated normalized design state", () 
 });
 
 test("parseFactorioDesignFilePackage imports manifest-backed package design files", () => {
-  const { content } = createFactorioDesignFileDownload(roughDesignState(), {
+  const { content } = createFactorioDesignFileDownload({
+    ...roughDesignState(),
+    hooks: {
+      schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+      actions: [
+        {
+          id: "open_dispatch",
+          elementId: "gui_label_2",
+          event: "on_gui_click"
+        }
+      ]
+    }
+  }, {
     now: new Date("2026-07-01T12:34:56Z")
   });
   const zip = zipSync({
@@ -119,7 +181,8 @@ test("parseFactorioDesignFilePackage imports manifest-backed package design file
       renderFactorioPackageManifestJson({
         now: new Date("2026-07-01T12:34:56Z"),
         designEntry: FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
-        designSchema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA
+        designSchema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA,
+        hooks: JSON.parse(content).design.hooks
       })
     ),
     [`labtorio_gui_preview_0.1.0/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`]: strToU8(content),
@@ -133,6 +196,53 @@ test("parseFactorioDesignFilePackage imports manifest-backed package design file
   assert.equal(result.design.title, "Train Dispatch");
   assert.equal(result.design.currentWindow.layoutChildren[0].id, "gui_frame_1");
   assert.equal(result.design.currentWindow.layoutChildren[0].children[0].id, "gui_label_2");
+  assert.deepEqual(result.design.hooks.actions, [
+    {
+      id: "open_dispatch",
+      elementId: "gui_label_2",
+      event: "on_gui_click",
+      owner: "user"
+    }
+  ]);
+});
+
+test("parseFactorioDesignFilePackage preserves manifest hook metadata when design hooks are absent", () => {
+  const { content } = createFactorioDesignFileDownload(roughDesignState(), {
+    now: new Date("2026-07-01T12:34:56Z")
+  });
+  const zip = zipSync({
+    [`labtorio_gui_preview_0.1.0/${FACTORIO_PACKAGE_MANIFEST_ENTRY}`]: strToU8(
+      renderFactorioPackageManifestJson({
+        now: new Date("2026-07-01T12:34:56Z"),
+        designEntry: FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
+        designSchema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA,
+        hooks: {
+          schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+          actions: [
+            {
+              id: "open_dispatch",
+              elementId: "gui_label_2",
+              event: "on_gui_click"
+            }
+          ]
+        }
+      })
+    ),
+    [`labtorio_gui_preview_0.1.0/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`]: strToU8(content)
+  });
+
+  const result = readFactorioDesignFilePackage(zip);
+
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /imported the manifest hook metadata/);
+  assert.deepEqual(result.design.hooks.actions, [
+    {
+      id: "open_dispatch",
+      elementId: "gui_label_2",
+      event: "on_gui_click",
+      owner: "user"
+    }
+  ]);
 });
 
 test("parseFactorioDesignFilePackage imports legacy design-only zips with a warning", () => {
@@ -184,6 +294,30 @@ test("parseFactorioDesignFilePackage rejects invalid package envelopes", () => {
       )
     })),
     /manifest points to missing design\.labtorio-gui\.json/
+  );
+
+  const { content } = createFactorioDesignFileDownload(roughDesignState());
+  assert.throws(
+    () => parseFactorioDesignFilePackage(zipSync({
+      [`labtorio_gui_preview_0.1.0/${FACTORIO_PACKAGE_MANIFEST_ENTRY}`]: strToU8(
+        renderFactorioPackageManifestJson({
+          designEntry: FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
+          designSchema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA,
+          hooks: {
+            schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+            actions: [
+              {
+                id: "missing_target",
+                elementId: "gui_label_404",
+                event: "on_gui_click"
+              }
+            ]
+          }
+        })
+      ),
+      [`labtorio_gui_preview_0.1.0/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`]: strToU8(content)
+    })),
+    /unknown GUI element/
   );
 });
 

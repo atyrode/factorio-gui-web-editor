@@ -12,7 +12,7 @@ import {
   renderFactorioPackageManifestJson
 } from "../../src/factorioPackageManifest.js";
 
-test("createFactorioPackageManifest records package ownership and reserved hooks", () => {
+test("createFactorioPackageManifest records package ownership and hook metadata", () => {
   const manifest = createFactorioPackageManifest({
     now: new Date("2026-07-01T12:34:56Z"),
     designEntry: "design.labtorio-gui.json",
@@ -20,6 +20,19 @@ test("createFactorioPackageManifest records package ownership and reserved hooks
     styleCatalog: {
       schema: "factorio-style-catalog.v0",
       source: "factorio-style-catalog"
+    },
+    validHookElementIds: ["gui_label_2"],
+    hooks: {
+      schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+      actions: [
+        {
+          id: "confirm_dispatch",
+          elementId: "gui_label_2",
+          event: "on_gui_click",
+          label: "Confirm dispatch",
+          description: "User-owned click handler."
+        }
+      ]
     }
   });
 
@@ -34,9 +47,24 @@ test("createFactorioPackageManifest records package ownership and reserved hooks
   });
   assert.deepEqual(manifest.hooks, {
     schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
-    actions: [],
-    events: [],
-    reserved: true
+    actions: [
+      {
+        id: "confirm_dispatch",
+        elementId: "gui_label_2",
+        event: "on_gui_click",
+        owner: "user",
+        label: "Confirm dispatch",
+        description: "User-owned click handler."
+      }
+    ],
+    events: [
+      {
+        event: "on_gui_click",
+        elementId: "gui_label_2",
+        actionId: "confirm_dispatch",
+        owner: "user"
+      }
+    ]
   });
   assert.ok(
     manifest.ownership.some(
@@ -66,7 +94,11 @@ test("parseFactorioPackageManifestText normalizes supported manifests", () => {
   assert.equal(parsed.schema, FACTORIO_PACKAGE_MANIFEST_SCHEMA);
   assert.equal(parsed.entries.design, "design.labtorio-gui.json");
   assert.equal(parsed.entries.previewRuntime, "control.lua");
-  assert.equal(parsed.hooks.schema, FACTORIO_PACKAGE_HOOKS_SCHEMA);
+  assert.deepEqual(parsed.hooks, {
+    schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+    actions: [],
+    events: []
+  });
 });
 
 test("parseFactorioPackageManifestText rejects invalid manifests", () => {
@@ -87,5 +119,30 @@ test("parseFactorioPackageManifestText rejects invalid manifests", () => {
       entries: { design: "../design.labtorio-gui.json" }
     })),
     /missing a valid design entry/
+  );
+  assert.throws(
+    () => parseFactorioPackageManifestText(JSON.stringify({
+      schema: FACTORIO_PACKAGE_MANIFEST_SCHEMA,
+      entries: { design: "design.labtorio-gui.json" },
+      hooks: { schema: "future-hooks.v1", actions: [] }
+    })),
+    /Unsupported behavior hooks schema/
+  );
+  assert.throws(
+    () => parseFactorioPackageManifestText(JSON.stringify({
+      schema: FACTORIO_PACKAGE_MANIFEST_SCHEMA,
+      entries: { design: "design.labtorio-gui.json" },
+      hooks: {
+        schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
+        actions: [
+          {
+            id: "bad-name",
+            elementId: "gui_label_2",
+            event: "on_gui_click"
+          }
+        ]
+      }
+    })),
+    /Invalid behavior hook action id/
   );
 });

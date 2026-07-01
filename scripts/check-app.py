@@ -203,6 +203,8 @@ def main() -> int:
     assert_contains(source_blob, "labtorio-gui-package.v0", "app source")
     assert_contains(source_blob, "labtorio-gui-package.json", "app source")
     assert_contains(source_blob, "labtorio-gui-hooks.v0", "app source")
+    assert_contains(source_blob, "normalizeFactorioBehaviorHooks", "app source")
+    assert_contains(source_blob, "on_gui_click", "app source")
     assert_contains(source_blob, "labtorio_gui_preview_0.1.0", "app source")
     assert_contains(source_blob, "data.raw[\"gui-style\"][\"default\"]", "app source")
     assert_contains(source_blob, "--dump-data", "app source")

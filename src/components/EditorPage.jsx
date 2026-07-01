@@ -74,6 +74,10 @@ import {
   normalizeLuaVariableNames,
   validateLuaVariableNameEdit
 } from "../factorioLuaNames.js";
+import {
+  collectFactorioHookElementIds,
+  normalizeFactorioBehaviorHooks
+} from "../factorioBehaviorHooks.js";
 import { BuilderPaletteBar, BuilderTreePanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
@@ -90,6 +94,7 @@ const CANVAS_TOOL_INSPECT = "inspect";
 const CANVAS_TOOL_RESIZE = "resize";
 const PROPERTIES_TAB_PROPERTIES = "properties";
 const PROPERTIES_TAB_FACTORIO = "factorio";
+const DEFAULT_BEHAVIOR_HOOKS = normalizeFactorioBehaviorHooks();
 const DEFAULT_EDITOR_STATE = {
   title: "Untitled window",
   windowSize: DEFAULT_WINDOW_SIZE,
@@ -107,6 +112,7 @@ const DEFAULT_EDITOR_STATE = {
   showLayoutSettings: false,
   showComponentTreeShell: false,
   layoutSettings: DEFAULT_LAYOUT_SETTINGS,
+  hooks: DEFAULT_BEHAVIOR_HOOKS,
   sidebarWidth: 260
 };
 
@@ -230,6 +236,9 @@ function readCachedEditorState() {
 
     const parsedValue = JSON.parse(rawValue);
     const currentWindow = normalizeWindow(parsedValue.currentWindow);
+    const hooks = normalizeFactorioBehaviorHooks(parsedValue.hooks, {
+      validElementIds: collectFactorioHookElementIds({ currentWindow })
+    });
     return normalizeEditorStateShape({
       title: String(parsedValue.title ?? DEFAULT_EDITOR_STATE.title),
       windowSize: normalizeWindowSize(parsedValue.windowSize ?? currentWindow?.size),
@@ -269,6 +278,7 @@ function readCachedEditorState() {
           ? parsedValue.showComponentTreeShell
           : DEFAULT_EDITOR_STATE.showComponentTreeShell,
       layoutSettings: normalizeLayoutSettings(parsedValue.layoutSettings),
+      hooks,
       sidebarWidth: clampSidebarWidth(
         Number(parsedValue.sidebarWidth ?? DEFAULT_EDITOR_STATE.sidebarWidth)
       )
@@ -317,6 +327,9 @@ function snapshotEditorState(state) {
     windowBodyDirection,
     currentWindow: cloneHistoryValue(currentWindow),
     layoutSettings: cloneHistoryValue(normalizeLayoutSettings(state.layoutSettings)),
+    hooks: cloneHistoryValue(normalizeFactorioBehaviorHooks(state.hooks, {
+      validElementIds: collectFactorioHookElementIds({ currentWindow })
+    })),
     inspectedAnchor: typeof state.inspectedAnchor === "string" ? state.inspectedAnchor : null,
     inspectorLocked: Boolean(state.inspectorLocked)
   };
@@ -383,6 +396,9 @@ function restoreHistorySnapshot(state, snapshot) {
     ),
     currentWindow,
     layoutSettings,
+    hooks: normalizeFactorioBehaviorHooks(snapshot.hooks, {
+      validElementIds: collectFactorioHookElementIds({ currentWindow })
+    }),
     ...selection
   };
 }
@@ -2074,6 +2090,7 @@ export function EditorPage() {
       windowBodyDirection: designState.windowBodyDirection,
       currentWindow: designState.currentWindow,
       layoutSettings: designState.layoutSettings,
+      hooks: designState.hooks,
       activeCanvasTool: CANVAS_TOOL_SELECT,
       propertiesTab: PROPERTIES_TAB_PROPERTIES,
       showInspector: false,

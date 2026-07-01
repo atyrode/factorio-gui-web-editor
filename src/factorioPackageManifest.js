@@ -1,6 +1,12 @@
+import {
+  FACTORIO_BEHAVIOR_HOOKS_SCHEMA,
+  assertFactorioBehaviorHooks,
+  normalizeFactorioBehaviorHooks
+} from "./factorioBehaviorHooks.js";
+
 export const FACTORIO_PACKAGE_MANIFEST_SCHEMA = "labtorio-gui-package.v0";
 export const FACTORIO_PACKAGE_MANIFEST_ENTRY = "labtorio-gui-package.json";
-export const FACTORIO_PACKAGE_HOOKS_SCHEMA = "labtorio-gui-hooks.v0";
+export const FACTORIO_PACKAGE_HOOKS_SCHEMA = FACTORIO_BEHAVIOR_HOOKS_SCHEMA;
 
 export const FACTORIO_PACKAGE_OWNER_TOOL = "tool";
 export const FACTORIO_PACKAGE_OWNER_GENERATED = "generated";
@@ -106,7 +112,9 @@ export function createFactorioPackageManifest({
   generatedLuaEntry = "gui.lua",
   controlEntry = "control.lua",
   infoEntry = "info.json",
-  styleCatalog = null
+  styleCatalog = null,
+  hooks = null,
+  validHookElementIds = null
 }) {
   const safeDesignEntry = normalizeSafeRelativePath(designEntry, "design.labtorio-gui.json");
   const safeGeneratedLuaEntry = normalizeSafeRelativePath(generatedLuaEntry, "gui.lua");
@@ -137,12 +145,7 @@ export function createFactorioPackageManifest({
       controlEntry: safeControlEntry,
       infoEntry: safeInfoEntry
     }),
-    hooks: {
-      schema: FACTORIO_PACKAGE_HOOKS_SCHEMA,
-      actions: [],
-      events: [],
-      reserved: true
-    }
+    hooks: normalizeFactorioBehaviorHooks(hooks, { validElementIds: validHookElementIds })
   };
 }
 
@@ -186,17 +189,6 @@ export function parseFactorioPackageManifestText(text) {
     ownership: Array.isArray(parsed.ownership)
       ? parsed.ownership.map(normalizeOwnershipRecord).filter(Boolean)
       : [],
-    hooks: {
-      schema: isObject(parsed.hooks) && typeof parsed.hooks.schema === "string"
-        ? parsed.hooks.schema
-        : FACTORIO_PACKAGE_HOOKS_SCHEMA,
-      actions: isObject(parsed.hooks) && Array.isArray(parsed.hooks.actions)
-        ? parsed.hooks.actions
-        : [],
-      events: isObject(parsed.hooks) && Array.isArray(parsed.hooks.events)
-        ? parsed.hooks.events
-        : [],
-      reserved: true
-    }
+    hooks: assertFactorioBehaviorHooks(parsed.hooks)
   };
 }
