@@ -1,10 +1,10 @@
 import styleSourcesMarkdown from "../docs/factorio-style-sources.md?raw";
-import agentApiMarkdown from "../docs/agent-api.md?raw";
 import atomSpecsMarkdown from "../docs/atom-specs.md?raw";
 import factorioModExportMarkdown from "../docs/factorio-mod-export.md?raw";
 import modelSchemaMarkdown from "../docs/model-schema.md?raw";
 import noCodeLayoutBuilderMarkdown from "../docs/no-code-layout-builder.md?raw";
 import roadmapMarkdown from "../docs/roadmap.md?raw";
+import scriptableApiMarkdown from "../docs/scriptable-api.md?raw";
 import specFactoryMarkdown from "../docs/spec-factory.md?raw";
 
 export const docPages = [
@@ -39,10 +39,10 @@ export const docPages = [
     markdown: modelSchemaMarkdown
   },
   {
-    path: "/agent-api",
-    title: "Agent API",
-    summary: "Local structured command API for agent-reviewed GUI generation.",
-    markdown: agentApiMarkdown
+    path: "/scriptable-api",
+    title: "Scriptable API",
+    summary: "Local structured command API for scripted GUI generation.",
+    markdown: scriptableApiMarkdown
   },
   {
     path: "/factorio-mod-export",

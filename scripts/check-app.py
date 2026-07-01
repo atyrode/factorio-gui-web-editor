@@ -30,6 +30,8 @@ REQUIRED_FILES = [
     "src/docs.js",
     "src/factorioDesignFile.js",
     "src/factorioEditorSettings.js",
+    "src/factorioEditorApi.js",
+    "src/factorioEditorApiSummary.js",
     "src/factorioLayoutTree.js",
     "src/factorioModExport.js",
     "src/factorioPackageManifest.js",
@@ -41,18 +43,21 @@ REQUIRED_FILES = [
     "playwright.config.js",
     "vite.config.js",
     "scripts/copy-static-docs.mjs",
+    "scripts/editor-api.mjs",
     "scripts/generate-factorio-style-catalog.mjs",
     "scripts/check-style-catalog.mjs",
     "scripts/check-hover-drop-geometry.mjs",
     "scripts/check-layout-tree.mjs",
     "tests/unit/factorioDesignFile.test.mjs",
     "tests/unit/factorioPackageManifest.test.mjs",
+    "tests/unit/factorioEditorApiRunner.test.mjs",
     "tests/browser/layout-builder.spec.js",
     "README.md",
     "AGENTS.md",
     "docs/README.md",
     "docs/no-code-layout-builder.md",
     "docs/atom-specs.md",
+    "docs/scriptable-api.md",
     "docs/factorio-mod-export.md",
     "docs/hosting.md",
     "docs/spec-factory.md",
@@ -207,7 +212,9 @@ def main() -> int:
     assert_contains(source_blob, "on_gui_click", "app source")
     assert_contains(source_blob, "labtorio-editor-api.v0", "app source")
     assert_contains(source_blob, "window.labtorioEditorApi", "app source")
-    assert_contains(source_blob, "docs/agent-api.md", "app source")
+    assert_contains(source_blob, "scripts/editor-api.mjs", "app source")
+    assert_contains(source_blob, "docs/scriptable-api.md", "app source")
+    assert_contains(source_blob, "labtorio-editor-api-summary.v0", "app source")
     assert_contains(source_blob, "labtorio_gui_preview_0.1.0", "app source")
     assert_contains(source_blob, "data.raw[\"gui-style\"][\"default\"]", "app source")
     assert_contains(source_blob, "--dump-data", "app source")

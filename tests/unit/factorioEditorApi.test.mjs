@@ -15,7 +15,7 @@ test("runFactorioEditorCommands builds a reviewable layout through structured co
   const result = runFactorioEditorCommands({}, [
     {
       type: FACTORIO_EDITOR_API_COMMANDS.CREATE_WINDOW,
-      title: "Agent Window",
+      title: "Scripted Window",
       size: { width: 720, height: 480 },
       bodyDirection: FACTORIO_EDITOR_API_DIRECTIONS.VERTICAL
     },
@@ -69,7 +69,7 @@ test("runFactorioEditorCommands builds a reviewable layout through structured co
   assert.equal(result.schema, FACTORIO_EDITOR_API_SCHEMA);
   assert.equal(result.ok, true);
   assert.equal(result.mutated, true);
-  assert.equal(result.state.title, "Agent Window");
+  assert.equal(result.state.title, "Scripted Window");
   assert.equal(result.state.currentWindow.bodyDirection, "vertical");
   assert.equal(result.state.currentWindow.layoutChildren[0].id, "gui_filler_4");
   assert.equal(result.state.currentWindow.layoutChildren[1].id, "gui_frame_1");

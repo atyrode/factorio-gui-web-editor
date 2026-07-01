@@ -1969,7 +1969,7 @@ test.describe("Layout builder canvas preview", () => {
     expect(importedState.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
   });
 
-  test("agent API command batch updates the normal editor UI", async ({ page }) => {
+  test("scriptable API command batch updates the normal editor UI", async ({ page }) => {
     await page.addInitScript((key) => window.localStorage.removeItem(key), EDITOR_STORAGE_KEY);
     await page.goto("/");
     await page.waitForFunction(() => Boolean(window.labtorioEditorApi));
@@ -1977,7 +1977,7 @@ test.describe("Layout builder canvas preview", () => {
     const result = await page.evaluate(() => window.labtorioEditorApi.runAll([
       {
         type: "createWindow",
-        title: "Agent API Window",
+        title: "Scriptable API Window",
         size: { width: 760, height: 500 }
       },
       {
@@ -2030,6 +2030,14 @@ test.describe("Layout builder canvas preview", () => {
     expect(result.ok).toBe(true);
     expect(result.results.at(-1).exports.lua).toContain("local dispatch_label =");
     expect(result.results.at(-1).exports.lua).toContain('caption = "Dispatch"');
+    const summary = await page.evaluate(() => window.labtorioEditorApi.summary());
+    expect(summary.schema).toBe("labtorio-editor-api-summary.v0");
+    expect(summary.nodes.find((node) => node.id === "gui_label_3")).toMatchObject({
+      atom: "label",
+      parentId: "gui_horizontal_flow_2",
+      caption: "Dispatch",
+      luaVariableName: "dispatch_label"
+    });
     await expect(page.locator('[data-anchor="gui_filler_4"]')).toBeVisible();
     await expect(page.locator('[data-anchor="gui_label_3"]')).toContainText("Dispatch");
 
