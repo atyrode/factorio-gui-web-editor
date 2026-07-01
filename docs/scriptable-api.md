@@ -1,10 +1,10 @@
-# Agent-Friendly Editor API
+# Scriptable Editor API
 
-The editor exposes a constrained local API for agents, scripts, and tests that
-need to create or revise a Factorio GUI layout without clicking through the UI
-or mutating `localStorage` directly. The API edits the same structured model as
-the visual builder and leaves the result in the normal editor for operator
-review.
+The editor exposes a constrained local API for scripts, tests, and headless
+tooling that need to create or revise a Factorio GUI layout without clicking
+through the UI or mutating `localStorage` directly. The API edits the same
+structured model as the visual builder and can either leave the result in the
+normal editor for operator review or write files from a Node command.
 
 ## Boundary And Threat Model
 
@@ -18,10 +18,11 @@ JavaScript, CSS, or shell commands. The browser facade is a local page object:
 window.labtorioEditorApi
 ```
 
-Code that already runs in the page can use it, such as Playwright, a browser
-console script, or a local agent harness. The facade delegates to
-`src/factorioEditorApi.js`, which can also be imported directly by tests or
-future headless tooling.
+Code that already runs in the page can use it, such as Playwright or a browser
+console script. The facade delegates to `src/factorioEditorApi.js`, which can
+also be imported directly by tests and by `scripts/editor-api.mjs`. Both the
+browser facade and the Node runner expose the same flat summary shape for
+machine-readable inspection.
 
 The API must keep using existing model operations and builder constraints. It
 must not introduce arbitrary CSS layout, freeform pixel placement, unsupported
@@ -87,11 +88,36 @@ Supported v0 commands:
 | `exportModZip` | Return the local preview mod zip bytes. |
 | `validate` | Return structured state diagnostics. |
 
+## Headless Runner
+
+Use the Node runner when a script needs to generate or revise a layout without
+opening a browser:
+
+```sh
+npm run api:run -- \
+  --commands commands.json \
+  --out-design layout.labtorio-gui.json \
+  --out-lua gui.lua \
+  --result result.json \
+  --pretty
+```
+
+`--commands` accepts either a JSON array or `{ "commands": [...] }`. Use
+`--commands -` to read from stdin. Use `--input-design existing.labtorio-gui.json`
+to start from a saved design file.
+
+The runner prints a machine-readable result envelope to stdout and exits with
+status `0` on success or `1` on validation/output failure. The result includes
+the normalized editor state, command diagnostics, written output paths, and a
+flat `summary.nodes` list so tooling can inspect ids, parents, order, captions,
+sizes, style variants, and Lua variable aliases without needing visual
+recognition.
+
 ## Browser Example
 
 ```js
 const result = window.labtorioEditorApi.runAll([
-  { type: "createWindow", title: "Agent draft", size: { width: 760, height: 500 } },
+  { type: "createWindow", title: "Scripted draft", size: { width: 760, height: 500 } },
   { type: "insertAtom", atom: "frame", parentId: "gui_window_body" },
   { type: "insertAtom", atom: "horizontal-flow", parentId: "gui_frame_1" },
   { type: "insertAtom", atom: "label", parentId: "gui_horizontal_flow_2" },
@@ -103,6 +129,8 @@ const result = window.labtorioEditorApi.runAll([
 if (!result.ok) {
   console.table(result.diagnostics);
 }
+
+console.table(window.labtorioEditorApi.summary().nodes);
 ```
 
 When `result.ok` is true, the browser facade updates the normal editor state.
@@ -112,7 +140,6 @@ Lua output, and preview mod export as usual.
 ## Current Limits
 
 The v0 API does not create new atom types beyond the existing builder palette,
-does not expose a remote transport, does not track per-node authorship
-provenance in the UI yet, and does not generate Lua behavior handlers. Behavior
-intent should use the package hook metadata contract from
-[factorio-mod-export.md](factorio-mod-export.md).
+does not expose a remote transport, does not create an audit trail for scripted
+edits, and does not generate Lua behavior handlers. Behavior intent should use
+the package hook metadata contract from [factorio-mod-export.md](factorio-mod-export.md).

@@ -74,7 +74,7 @@ export function createFactorioPackageOwnership({
     {
       path: manifestEntry,
       owner: FACTORIO_PACKAGE_OWNER_TOOL,
-      purpose: "Tool-authored package boundary and provenance metadata.",
+      purpose: "Tool-authored package boundary and source metadata.",
       editable: false
     },
     {

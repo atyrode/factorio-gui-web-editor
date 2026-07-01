@@ -7,6 +7,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
+    "api:run": "node scripts/editor-api.mjs",
     "build": "vite build && node scripts/copy-static-docs.mjs",
     "catalog:generate": "node scripts/generate-factorio-style-catalog.mjs",
     "check": "npm run build && node scripts/check-layout-tree.mjs && node scripts/check-hover-drop-geometry.mjs && node scripts/check-style-catalog.mjs && npm run test:unit && python3 scripts/check-app.py && npm run test:browser",

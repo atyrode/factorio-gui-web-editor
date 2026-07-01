@@ -29,9 +29,9 @@ the Lua Output panel. `design.labtorio-gui.json` is the same structured design
 payload used by the export drawer, included so a preview zip can carry the
 tool-authored source model and be imported back into the editor.
 `labtorio-gui-package.json` declares the package schema, file ownership,
-design-file entry, style-catalog provenance, and behavior hook metadata copied
-from the design payload. The wrapper files only make the Lua loadable as a
-local Factorio mod.
+design-file entry, style-catalog source metadata, and behavior hook metadata
+copied from the design payload. The wrapper files only make the Lua loadable as
+a local Factorio mod.
 
 ## Package Boundary
 
@@ -39,7 +39,7 @@ Current preview packages use `labtorio-gui-package.v0`:
 
 ```text
 labtorio-gui-package.json:
-  tool-owned package manifest and provenance
+  tool-owned package manifest and source metadata
 design.labtorio-gui.json:
   tool-owned canonical editable GUI design
 gui.lua:

@@ -61,11 +61,11 @@ of this slice's acceptance gate: objective hover/drop layout bugs become
 Playwright checks run by `scripts/check.sh` and CI.
 
 The first scriptable API slice is `labtorio-editor-api.v0`, documented in
-[agent-api.md](agent-api.md). It exposes local structured commands for Window
-creation, atom insertion/move/resize, Label captions, Lua variable names,
-design import/export, Lua export, mod zip export, and validation diagnostics.
-The browser facade is `window.labtorioEditorApi`; it is a local page API, not a
-network service.
+[scriptable-api.md](scriptable-api.md). It exposes local structured commands
+for Window creation, atom insertion/move/resize, Label captions, Lua variable
+names, design import/export, Lua export, mod zip export, validation diagnostics,
+and a Node runner for headless command batches. The browser facade is
+`window.labtorioEditorApi`; it is a local page API, not a network service.
 
 Future builder operations SHOULD include:
 
@@ -81,7 +81,7 @@ Future builder operations SHOULD include:
 - select local style tokens;
 - validate constraints continuously;
 - export a JSON layout model;
-- expose constrained model operations to local agents and test harnesses;
+- expose constrained model operations to local scripts and test harnesses;
 - export a Markdown spec diff;
 - export a Lua skeleton with stable anchors and TODO behavior hooks;
 - export a prompt pack an agent can use to implement the Lua slice.

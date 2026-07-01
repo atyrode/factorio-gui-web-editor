@@ -86,6 +86,7 @@ import {
   runFactorioEditorCommands,
   validateFactorioEditorApiState
 } from "../factorioEditorApi.js";
+import { summarizeFactorioEditorApiState } from "../factorioEditorApiSummary.js";
 import { BuilderPaletteBar, BuilderTreePanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
@@ -1929,6 +1930,7 @@ export function EditorPage() {
         }
         return result;
       },
+      summary: (state = api.getState()) => summarizeFactorioEditorApiState(state),
       validate: (state = api.getState()) => validateFactorioEditorApiState(state)
     };
 

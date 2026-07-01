@@ -196,7 +196,7 @@ same import path can read a zip package when it contains
 `labtorio-gui-package.json` pointing at `design.labtorio-gui.json`. Design-only
 zips from older exports can still be imported with a warning, but
 manifest-backed packages are the supported reversible boundary. The package
-manifest records file ownership, generated-file provenance, style-catalog
+manifest records file ownership, generated-file source metadata, style-catalog
 metadata, and a copy of normalized hook/action metadata. Hook actions store a
 stable snake_case `id`, a target `elementId`, a supported Factorio GUI `event`,
 an owner, and optional operator-facing text. Manifest events are derived route
