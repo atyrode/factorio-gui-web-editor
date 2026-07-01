@@ -1,12 +1,15 @@
 import { strToU8, zipSync } from "fflate";
 import { renderWindowLua } from "./factorioExport.js";
-import { createFactorioDesignFileDownload } from "./factorioDesignFile.js";
+import {
+  FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
+  createFactorioDesignFileDownload
+} from "./factorioDesignFile.js";
 
 export const FACTORIO_PREVIEW_MOD_NAME = "labtorio_gui_preview";
 export const FACTORIO_PREVIEW_MOD_VERSION = "0.1.0";
 export const FACTORIO_PREVIEW_MOD_FOLDER = `${FACTORIO_PREVIEW_MOD_NAME}_${FACTORIO_PREVIEW_MOD_VERSION}`;
 export const FACTORIO_PREVIEW_MOD_ZIP_FILENAME = `${FACTORIO_PREVIEW_MOD_FOLDER}.zip`;
-export const FACTORIO_PREVIEW_MOD_DESIGN_FILENAME = "design.labtorio-gui.json";
+export const FACTORIO_PREVIEW_MOD_DESIGN_FILENAME = FACTORIO_DESIGN_FILE_PACKAGE_ENTRY;
 
 const ZIP_MTIME = new Date("2024-01-01T00:00:00Z");
 const ZIP_OPTIONS = Object.freeze({ level: 9, mtime: ZIP_MTIME });

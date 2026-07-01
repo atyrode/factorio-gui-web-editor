@@ -35,6 +35,7 @@ import { createFactorioModDownload } from "../factorioModExport.js";
 import {
   createFactorioDesignFileDownload,
   FACTORIO_DESIGN_FILE_EXTENSION,
+  parseFactorioDesignFilePackage,
   parseFactorioDesignFileText
 } from "../factorioDesignFile.js";
 import {
@@ -945,7 +946,13 @@ function DesignFilePanel({ editorState, onImportDesignFile, onStatus, status }) 
     }
 
     try {
-      onImportDesignFile(await file.text(), file.name);
+      const isZipFile =
+        file.name.toLowerCase().endsWith(".zip") || file.type.includes("zip");
+      const payload = isZipFile
+        ? { kind: "zip", data: new Uint8Array(await file.arrayBuffer()) }
+        : { kind: "json", data: await file.text() };
+
+      onImportDesignFile(payload, file.name);
     } catch {
       onStatus?.({
         tone: "error",
@@ -988,7 +995,7 @@ function DesignFilePanel({ editorState, onImportDesignFile, onStatus, status }) 
         className="fx-editor-file-input"
         data-anchor="design_file_input"
         type="file"
-        accept=".json,application/json"
+        accept=".json,.zip,application/json,application/zip,application/x-zip-compressed"
         onChange={importDesignFile}
       />
       {status ? (
@@ -2040,10 +2047,13 @@ export function EditorPage() {
     }));
   }
 
-  function importDesignFile(text, filename) {
+  function importDesignFile(payload, filename) {
     let designState;
     try {
-      designState = parseFactorioDesignFileText(text);
+      designState =
+        payload?.kind === "zip"
+          ? parseFactorioDesignFilePackage(payload.data)
+          : parseFactorioDesignFileText(payload?.data);
     } catch (error) {
       setDesignFileStatus({
         tone: "error",

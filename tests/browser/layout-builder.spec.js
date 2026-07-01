@@ -1909,7 +1909,8 @@ test.describe("Layout builder canvas preview", () => {
 
     const downloadPath = await download.path();
     expect(downloadPath).not.toBeNull();
-    const zipEntries = unzipSync(new Uint8Array(await readFile(downloadPath)));
+    const zipBuffer = await readFile(downloadPath);
+    const zipEntries = unzipSync(new Uint8Array(zipBuffer));
     const guiLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/gui.lua`]);
     const controlLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/control.lua`]);
     const embeddedDesignFile = JSON.parse(
@@ -1934,6 +1935,24 @@ test.describe("Layout builder canvas preview", () => {
     expect(guiLua).toContain('caption = "Machin truc lab"');
     expect(guiLua).toContain('name = "gui_frame_1"');
     expect(guiLua).toContain("gui_frame_1.style.minimal_width = 168");
+
+    await page.locator("#reset-window").click();
+    await expect(page.locator('[data-anchor="editor_empty_state"]')).toBeVisible();
+
+    await page.locator('[data-anchor="design_file_input"]').setInputFiles({
+      name: FACTORIO_PREVIEW_MOD_ZIP_FILENAME,
+      mimeType: "application/zip",
+      buffer: zipBuffer
+    });
+
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="design_file_status"]')).toHaveAttribute(
+      "data-tone",
+      "success"
+    );
+    const importedState = await readStoredEditorState(page);
+    expect(importedState.title).toBe("Machin truc lab");
+    expect(importedState.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
   });
 
   test("downloads and imports the structured design file", async ({ page }) => {

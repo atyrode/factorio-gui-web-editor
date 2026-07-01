@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { strToU8, zipSync } from "fflate";
 
 import {
   FACTORIO_DESIGN_FILE_CURRENT_SCHEMA,
   FACTORIO_DESIGN_FILE_EXTENSION,
+  FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
   FACTORIO_DESIGN_FILE_SOURCE,
   createFactorioDesignFileDownload,
   migrateFactorioDesignFile,
+  parseFactorioDesignFilePackage,
   parseFactorioDesignFileText
 } from "../../src/factorioDesignFile.js";
 
@@ -100,6 +103,44 @@ test("parseFactorioDesignFileText returns migrated normalized design state", () 
   assert.equal(migrated.currentWindow.layoutChildren[0].id, "gui_frame_1");
   assert.equal(migrated.currentWindow.layoutChildren[0].children[0].id, "gui_label_2");
   assert.equal(migrated.currentWindow.layoutChildren[0].children[0].children.length, 0);
+});
+
+test("parseFactorioDesignFilePackage imports embedded package design files", () => {
+  const { content } = createFactorioDesignFileDownload(roughDesignState(), {
+    now: new Date("2026-07-01T12:34:56Z")
+  });
+  const zip = zipSync({
+    [`labtorio_gui_preview_0.1.0/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`]: strToU8(content),
+    "labtorio_gui_preview_0.1.0/gui.lua": strToU8("-- generated lua projection")
+  });
+
+  const imported = parseFactorioDesignFilePackage(zip);
+
+  assert.equal(imported.title, "Train Dispatch");
+  assert.equal(imported.currentWindow.layoutChildren[0].id, "gui_frame_1");
+  assert.equal(imported.currentWindow.layoutChildren[0].children[0].id, "gui_label_2");
+});
+
+test("parseFactorioDesignFilePackage rejects invalid package envelopes", () => {
+  assert.throws(
+    () => parseFactorioDesignFilePackage(strToU8("not a zip")),
+    /zip could not be read/
+  );
+
+  assert.throws(
+    () => parseFactorioDesignFilePackage(zipSync({
+      "labtorio_gui_preview_0.1.0/gui.lua": strToU8("-- generated lua projection")
+    })),
+    /does not contain design\.labtorio-gui\.json/
+  );
+
+  assert.throws(
+    () => parseFactorioDesignFilePackage(zipSync({
+      [FACTORIO_DESIGN_FILE_PACKAGE_ENTRY]: strToU8("{}"),
+      [`nested/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`]: strToU8("{}")
+    })),
+    /contains multiple design\.labtorio-gui\.json/
+  );
 });
 
 test("migrateFactorioDesignFile preserves current-schema metadata", () => {
