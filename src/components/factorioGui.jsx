@@ -481,22 +481,26 @@ function createFillerPreviewNode() {
 }
 
 function createLabelPreviewNode() {
+  const variant = labelStyleVariant("label");
+
   return {
     id: "builder_ghost_marker",
     atom: LABEL_ATOM_ID,
     primitive: "label",
     className: "agui::Label",
-    style: "label",
+    style: variant.style,
     caption: "Label",
-    derivedFrom: "label",
+    derivedFrom: variant.parent ?? variant.style,
     role: "text-label-preview",
     styleReference: {
-      variantId: "label",
-      source: "wube-factorio-data-style-lua",
-      font: "default",
-      fontColor: "{1, 1, 1}",
-      browserColor: "#ffffff",
-      singleLine: true
+      variantId: variant.id,
+      source: variant.source,
+      styleType: variant.styleType,
+      prototypeFields: variant.prototypeFields,
+      font: variant.font,
+      fontColor: variant.fontColor,
+      browserColor: variant.browserColor,
+      singleLine: variant.singleLine
     },
     children: []
   };
