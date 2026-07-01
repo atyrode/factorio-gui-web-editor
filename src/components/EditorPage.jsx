@@ -8,7 +8,8 @@ import {
   MousePointer2,
   PanelBottomOpen,
   ScanSearch,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Upload
 } from "lucide-react";
 import {
   FxActionButton,
@@ -31,6 +32,11 @@ import {
   WINDOW_SIZE_LIMITS
 } from "../factorioExport.js";
 import { createFactorioModDownload } from "../factorioModExport.js";
+import {
+  createFactorioDesignFileDownload,
+  FACTORIO_DESIGN_FILE_EXTENSION,
+  parseFactorioDesignFileText
+} from "../factorioDesignFile.js";
 import {
   BODY_LAYOUT_ROOT_ID,
   builderAtomCode,
@@ -897,6 +903,108 @@ function EditorCanvas({
   );
 }
 
+function downloadBlob({ filename, data, type }) {
+  const blob = new Blob([data], { type });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+}
+
+function DesignFilePanel({ editorState, onImportDesignFile, onStatus, status }) {
+  const fileInputRef = useRef(null);
+  const canDownloadDesign = Boolean(editorState.currentWindow);
+  const statusTone = status?.tone === "error" ? "error" : "success";
+
+  function downloadDesignFile() {
+    if (!canDownloadDesign) {
+      return;
+    }
+
+    const { filename, content } = createFactorioDesignFileDownload(editorState);
+    downloadBlob({
+      filename,
+      data: content,
+      type: "application/json"
+    });
+    onStatus?.({
+      tone: "success",
+      text: `Downloaded ${filename}.`
+    });
+  }
+
+  async function importDesignFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      onImportDesignFile(await file.text(), file.name);
+    } catch {
+      onStatus?.({
+        tone: "error",
+        text: "The selected design file could not be read."
+      });
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  return (
+    <FxFrame title="Design File" className="fx-editor-design-file" as="section">
+      <div className="fx-editor-output__bar">
+        <div className="fx-editor-output__file" data-anchor="design_file_name">
+          *{FACTORIO_DESIGN_FILE_EXTENSION}
+        </div>
+        <div className="fx-editor-design-file__actions">
+          <FxButton
+            className="fx-editor-output__download"
+            data-anchor="design_file_import"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload aria-hidden="true" />
+            <span>Import</span>
+          </FxButton>
+          <FxButton
+            className="fx-editor-output__download"
+            data-anchor="design_file_download"
+            disabled={!canDownloadDesign}
+            onClick={downloadDesignFile}
+          >
+            <Download aria-hidden="true" />
+            <span>Download design</span>
+          </FxButton>
+        </div>
+      </div>
+      <input
+        ref={fileInputRef}
+        aria-label="Import design file"
+        className="fx-editor-file-input"
+        data-anchor="design_file_input"
+        type="file"
+        accept=".json,application/json"
+        onChange={importDesignFile}
+      />
+      {status ? (
+        <div
+          className={`fx-editor-output__status fx-editor-output__status--${statusTone}`}
+          data-anchor="design_file_status"
+          data-tone={statusTone}
+          role={statusTone === "error" ? "alert" : "status"}
+        >
+          {status.text}
+        </div>
+      ) : null}
+    </FxFrame>
+  );
+}
+
 function LuaOutput({ model }) {
   const code = renderWindowLua(model);
   const canExportMod = Boolean(model?.root);
@@ -907,16 +1015,11 @@ function LuaOutput({ model }) {
     }
 
     const { filename, data } = createFactorioModDownload(model);
-    const blob = new Blob([data], { type: "application/zip" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = filename;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+    downloadBlob({
+      filename,
+      data,
+      type: "application/zip"
+    });
   }
 
   return (
@@ -939,6 +1042,26 @@ function LuaOutput({ model }) {
         <code>{code}</code>
       </pre>
     </FxFrame>
+  );
+}
+
+function ExportDrawer({
+  editorState,
+  importStatus,
+  model,
+  onDesignFileStatus,
+  onImportDesignFile
+}) {
+  return (
+    <section className="fx-editor-export-drawer" data-anchor="editor_export_drawer">
+      <DesignFilePanel
+        editorState={editorState}
+        onImportDesignFile={onImportDesignFile}
+        onStatus={onDesignFileStatus}
+        status={importStatus}
+      />
+      <LuaOutput model={model} />
+    </section>
   );
 }
 
@@ -1584,6 +1707,7 @@ export function EditorPage() {
   const [builderDropTarget, setBuilderDropTarget] = useState(null);
   const [resizeDraft, setResizeDraft] = useState(null);
   const [labelTextEditingId, setLabelTextEditingId] = useState(null);
+  const [designFileStatus, setDesignFileStatus] = useState(null);
   const editorStateRef = useRef(editorState);
   const editorHistoryRef = useRef(editorHistory);
   const editSessionSnapshotRef = useRef(null);
@@ -1914,6 +2038,40 @@ export function EditorPage() {
       ...state,
       propertiesTab: normalizePropertiesTab(nextTab)
     }));
+  }
+
+  function importDesignFile(text, filename) {
+    let designState;
+    try {
+      designState = parseFactorioDesignFileText(text);
+    } catch (error) {
+      setDesignFileStatus({
+        tone: "error",
+        text: error instanceof Error ? error.message : "The selected design file is invalid."
+      });
+      return false;
+    }
+
+    setInspectorHistory({ back: [], forward: [] });
+    applyAuthoredEditorUpdate((state) => ({
+      ...state,
+      title: designState.title,
+      windowSize: designState.windowSize,
+      windowBodyDirection: designState.windowBodyDirection,
+      currentWindow: designState.currentWindow,
+      layoutSettings: designState.layoutSettings,
+      activeCanvasTool: CANVAS_TOOL_SELECT,
+      propertiesTab: PROPERTIES_TAB_PROPERTIES,
+      showInspector: false,
+      resizeMode: false,
+      inspectorLocked: Boolean(designState.currentWindow),
+      inspectedAnchor: designState.currentWindow ? BODY_LAYOUT_ROOT_ID : null
+    }));
+    setDesignFileStatus({
+      tone: "success",
+      text: `Imported ${filename || "design file"}.`
+    });
+    return true;
   }
 
   function toggleGuiShadowsEnabled() {
@@ -2872,10 +3030,14 @@ export function EditorPage() {
       </div>
 
       {exportDrawerOpen ? (
-        <section className="fx-editor-export-drawer" data-anchor="editor_export_drawer">
-          <LuaOutput model={currentModel} />
-        </section>
+        <ExportDrawer
+          editorState={editorState}
+          importStatus={designFileStatus}
+          model={currentModel}
+          onDesignFileStatus={setDesignFileStatus}
+          onImportDesignFile={importDesignFile}
+        />
       ) : null}
-      </main>
+    </main>
   );
 }

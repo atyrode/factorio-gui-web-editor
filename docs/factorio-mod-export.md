@@ -3,6 +3,11 @@
 The editor can download the current GUI model as a local Factorio preview mod.
 This is a parity-testing loop, not a production mod package.
 
+For reversible editor work, use the export drawer's `Download design` and
+`Import` controls instead. Those `*.labtorio-gui.json` files preserve the
+tool-authored structured model. Preview mods and generated Lua remain
+projections from that model and are not parsed back into the editor.
+
 ## What It Exports
 
 Use the `Download mod` button in the Lua Output panel after creating a Window.

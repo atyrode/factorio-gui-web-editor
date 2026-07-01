@@ -25,6 +25,7 @@ http://127.0.0.1:5173/
 - React/Vite browser app with an empty canvas.
 - A minimal window creator with editable title text.
 - A structured seed GUI model shared by preview, inspector, and Lua output.
+- A structured design-file download/import path for tool-authored layouts.
 - A one-click local Factorio preview mod export from the same Lua output.
 - A `/style-atlas` route that renders reusable GUI atoms for visual review.
 - Header navigation with styled in-app pages rendered from the project
@@ -44,6 +45,7 @@ src/components/                Strictly scoped React components
 src/docs.js                    Markdown-backed document route registry
 src/factorioModel.js           Structured Factorio GUI seed model and inspector rows
 src/factorioExport.js          Lua export projection from the GUI model
+src/factorioDesignFile.js      Durable design-file import/export schema
 src/factorioModExport.js       Factorio preview mod zip projection from the Lua export
 src/main.jsx                   React mount and stylesheet import
 src/styles.css                 Stylesheet entry point
@@ -88,7 +90,7 @@ Accepted future directions:
 - constrained layout variants;
 - component reordering;
 - density and bounded-size tuning;
-- JSON layout-model export;
+- structured design-file import/export for tool-authored layouts;
 - Markdown spec diff export;
 - Lua skeleton export with stable anchors and TODO behavior hooks;
 - local Factorio preview mod export for GUI parity checks;
@@ -146,6 +148,11 @@ tree behavior, and runs structural source/anchor checks. Browser tests protect
 objective layout contracts; they do not replace human visual review.
 
 ## Factorio Preview Mod
+
+Use `Download design` in the export drawer to save the editable structured
+layout as a `*.labtorio-gui.json` file. Use `Import` there to restore that
+tool-authored model later. This is the supported round-trip format; it is not a
+Lua decompiler for arbitrary Factorio mods.
 
 After creating a Window, use `Download mod` in the Lua Output panel to download
 a local `labtorio_gui_preview_0.1.0.zip`. Copy it to the Factorio mods
