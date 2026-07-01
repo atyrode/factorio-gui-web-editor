@@ -50,6 +50,7 @@ import {
 import {
   FACTORIO_PREVIEW_MOD_DESIGN_FILENAME,
   FACTORIO_PREVIEW_MOD_FOLDER,
+  FACTORIO_PREVIEW_MOD_MANIFEST_FILENAME,
   FACTORIO_PREVIEW_MOD_NAME,
   FACTORIO_PREVIEW_MOD_VERSION,
   FACTORIO_PREVIEW_MOD_ZIP_FILENAME,
@@ -57,6 +58,11 @@ import {
   renderFactorioModFiles
 } from "../src/factorioModExport.js";
 import { FACTORIO_DESIGN_FILE_SCHEMA } from "../src/factorioDesignFile.js";
+import {
+  FACTORIO_PACKAGE_HOOKS_SCHEMA,
+  FACTORIO_PACKAGE_MANIFEST_SCHEMA,
+  FACTORIO_PACKAGE_OWNER_GENERATED
+} from "../src/factorioPackageManifest.js";
 import { factorioAtomRegistry } from "../src/factorioAtomRegistry.js";
 
 function ids(nodes) {
@@ -1064,11 +1070,26 @@ const embeddedDesignFile = JSON.parse(
     ]
   )
 );
+const packageManifest = JSON.parse(
+  strFromU8(
+    modZipWithDesignEntries[
+      `${FACTORIO_PREVIEW_MOD_FOLDER}/${FACTORIO_PREVIEW_MOD_MANIFEST_FILENAME}`
+    ]
+  )
+);
 assert.equal(embeddedDesignFile.schema, FACTORIO_DESIGN_FILE_SCHEMA);
 assert.equal(embeddedDesignFile.design.title, "Builder Window");
 assert.equal(
   embeddedDesignFile.design.currentWindow.layoutChildren[0].children[0].id,
   "gui_horizontal_flow_2"
+);
+assert.equal(packageManifest.schema, FACTORIO_PACKAGE_MANIFEST_SCHEMA);
+assert.equal(packageManifest.entries.design, FACTORIO_PREVIEW_MOD_DESIGN_FILENAME);
+assert.equal(packageManifest.hooks.schema, FACTORIO_PACKAGE_HOOKS_SCHEMA);
+assert.ok(
+  packageManifest.ownership.some(
+    (entry) => entry.path === "gui.lua" && entry.owner === FACTORIO_PACKAGE_OWNER_GENERATED
+  )
 );
 
 const movedVariableNames = normalizeLuaVariableNames(

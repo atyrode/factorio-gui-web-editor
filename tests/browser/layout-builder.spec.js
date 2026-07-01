@@ -1,13 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
-import { strFromU8, unzipSync } from "fflate";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
 const EDITOR_STORAGE_KEY = "labtorio.editorState.v1";
 const FACTORIO_DESIGN_FILE_SCHEMA = "labtorio-gui-design.v0";
 const FACTORIO_DESIGN_FILE_EXTENSION = ".labtorio-gui.json";
 const FACTORIO_PREVIEW_MOD_FOLDER = "labtorio_gui_preview_0.1.0";
 const FACTORIO_PREVIEW_MOD_DESIGN_FILENAME = "design.labtorio-gui.json";
+const FACTORIO_PREVIEW_MOD_MANIFEST_FILENAME = "labtorio-gui-package.json";
 const FACTORIO_PREVIEW_MOD_ZIP_FILENAME = `${FACTORIO_PREVIEW_MOD_FOLDER}.zip`;
 const ONE_FRAME_STATE = {
   title: "Machin truc lab",
@@ -1920,6 +1921,13 @@ test.describe("Layout builder canvas preview", () => {
         ]
       )
     );
+    const packageManifest = JSON.parse(
+      strFromU8(
+        zipEntries[
+          `${FACTORIO_PREVIEW_MOD_FOLDER}/${FACTORIO_PREVIEW_MOD_MANIFEST_FILENAME}`
+        ]
+      )
+    );
     const infoJson = JSON.parse(
       strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/info.json`])
     );
@@ -1929,6 +1937,9 @@ test.describe("Layout builder canvas preview", () => {
     expect(embeddedDesignFile.schema).toBe(FACTORIO_DESIGN_FILE_SCHEMA);
     expect(embeddedDesignFile.design.title).toBe("Machin truc lab");
     expect(embeddedDesignFile.design.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
+    expect(packageManifest.schema).toBe("labtorio-gui-package.v0");
+    expect(packageManifest.entries.design).toBe(FACTORIO_PREVIEW_MOD_DESIGN_FILENAME);
+    expect(packageManifest.hooks.schema).toBe("labtorio-gui-hooks.v0");
     expect(controlLua).toContain('local build_gui = require("gui")');
     expect(controlLua).toContain("defines.events.on_player_created");
     expect(controlLua).toContain("defines.events.on_player_joined_game");
@@ -1949,6 +1960,9 @@ test.describe("Layout builder canvas preview", () => {
     await expect(page.locator('[data-anchor="design_file_status"]')).toHaveAttribute(
       "data-tone",
       "success"
+    );
+    await expect(page.locator('[data-anchor="design_file_status"]')).not.toContainText(
+      "no labtorio-gui-package.json"
     );
     const importedState = await readStoredEditorState(page);
     expect(importedState.title).toBe("Machin truc lab");
@@ -2005,6 +2019,42 @@ test.describe("Layout builder canvas preview", () => {
     expect(state.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
     expect(state.currentWindow.layoutChildren[0].atom).toBe("frame");
     expect(state.currentWindow.luaVariableNames).toEqual({});
+  });
+
+  test("imports legacy design-only zips with a package manifest warning", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.locator('[data-anchor="design_file_download"]').click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    const fileText = await readFile(downloadPath, "utf8");
+    const zipBuffer = Buffer.from(zipSync({
+      [`${FACTORIO_PREVIEW_MOD_FOLDER}/${FACTORIO_PREVIEW_MOD_DESIGN_FILENAME}`]: strToU8(fileText),
+      [`${FACTORIO_PREVIEW_MOD_FOLDER}/gui.lua`]: strToU8("-- generated lua projection")
+    }));
+
+    await page.locator("#reset-window").click();
+    await expect(page.locator('[data-anchor="editor_empty_state"]')).toBeVisible();
+
+    await page.locator('[data-anchor="design_file_input"]').setInputFiles({
+      name: "legacy-design-only.zip",
+      mimeType: "application/zip",
+      buffer: zipBuffer
+    });
+
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="design_file_status"]')).toHaveAttribute(
+      "data-tone",
+      "success"
+    );
+    await expect(page.locator('[data-anchor="design_file_status"]')).toContainText(
+      "no labtorio-gui-package.json"
+    );
   });
 
   test("rejects unsupported design files without mutating the current layout", async ({ page }) => {
