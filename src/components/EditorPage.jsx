@@ -1005,7 +1005,7 @@ function DesignFilePanel({ editorState, onImportDesignFile, onStatus, status }) 
   );
 }
 
-function LuaOutput({ model }) {
+function LuaOutput({ editorState, model }) {
   const code = renderWindowLua(model);
   const canExportMod = Boolean(model?.root);
 
@@ -1014,7 +1014,7 @@ function LuaOutput({ model }) {
       return;
     }
 
-    const { filename, data } = createFactorioModDownload(model);
+    const { filename, data } = createFactorioModDownload(model, { editorState });
     downloadBlob({
       filename,
       data,
@@ -1060,7 +1060,7 @@ function ExportDrawer({
         onStatus={onDesignFileStatus}
         status={importStatus}
       />
-      <LuaOutput model={model} />
+      <LuaOutput editorState={editorState} model={model} />
     </section>
   );
 }

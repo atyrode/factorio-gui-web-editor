@@ -7,6 +7,7 @@ const EDITOR_STORAGE_KEY = "labtorio.editorState.v1";
 const FACTORIO_DESIGN_FILE_SCHEMA = "labtorio-gui-design.v0";
 const FACTORIO_DESIGN_FILE_EXTENSION = ".labtorio-gui.json";
 const FACTORIO_PREVIEW_MOD_FOLDER = "labtorio_gui_preview_0.1.0";
+const FACTORIO_PREVIEW_MOD_DESIGN_FILENAME = "design.labtorio-gui.json";
 const FACTORIO_PREVIEW_MOD_ZIP_FILENAME = `${FACTORIO_PREVIEW_MOD_FOLDER}.zip`;
 const ONE_FRAME_STATE = {
   title: "Machin truc lab",
@@ -1911,12 +1912,22 @@ test.describe("Layout builder canvas preview", () => {
     const zipEntries = unzipSync(new Uint8Array(await readFile(downloadPath)));
     const guiLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/gui.lua`]);
     const controlLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/control.lua`]);
+    const embeddedDesignFile = JSON.parse(
+      strFromU8(
+        zipEntries[
+          `${FACTORIO_PREVIEW_MOD_FOLDER}/${FACTORIO_PREVIEW_MOD_DESIGN_FILENAME}`
+        ]
+      )
+    );
     const infoJson = JSON.parse(
       strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/info.json`])
     );
 
     expect(infoJson.name).toBe("labtorio_gui_preview");
     expect(infoJson.factorio_version).toBe("2.0");
+    expect(embeddedDesignFile.schema).toBe(FACTORIO_DESIGN_FILE_SCHEMA);
+    expect(embeddedDesignFile.design.title).toBe("Machin truc lab");
+    expect(embeddedDesignFile.design.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
     expect(controlLua).toContain('local build_gui = require("gui")');
     expect(controlLua).toContain("defines.events.on_player_created");
     expect(controlLua).toContain("defines.events.on_player_joined_game");

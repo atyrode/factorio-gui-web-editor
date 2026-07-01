@@ -12,7 +12,11 @@ import {
   normalizeLuaVariableNames
 } from "./factorioLuaNames.js";
 
-export const FACTORIO_DESIGN_FILE_SCHEMA = "labtorio-gui-design.v0";
+export const FACTORIO_DESIGN_FILE_CURRENT_SCHEMA = "labtorio-gui-design.v0";
+export const FACTORIO_DESIGN_FILE_SCHEMA = FACTORIO_DESIGN_FILE_CURRENT_SCHEMA;
+export const FACTORIO_DESIGN_FILE_SUPPORTED_SCHEMAS = Object.freeze([
+  FACTORIO_DESIGN_FILE_CURRENT_SCHEMA
+]);
 export const FACTORIO_DESIGN_FILE_EXTENSION = ".labtorio-gui.json";
 export const FACTORIO_DESIGN_FILE_SOURCE = Object.freeze({
   app: "factorio-gui-web-editor",
@@ -115,6 +119,36 @@ export function createFactorioDesignFileDownload(editorState, options = {}) {
   };
 }
 
+function assertDesignFileEnvelope(value) {
+  if (!isObject(value)) {
+    throw new Error("The selected design file must be a JSON object.");
+  }
+
+  if (!FACTORIO_DESIGN_FILE_SUPPORTED_SCHEMAS.includes(value.schema)) {
+    throw new Error(`Unsupported design file schema: ${String(value.schema ?? "missing")}.`);
+  }
+
+  if (!isObject(value.design)) {
+    throw new Error("The selected design file is missing its design payload.");
+  }
+}
+
+export function migrateFactorioDesignFile(value) {
+  assertDesignFileEnvelope(value);
+
+  switch (value.schema) {
+    case FACTORIO_DESIGN_FILE_CURRENT_SCHEMA:
+      return {
+        schema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA,
+        exportedAt: typeof value.exportedAt === "string" ? value.exportedAt : null,
+        source: isObject(value.source) ? value.source : FACTORIO_DESIGN_FILE_SOURCE,
+        design: normalizeDesignState(value.design)
+      };
+    default:
+      throw new Error(`Unsupported design file schema: ${String(value.schema ?? "missing")}.`);
+  }
+}
+
 export function parseFactorioDesignFileText(text) {
   let parsed;
   try {
@@ -123,17 +157,5 @@ export function parseFactorioDesignFileText(text) {
     throw new Error("The selected design file is not valid JSON.");
   }
 
-  if (!isObject(parsed)) {
-    throw new Error("The selected design file must be a JSON object.");
-  }
-
-  if (parsed.schema !== FACTORIO_DESIGN_FILE_SCHEMA) {
-    throw new Error(`Unsupported design file schema: ${String(parsed.schema ?? "missing")}.`);
-  }
-
-  if (!isObject(parsed.design)) {
-    throw new Error("The selected design file is missing its design payload.");
-  }
-
-  return normalizeDesignState(parsed.design);
+  return migrateFactorioDesignFile(parsed).design;
 }

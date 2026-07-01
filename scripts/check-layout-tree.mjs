@@ -48,6 +48,7 @@ import {
   validateLuaVariableNameEdit
 } from "../src/factorioLuaNames.js";
 import {
+  FACTORIO_PREVIEW_MOD_DESIGN_FILENAME,
   FACTORIO_PREVIEW_MOD_FOLDER,
   FACTORIO_PREVIEW_MOD_NAME,
   FACTORIO_PREVIEW_MOD_VERSION,
@@ -55,6 +56,7 @@ import {
   createFactorioModZipData,
   renderFactorioModFiles
 } from "../src/factorioModExport.js";
+import { FACTORIO_DESIGN_FILE_SCHEMA } from "../src/factorioDesignFile.js";
 import { factorioAtomRegistry } from "../src/factorioAtomRegistry.js";
 
 function ids(nodes) {
@@ -1013,6 +1015,60 @@ assert.equal(
 assert.equal(
   strFromU8(modZipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/info.json`]),
   modFiles["info.json"]
+);
+
+const modZipWithDesign = createFactorioModZipData(model, {
+  editorState: {
+    title: "Builder Window",
+    windowSize: { width: 760, height: 420 },
+    windowBodyDirection: "horizontal",
+    currentWindow: {
+      title: "Builder Window",
+      location: null,
+      size: { width: 760, height: 420 },
+      bodyDirection: "horizontal",
+      layoutChildren: [
+        {
+          id: "gui_frame_1",
+          atom: "frame",
+          styleVariant: INSIDE_DEEP_FRAME_STYLE_VARIANT,
+          children: [
+            {
+              id: "gui_horizontal_flow_2",
+              atom: "horizontal-flow",
+              styleVariant: GENERIC_HORIZONTAL_FLOW_STYLE_VARIANT,
+              children: []
+            }
+          ]
+        }
+      ],
+      nextLayoutNodeNumber: 3,
+      luaVariableNames: {
+        gui_frame_1: "main_frame"
+      }
+    },
+    layoutSettings: {
+      horizontalFlowSpacing: 10,
+      horizontalFlowMinimumWidth: 220,
+      nestedHorizontalFlowMinimumWidth: 120,
+      horizontalFlowMinimumHeight: 80,
+      horizontalFlowPadding: 12
+    }
+  }
+});
+const modZipWithDesignEntries = unzipSync(modZipWithDesign);
+const embeddedDesignFile = JSON.parse(
+  strFromU8(
+    modZipWithDesignEntries[
+      `${FACTORIO_PREVIEW_MOD_FOLDER}/${FACTORIO_PREVIEW_MOD_DESIGN_FILENAME}`
+    ]
+  )
+);
+assert.equal(embeddedDesignFile.schema, FACTORIO_DESIGN_FILE_SCHEMA);
+assert.equal(embeddedDesignFile.design.title, "Builder Window");
+assert.equal(
+  embeddedDesignFile.design.currentWindow.layoutChildren[0].children[0].id,
+  "gui_horizontal_flow_2"
 );
 
 const movedVariableNames = normalizeLuaVariableNames(
