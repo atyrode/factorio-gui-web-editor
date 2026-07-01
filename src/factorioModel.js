@@ -236,12 +236,10 @@ export const labelStyleVariants = Object.freeze({
     style: "clickable_label",
     styleDescription: "Clickable label_style from wube/factorio-data",
     source: "wube-factorio-data-style-lua",
-    parent: "label",
     hoveredFontColor: "{1, 0.74, 0.40}",
     browserHoveredColor: "#ffbd66",
     clickedFontColor: "{0.98, 0.66, 0.22}",
-    browserClickedColor: "#faa838",
-    singleLine: true
+    browserClickedColor: "#faa838"
   })
 });
 

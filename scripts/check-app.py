@@ -31,6 +31,8 @@ REQUIRED_FILES = [
     "src/factorioEditorSettings.js",
     "src/factorioLayoutTree.js",
     "src/factorioModExport.js",
+    "src/factorioStyleCatalog.js",
+    "src/generated/factorioStyleCatalog.generated.json",
     "src/main.jsx",
     "package.json",
     "package-lock.json",
@@ -195,6 +197,8 @@ def main() -> int:
     assert_contains(source_blob, "--dump-data", "app source")
     assert_contains(source_blob, "StyleSpecification", "app source")
     assert_contains(source_blob, "LuaPrototypes.style", "app source")
+    assert_contains(source_blob, "factorio-style-catalog.v0", "app source")
+    assert_contains(source_blob, "src/generated/factorioStyleCatalog.generated.json", "app source")
 
     for forbidden in FORBIDDEN_PAYLOADS:
         if forbidden in source_blob:
