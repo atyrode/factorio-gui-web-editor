@@ -386,7 +386,7 @@ parity loop, not an automated screenshot harness.
 - [x] Add an in-memory layout model for the current top-level window shell.
 - [x] Add a read-only generated Lua skeleton preview for the current shell.
 - [x] Add a quick local Factorio preview mod export for the current Lua output.
-- [ ] Add persisted layout model export.
+- [x] Add persisted layout model export.
 - [ ] Add reviewed Lua skeleton export.
 - [ ] Write the Factorio GUI constraint catalog.
 - [ ] Add constrained builder controls.

@@ -9,10 +9,11 @@
   "scripts": {
     "build": "vite build && node scripts/copy-static-docs.mjs",
     "catalog:generate": "node scripts/generate-factorio-style-catalog.mjs",
-    "check": "npm run build && node scripts/check-layout-tree.mjs && node scripts/check-hover-drop-geometry.mjs && node scripts/check-style-catalog.mjs && python3 scripts/check-app.py && npm run test:browser",
+    "check": "npm run build && node scripts/check-layout-tree.mjs && node scripts/check-hover-drop-geometry.mjs && node scripts/check-style-catalog.mjs && npm run test:unit && python3 scripts/check-app.py && npm run test:browser",
     "dev": "vite --host 127.0.0.1",
     "preview": "vite preview --host 127.0.0.1",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:unit": "node --test tests/unit/*.test.mjs"
   },
   "dependencies": {
     "@headless-tree/core": "^1.7.0",

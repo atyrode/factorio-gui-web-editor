@@ -184,6 +184,18 @@ History snapshots cover authored model/export state plus restorable Inspector
 selection metadata, while transient hover, drag preview, visibility toggles,
 sidebar width, and Inspector navigation remain outside the schema.
 
+The durable round-trip format for tool-authored layouts is
+`labtorio-gui-design.v0`, downloaded as `*.labtorio-gui.json`. The file stores
+source metadata plus the normalized authored design fields: title, Window size,
+Window body direction, current Window layout specs, Lua variable-name aliases,
+and layout settings. Import validates the schema, normalizes the payload through
+the same constrained model rules, clears transient editor state, and then
+hydrates browser preview, Inspector data, Lua output, and preview-mod export
+from the restored model. This format is intentionally not a decompiler for
+arbitrary Factorio Lua. Existing mods that want round-trip editing should store
+or provide this tool-authored design payload instead of expecting the editor to
+recover intent from imperative Lua code.
+
 Legacy cached windows normalize to an empty `layoutChildren` array with
 `nextLayoutNodeNumber: 1`. Existing Frame and Horizontal Flow specs keep their
 atom identity if their parent capability accepts them. Unknown atoms are

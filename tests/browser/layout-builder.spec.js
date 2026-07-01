@@ -4,7 +4,10 @@ import { inflateSync } from "node:zlib";
 import { strFromU8, unzipSync } from "fflate";
 
 const EDITOR_STORAGE_KEY = "labtorio.editorState.v1";
+const FACTORIO_DESIGN_FILE_SCHEMA = "labtorio-gui-design.v0";
+const FACTORIO_DESIGN_FILE_EXTENSION = ".labtorio-gui.json";
 const FACTORIO_PREVIEW_MOD_FOLDER = "labtorio_gui_preview_0.1.0";
+const FACTORIO_PREVIEW_MOD_DESIGN_FILENAME = "design.labtorio-gui.json";
 const FACTORIO_PREVIEW_MOD_ZIP_FILENAME = `${FACTORIO_PREVIEW_MOD_FOLDER}.zip`;
 const ONE_FRAME_STATE = {
   title: "Machin truc lab",
@@ -1909,18 +1912,107 @@ test.describe("Layout builder canvas preview", () => {
     const zipEntries = unzipSync(new Uint8Array(await readFile(downloadPath)));
     const guiLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/gui.lua`]);
     const controlLua = strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/control.lua`]);
+    const embeddedDesignFile = JSON.parse(
+      strFromU8(
+        zipEntries[
+          `${FACTORIO_PREVIEW_MOD_FOLDER}/${FACTORIO_PREVIEW_MOD_DESIGN_FILENAME}`
+        ]
+      )
+    );
     const infoJson = JSON.parse(
       strFromU8(zipEntries[`${FACTORIO_PREVIEW_MOD_FOLDER}/info.json`])
     );
 
     expect(infoJson.name).toBe("labtorio_gui_preview");
     expect(infoJson.factorio_version).toBe("2.0");
+    expect(embeddedDesignFile.schema).toBe(FACTORIO_DESIGN_FILE_SCHEMA);
+    expect(embeddedDesignFile.design.title).toBe("Machin truc lab");
+    expect(embeddedDesignFile.design.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
     expect(controlLua).toContain('local build_gui = require("gui")');
     expect(controlLua).toContain("defines.events.on_player_created");
     expect(controlLua).toContain("defines.events.on_player_joined_game");
     expect(guiLua).toContain('caption = "Machin truc lab"');
     expect(guiLua).toContain('name = "gui_frame_1"');
     expect(guiLua).toContain("gui_frame_1.style.minimal_width = 168");
+  });
+
+  test("downloads and imports the structured design file", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.locator('[data-anchor="design_file_download"]').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe(
+      `machin-truc-lab${FACTORIO_DESIGN_FILE_EXTENSION}`
+    );
+
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    const fileText = await readFile(downloadPath, "utf8");
+    const designFile = JSON.parse(fileText);
+    expect(designFile.schema).toBe(FACTORIO_DESIGN_FILE_SCHEMA);
+    expect(designFile.source).toEqual({
+      app: "factorio-gui-web-editor",
+      modelSchema: "factorio-gui-layout.v0"
+    });
+    expect(designFile.design.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
+
+    await page.locator("#reset-window").click();
+    await expect(page.locator('[data-anchor="editor_empty_state"]')).toBeVisible();
+
+    await page.locator('[data-anchor="design_file_input"]').setInputFiles({
+      name: `restored${FACTORIO_DESIGN_FILE_EXTENSION}`,
+      mimeType: "application/json",
+      buffer: Buffer.from(fileText)
+    });
+
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="design_file_status"]')).toHaveAttribute(
+      "data-tone",
+      "success"
+    );
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      'caption = "Machin truc lab"'
+    );
+    await expect(page.locator(".fx-editor-output__code")).toContainText(
+      'name = "gui_frame_1"'
+    );
+
+    const state = await readStoredEditorState(page);
+    expect(state.title).toBe("Machin truc lab");
+    expect(state.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
+    expect(state.currentWindow.layoutChildren[0].atom).toBe("frame");
+    expect(state.currentWindow.luaVariableNames).toEqual({});
+  });
+
+  test("rejects unsupported design files without mutating the current layout", async ({ page }) => {
+    await seedEditorState(
+      page,
+      stateWithSelection(ONE_FRAME_STATE, "gui_frame_1", { showLuaOutput: true })
+    );
+
+    await page.locator('[data-anchor="design_file_input"]').setInputFiles({
+      name: "unsupported.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({ schema: "unsupported.v1", design: {} }))
+    });
+
+    await expect(page.locator('[data-anchor="design_file_status"]')).toHaveAttribute(
+      "data-tone",
+      "error"
+    );
+    await expect(page.locator('[data-anchor="design_file_status"]')).toContainText(
+      "Unsupported design file schema"
+    );
+
+    const state = await readStoredEditorState(page);
+    expect(state.title).toBe("Machin truc lab");
+    expect(state.currentWindow.layoutChildren).toHaveLength(1);
+    expect(state.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
+    await expect(page.locator('[data-anchor="gui_frame_1"]')).toBeVisible();
   });
 
   test("resize mode marks unsupported generated nodes without mutating state", async ({ page }) => {

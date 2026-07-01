@@ -1,10 +1,12 @@
 import { strToU8, zipSync } from "fflate";
 import { renderWindowLua } from "./factorioExport.js";
+import { createFactorioDesignFileDownload } from "./factorioDesignFile.js";
 
 export const FACTORIO_PREVIEW_MOD_NAME = "labtorio_gui_preview";
 export const FACTORIO_PREVIEW_MOD_VERSION = "0.1.0";
 export const FACTORIO_PREVIEW_MOD_FOLDER = `${FACTORIO_PREVIEW_MOD_NAME}_${FACTORIO_PREVIEW_MOD_VERSION}`;
 export const FACTORIO_PREVIEW_MOD_ZIP_FILENAME = `${FACTORIO_PREVIEW_MOD_FOLDER}.zip`;
+export const FACTORIO_PREVIEW_MOD_DESIGN_FILENAME = "design.labtorio-gui.json";
 
 const ZIP_MTIME = new Date("2024-01-01T00:00:00Z");
 const ZIP_OPTIONS = Object.freeze({ level: 9, mtime: ZIP_MTIME });
@@ -63,18 +65,25 @@ end)
 `;
 }
 
-export function renderFactorioModFiles(model) {
+export function renderFactorioModFiles(model, { editorState = null } = {}) {
   assertExportableModel(model);
 
-  return Object.freeze({
+  const files = {
     "info.json": renderFactorioModInfoJson(),
     "control.lua": renderFactorioModControlLua(),
     "gui.lua": renderWindowLua(model)
-  });
+  };
+
+  if (editorState) {
+    files[FACTORIO_PREVIEW_MOD_DESIGN_FILENAME] =
+      createFactorioDesignFileDownload(editorState).content;
+  }
+
+  return Object.freeze(files);
 }
 
-export function createFactorioModZipData(model) {
-  const files = renderFactorioModFiles(model);
+export function createFactorioModZipData(model, options = {}) {
+  const files = renderFactorioModFiles(model, options);
   const entries = {};
 
   for (const [fileName, contents] of Object.entries(files)) {
@@ -87,9 +96,9 @@ export function createFactorioModZipData(model) {
   return zipSync(entries, ZIP_OPTIONS);
 }
 
-export function createFactorioModDownload(model) {
+export function createFactorioModDownload(model, options = {}) {
   return {
     filename: FACTORIO_PREVIEW_MOD_ZIP_FILENAME,
-    data: createFactorioModZipData(model)
+    data: createFactorioModZipData(model, options)
   };
 }

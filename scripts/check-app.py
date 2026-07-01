@@ -28,6 +28,7 @@ REQUIRED_FILES = [
     "src/styles/layout.css",
     "src/styles/style-atlas.css",
     "src/docs.js",
+    "src/factorioDesignFile.js",
     "src/factorioEditorSettings.js",
     "src/factorioLayoutTree.js",
     "src/factorioModExport.js",
@@ -43,6 +44,7 @@ REQUIRED_FILES = [
     "scripts/check-style-catalog.mjs",
     "scripts/check-hover-drop-geometry.mjs",
     "scripts/check-layout-tree.mjs",
+    "tests/unit/factorioDesignFile.test.mjs",
     "tests/browser/layout-builder.spec.js",
     "README.md",
     "AGENTS.md",
@@ -192,6 +194,10 @@ def main() -> int:
     assert_contains(source_blob, "data-fx-class={styleReference.bodyClassName}", "app source")
     assert_contains(source_blob, "data-fx-role=\"window-body\"", "app source")
     assert_contains(source_blob, "factorio_mod_download", "app source")
+    assert_contains(source_blob, "design_file_download", "app source")
+    assert_contains(source_blob, "design_file_import", "app source")
+    assert_contains(source_blob, "labtorio-gui-design.v0", "app source")
+    assert_contains(source_blob, "design.labtorio-gui.json", "app source")
     assert_contains(source_blob, "labtorio_gui_preview_0.1.0", "app source")
     assert_contains(source_blob, "data.raw[\"gui-style\"][\"default\"]", "app source")
     assert_contains(source_blob, "--dump-data", "app source")
@@ -212,7 +218,9 @@ def main() -> int:
     assert_contains(check_sh, "npm run check", "scripts/check.sh")
     package_json = read("package.json")
     assert_contains(package_json, "\"test:browser\"", "package.json")
+    assert_contains(package_json, "\"test:unit\"", "package.json")
     assert_contains(package_json, "playwright test", "package.json")
+    assert_contains(package_json, "node --test tests/unit/*.test.mjs", "package.json")
     assert_contains(package_json, "scripts/check-app.py", "package.json")
     assert_contains(package_json, "scripts/check-style-catalog.mjs", "package.json")
     assert_contains(package_json, "scripts/generate-factorio-style-catalog.mjs", "package.json")

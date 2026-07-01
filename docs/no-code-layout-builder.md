@@ -133,9 +133,11 @@ node can be checked precisely. The Inspect tool owns canvas hover/click
 inspection, while the Resize tool can target canvas nodes for sizing without
 enabling hover inspection.
 
-The export drawer is closed by default. Opening it reveals generated `gui.lua`
-and the preview-mod download action. Lua output remains a generated export
-surface; it is not an always-visible editing surface.
+The export drawer is closed by default. Opening it reveals the durable design
+file controls, generated `gui.lua`, and the preview-mod download action. Design
+files are the supported tool-authored round trip. Lua output remains a
+generated export surface; it is not an always-visible editing surface or an
+import format.
 
 Select, Inspect, and Resize are exclusive canvas tools. Select is the default
 passive pointer mode: canvas clicks do not change inspected selection or switch
@@ -185,6 +187,12 @@ Workbench UI state is persisted under the existing
 Legacy `showInspector`, `resizeMode`, and `showLuaOutput` values are still read
 and written during this transition so older saved fixtures migrate to the
 matching Inspect, Resize, and export-drawer states.
+
+The design-file schema is separate from local-storage state. A
+`*.labtorio-gui.json` file stores only durable authored model fields and source
+metadata, then re-enters the editor through the same normalization rules used
+for cached state. It does not persist selected Inspector rows, drawer
+visibility, hover/drag state, undo history, or other browser workbench chrome.
 
 The model hydrates these specs into Factorio nodes only when rendering,
 inspecting, or exporting. `bodyDirection` selects the generated
