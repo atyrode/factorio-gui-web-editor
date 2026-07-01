@@ -187,14 +187,19 @@ sync.
 ## Constraint Catalog To Build
 
 The builder needs a catalog of Factorio GUI constraints. Official Factorio API
-docs are the authoritative source for engine behavior. Raiguard's Factorio GUI
-style guide is the preferred community source for Factorio-like composition,
-style naming, and inspection workflow. Older community documentation, including
-`ClaudeMetz/UntitledGuiGuide`, may be used cautiously as supporting context when
-it helps explain practical custom-GUI workflows. Raiguard's public Codeberg
-repositories, especially `flib`, Editor Extensions, Krastorio 2, and GUI-heavy
-utility mods, are a lead list for deeper architecture/style research; record
-concrete conclusions only after inspecting the specific repository/file.
+docs are the authoritative source for engine behavior. The public
+`wube/factorio-data` repository is the authoritative public source for base game
+prototype style definitions, especially `core/prototypes/style.lua`. Raiguard's
+Factorio GUI style guide is the preferred community source for Factorio-like
+composition, style naming, and inspection workflow. Older community
+documentation, including `ClaudeMetz/UntitledGuiGuide`, may be used cautiously
+as supporting context when it helps explain practical custom-GUI workflows.
+Raiguard's public Codeberg repositories, especially `flib`, Editor Extensions,
+Krastorio 2, and GUI-heavy utility mods, are a lead list for deeper
+architecture/style research; record concrete conclusions only after inspecting
+the specific repository/file. The source notes also track `Osmo/gui-editor` as a
+possible in-game GUI editor/mod reference to inspect before broadening canvas
+builder interaction patterns.
 
 Initial entries:
 
@@ -209,6 +214,48 @@ Initial entries:
 - portability warnings where browser behavior cannot match Factorio exactly.
 
 This catalog should be written before trying a sophisticated builder UI.
+
+## Public Style Data Extraction Plan
+
+The public style sources should become a generated local catalog before broad
+visual expansion. Manual registry entries are still useful, but they should be
+checked against generated source data instead of becoming the only record of
+Factorio style facts.
+
+Target source order:
+
+1. Official prototype schema: `https://lua-api.factorio.com/latest/prototype-api.json`.
+2. Public base definitions: `wube/factorio-data/core/prototypes/style.lua`.
+3. Generated loaded data: a pinned local `factorio --dump-data` JSON export
+   when the Factorio executable is available.
+4. Public final-table cross-check: official wiki `Data.raw` page and its linked
+   full `data.raw` serialization when a versioned public dump is needed.
+5. Runtime/helper evidence: `prototypes.style` for shallow name/type checks and
+   local helper-mod JSON dumps for targeted prototype-stage tables.
+6. Graphical Factorio inspection: `Ctrl+F6`, `Ctrl+F5`, and `Ctrl+F7` for
+   computed layout, bounding boxes, and shadows that prototype data cannot
+   provide.
+
+Implementation sequence:
+
+1. Add a script that fetches or reads pinned inputs into ignored scratch files,
+   recording Factorio version, source URL, command line, and commit or dump id.
+2. Extract a normalized style index with style name, style type, parent,
+   model-safe scalar fields, nested child style specs, and source location.
+3. Generate a checked-in small catalog for model-safe facts only; leave raw
+   dumps, sprite sheet coordinates, and graphical-set asset paths out of the
+   repository unless a later license review explicitly allows them.
+4. Reject asset-bearing keys such as filenames, sprite rectangles, raw
+   graphical-set payloads, and sound paths during extraction.
+5. Use the catalog to validate atom registry entries for Label, Filler, Frame,
+   Horizontal Flow, and future controls.
+6. Add a style-catalog page or Style Atlas mode that lists source-backed style
+   facts beside the current browser approximation and its remaining capture
+   gaps.
+7. Keep visual parity decisions separate from source extraction: style data can
+   explain padding, spacing, parents, font names, sizes, and stretch flags, but
+   screenshots still own rendered pixels, shadows, computed content boxes, and
+   hover geometry.
 
 The in-game style tools belong in this catalog workflow. `Ctrl+F6` opens the GUI
 style inspector in graphical Factorio and should be used to capture style names
@@ -309,8 +356,15 @@ parity loop, not an automated screenshot harness.
 - [x] Build the first bare browser window shell.
 - [ ] Extract enforceable tokens/contracts from Raiguard's Factorio GUI style
       guide, including style-inspector workflow.
+- [ ] Extract base style prototypes from public `wube/factorio-data`
+      `core/prototypes/style.lua` before promoting guessed style rules.
+- [ ] Pin and cite the exact `data.raw` style source used for extraction:
+      `style.lua` commit/tag, `--dump-data` Factorio version, wiki dump, or
+      helper-mod output path.
 - [ ] Survey Raiguard's public Factorio repositories on Codeberg for GUI/style
       examples before deeper builder implementation.
+- [ ] Inspect `Osmo/gui-editor` on Codeberg as a possible in-game GUI
+      editor/mod reference before broadening canvas builder interactions.
 - [ ] Review legacy GUI learning references, including
       `ClaudeMetz/UntitledGuiGuide`, against current official API docs.
 - [ ] Capture graphical Factorio style-inspector notes for vanilla widgets that

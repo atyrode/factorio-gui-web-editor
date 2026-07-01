@@ -55,7 +55,6 @@ REQUIRED_FILES = [
     "deploy/labtorio.Caddyfile",
     "deploy/edge-compose.yaml.example",
     "deploy/edge.Caddyfile.example",
-    "deploy/edge-basic-auth-entrypoint.sh",
 ]
 
 REQUIRED_ANCHORS = [
@@ -101,6 +100,9 @@ FORBIDDEN_PAYLOADS = [
     "data:image",
     "border-image:url",
     ".panel-hole-inner",
+    "LABTORIO_BASIC_AUTH",
+    "edge-basic-auth",
+    "basicauth",
 ]
 
 REMOVED_GLOBALS = [
@@ -155,7 +157,6 @@ def main() -> int:
             "deploy/labtorio.Caddyfile",
             "deploy/edge-compose.yaml.example",
             "deploy/edge.Caddyfile.example",
-            "deploy/edge-basic-auth-entrypoint.sh",
     ]
     scanned_files.extend(
         str(path.relative_to(ROOT))
@@ -186,6 +187,10 @@ def main() -> int:
     assert_contains(source_blob, "data-fx-role=\"window-body\"", "app source")
     assert_contains(source_blob, "factorio_mod_download", "app source")
     assert_contains(source_blob, "labtorio_gui_preview_0.1.0", "app source")
+    assert_contains(source_blob, "data.raw[\"gui-style\"][\"default\"]", "app source")
+    assert_contains(source_blob, "--dump-data", "app source")
+    assert_contains(source_blob, "StyleSpecification", "app source")
+    assert_contains(source_blob, "LuaPrototypes.style", "app source")
 
     for forbidden in FORBIDDEN_PAYLOADS:
         if forbidden in source_blob:
