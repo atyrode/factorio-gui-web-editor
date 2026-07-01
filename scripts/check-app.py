@@ -32,6 +32,7 @@ REQUIRED_FILES = [
     "src/factorioEditorSettings.js",
     "src/factorioLayoutTree.js",
     "src/factorioModExport.js",
+    "src/factorioPackageManifest.js",
     "src/factorioStyleCatalog.js",
     "src/generated/factorioStyleCatalog.generated.json",
     "src/main.jsx",
@@ -45,6 +46,7 @@ REQUIRED_FILES = [
     "scripts/check-hover-drop-geometry.mjs",
     "scripts/check-layout-tree.mjs",
     "tests/unit/factorioDesignFile.test.mjs",
+    "tests/unit/factorioPackageManifest.test.mjs",
     "tests/browser/layout-builder.spec.js",
     "README.md",
     "AGENTS.md",
@@ -198,6 +200,9 @@ def main() -> int:
     assert_contains(source_blob, "design_file_import", "app source")
     assert_contains(source_blob, "labtorio-gui-design.v0", "app source")
     assert_contains(source_blob, "design.labtorio-gui.json", "app source")
+    assert_contains(source_blob, "labtorio-gui-package.v0", "app source")
+    assert_contains(source_blob, "labtorio-gui-package.json", "app source")
+    assert_contains(source_blob, "labtorio-gui-hooks.v0", "app source")
     assert_contains(source_blob, "labtorio_gui_preview_0.1.0", "app source")
     assert_contains(source_blob, "data.raw[\"gui-style\"][\"default\"]", "app source")
     assert_contains(source_blob, "--dump-data", "app source")

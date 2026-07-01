@@ -10,8 +10,13 @@ import {
   createFactorioDesignFileDownload,
   migrateFactorioDesignFile,
   parseFactorioDesignFilePackage,
-  parseFactorioDesignFileText
+  parseFactorioDesignFileText,
+  readFactorioDesignFilePackage
 } from "../../src/factorioDesignFile.js";
+import {
+  FACTORIO_PACKAGE_MANIFEST_ENTRY,
+  renderFactorioPackageManifestJson
+} from "../../src/factorioPackageManifest.js";
 
 function roughDesignState() {
   return {
@@ -105,7 +110,32 @@ test("parseFactorioDesignFileText returns migrated normalized design state", () 
   assert.equal(migrated.currentWindow.layoutChildren[0].children[0].children.length, 0);
 });
 
-test("parseFactorioDesignFilePackage imports embedded package design files", () => {
+test("parseFactorioDesignFilePackage imports manifest-backed package design files", () => {
+  const { content } = createFactorioDesignFileDownload(roughDesignState(), {
+    now: new Date("2026-07-01T12:34:56Z")
+  });
+  const zip = zipSync({
+    [`labtorio_gui_preview_0.1.0/${FACTORIO_PACKAGE_MANIFEST_ENTRY}`]: strToU8(
+      renderFactorioPackageManifestJson({
+        now: new Date("2026-07-01T12:34:56Z"),
+        designEntry: FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
+        designSchema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA
+      })
+    ),
+    [`labtorio_gui_preview_0.1.0/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`]: strToU8(content),
+    "labtorio_gui_preview_0.1.0/gui.lua": strToU8("-- generated lua projection")
+  });
+
+  const result = readFactorioDesignFilePackage(zip);
+
+  assert.equal(result.manifest.entries.design, FACTORIO_DESIGN_FILE_PACKAGE_ENTRY);
+  assert.deepEqual(result.warnings, []);
+  assert.equal(result.design.title, "Train Dispatch");
+  assert.equal(result.design.currentWindow.layoutChildren[0].id, "gui_frame_1");
+  assert.equal(result.design.currentWindow.layoutChildren[0].children[0].id, "gui_label_2");
+});
+
+test("parseFactorioDesignFilePackage imports legacy design-only zips with a warning", () => {
   const { content } = createFactorioDesignFileDownload(roughDesignState(), {
     now: new Date("2026-07-01T12:34:56Z")
   });
@@ -114,11 +144,13 @@ test("parseFactorioDesignFilePackage imports embedded package design files", () 
     "labtorio_gui_preview_0.1.0/gui.lua": strToU8("-- generated lua projection")
   });
 
-  const imported = parseFactorioDesignFilePackage(zip);
+  const result = readFactorioDesignFilePackage(zip);
 
-  assert.equal(imported.title, "Train Dispatch");
-  assert.equal(imported.currentWindow.layoutChildren[0].id, "gui_frame_1");
-  assert.equal(imported.currentWindow.layoutChildren[0].children[0].id, "gui_label_2");
+  assert.equal(parseFactorioDesignFilePackage(zip).title, "Train Dispatch");
+  assert.equal(result.manifest, null);
+  assert.equal(result.design.title, "Train Dispatch");
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /no labtorio-gui-package\.json/);
 });
 
 test("parseFactorioDesignFilePackage rejects invalid package envelopes", () => {
@@ -131,7 +163,7 @@ test("parseFactorioDesignFilePackage rejects invalid package envelopes", () => {
     () => parseFactorioDesignFilePackage(zipSync({
       "labtorio_gui_preview_0.1.0/gui.lua": strToU8("-- generated lua projection")
     })),
-    /does not contain design\.labtorio-gui\.json/
+    /does not contain labtorio-gui-package\.json or design\.labtorio-gui\.json/
   );
 
   assert.throws(
@@ -140,6 +172,18 @@ test("parseFactorioDesignFilePackage rejects invalid package envelopes", () => {
       [`nested/${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}`]: strToU8("{}")
     })),
     /contains multiple design\.labtorio-gui\.json/
+  );
+
+  assert.throws(
+    () => parseFactorioDesignFilePackage(zipSync({
+      [`labtorio_gui_preview_0.1.0/${FACTORIO_PACKAGE_MANIFEST_ENTRY}`]: strToU8(
+        renderFactorioPackageManifestJson({
+          designEntry: FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
+          designSchema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA
+        })
+      )
+    })),
+    /manifest points to missing design\.labtorio-gui\.json/
   );
 });
 

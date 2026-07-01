@@ -12,6 +12,10 @@ import {
   collectWindowLuaVariableNodeIds,
   normalizeLuaVariableNames
 } from "./factorioLuaNames.js";
+import {
+  FACTORIO_PACKAGE_MANIFEST_ENTRY,
+  parseFactorioPackageManifestText
+} from "./factorioPackageManifest.js";
 
 export const FACTORIO_DESIGN_FILE_CURRENT_SCHEMA = "labtorio-gui-design.v0";
 export const FACTORIO_DESIGN_FILE_SCHEMA = FACTORIO_DESIGN_FILE_CURRENT_SCHEMA;
@@ -186,7 +190,24 @@ function designEntryNames(entries) {
   );
 }
 
-export function parseFactorioDesignFilePackage(bytes) {
+function manifestEntryNames(entries) {
+  return Object.keys(entries).filter(
+    (entryName) =>
+      entryName === FACTORIO_PACKAGE_MANIFEST_ENTRY ||
+      entryName.endsWith(`/${FACTORIO_PACKAGE_MANIFEST_ENTRY}`)
+  );
+}
+
+function entryDirectory(entryName) {
+  const lastSlash = entryName.lastIndexOf("/");
+  return lastSlash === -1 ? "" : entryName.slice(0, lastSlash + 1);
+}
+
+function resolvePackageEntry(manifestEntryName, relativeEntry) {
+  return `${entryDirectory(manifestEntryName)}${relativeEntry}`;
+}
+
+function readPackageEntries(bytes) {
   let entries;
   try {
     entries = unzipSync(normalizeZipBytes(bytes));
@@ -194,14 +215,52 @@ export function parseFactorioDesignFilePackage(bytes) {
     throw new Error("The selected zip could not be read.");
   }
 
+  return entries;
+}
+
+export function readFactorioDesignFilePackage(bytes) {
+  const entries = readPackageEntries(bytes);
+  const manifestNames = manifestEntryNames(entries);
+
+  if (manifestNames.length > 1) {
+    throw new Error(`The selected zip contains multiple ${FACTORIO_PACKAGE_MANIFEST_ENTRY} files.`);
+  }
+
+  if (manifestNames.length === 1) {
+    const manifestEntryName = manifestNames[0];
+    const manifest = parseFactorioPackageManifestText(strFromU8(entries[manifestEntryName]));
+    const designEntryName = resolvePackageEntry(manifestEntryName, manifest.entries.design);
+    if (!entries[designEntryName]) {
+      throw new Error(`The package manifest points to missing ${manifest.entries.design}.`);
+    }
+
+    return {
+      design: parseFactorioDesignFileText(strFromU8(entries[designEntryName])),
+      manifest,
+      warnings: []
+    };
+  }
+
   const entryNames = designEntryNames(entries);
   if (entryNames.length === 0) {
-    throw new Error(`The selected zip does not contain ${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}.`);
+    throw new Error(
+      `The selected zip does not contain ${FACTORIO_PACKAGE_MANIFEST_ENTRY} or ${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY}.`
+    );
   }
 
   if (entryNames.length > 1) {
     throw new Error(`The selected zip contains multiple ${FACTORIO_DESIGN_FILE_PACKAGE_ENTRY} files.`);
   }
 
-  return parseFactorioDesignFileText(strFromU8(entries[entryNames[0]]));
+  return {
+    design: parseFactorioDesignFileText(strFromU8(entries[entryNames[0]])),
+    manifest: null,
+    warnings: [
+      `The selected zip has no ${FACTORIO_PACKAGE_MANIFEST_ENTRY}; imported the embedded design file only.`
+    ]
+  };
+}
+
+export function parseFactorioDesignFilePackage(bytes) {
+  return readFactorioDesignFilePackage(bytes).design;
 }

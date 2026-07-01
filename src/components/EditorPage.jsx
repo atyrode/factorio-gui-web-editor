@@ -35,8 +35,8 @@ import { createFactorioModDownload } from "../factorioModExport.js";
 import {
   createFactorioDesignFileDownload,
   FACTORIO_DESIGN_FILE_EXTENSION,
-  parseFactorioDesignFilePackage,
-  parseFactorioDesignFileText
+  parseFactorioDesignFileText,
+  readFactorioDesignFilePackage
 } from "../factorioDesignFile.js";
 import {
   BODY_LAYOUT_ROOT_ID,
@@ -2049,11 +2049,15 @@ export function EditorPage() {
 
   function importDesignFile(payload, filename) {
     let designState;
+    let warnings = [];
     try {
-      designState =
-        payload?.kind === "zip"
-          ? parseFactorioDesignFilePackage(payload.data)
-          : parseFactorioDesignFileText(payload?.data);
+      if (payload?.kind === "zip") {
+        const result = readFactorioDesignFilePackage(payload.data);
+        designState = result.design;
+        warnings = result.warnings;
+      } else {
+        designState = parseFactorioDesignFileText(payload?.data);
+      }
     } catch (error) {
       setDesignFileStatus({
         tone: "error",
@@ -2079,7 +2083,10 @@ export function EditorPage() {
     }));
     setDesignFileStatus({
       tone: "success",
-      text: `Imported ${filename || "design file"}.`
+      text: [
+        `Imported ${filename || "design file"}.`,
+        ...warnings
+      ].join(" ")
     });
     return true;
   }
