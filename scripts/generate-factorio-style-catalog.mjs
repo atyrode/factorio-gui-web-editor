@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync
+} from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -346,6 +352,28 @@ function buildCatalog(dataRaw, source) {
   };
 }
 
+function comparableCatalog(catalog, generatedAt) {
+  return JSON.stringify({ ...catalog, generatedAt }, null, 2);
+}
+
+function preserveGeneratedAtWhenUnchanged(catalog, outputPath) {
+  if (!existsSync(outputPath)) {
+    return catalog;
+  }
+  try {
+    const existing = JSON.parse(readFileSync(outputPath, "utf8"));
+    if (
+      comparableCatalog(existing, catalog.generatedAt) ===
+      comparableCatalog(catalog, catalog.generatedAt)
+    ) {
+      return { ...catalog, generatedAt: existing.generatedAt };
+    }
+  } catch {
+    return catalog;
+  }
+  return catalog;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -372,7 +400,10 @@ function main() {
   }
 
   const dataRaw = JSON.parse(readFileSync(inputPath, "utf8"));
-  const catalog = buildCatalog(dataRaw, source);
+  const catalog = preserveGeneratedAtWhenUnchanged(
+    buildCatalog(dataRaw, source),
+    outputPath
+  );
   ensureDirectory(dirname(outputPath));
   writeFileSync(outputPath, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
   console.log(`Generated ${relative(ROOT, outputPath)} from ${source.rawDumpPath}.`);
