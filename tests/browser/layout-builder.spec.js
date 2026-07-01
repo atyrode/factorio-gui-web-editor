@@ -675,6 +675,19 @@ test.describe("Layout builder canvas preview", () => {
 
     const evidence = page.locator('[data-anchor="atlas_style_evidence"]');
     await expect(evidence).toBeVisible();
+    const atlasOrder = await page.evaluate(() => {
+      const scrollPane = document.querySelector('[data-anchor="atlas_scroll_pane"]');
+      const styleEvidence = document.querySelector('[data-anchor="atlas_style_evidence"]');
+      if (!scrollPane || !styleEvidence) {
+        throw new Error("Missing atlas section for order check");
+      }
+
+      return {
+        scrollPaneTop: scrollPane.getBoundingClientRect().top,
+        evidenceTop: styleEvidence.getBoundingClientRect().top
+      };
+    });
+    expect(atlasOrder.evidenceTop).toBeGreaterThan(atlasOrder.scrollPaneTop);
     await expect(evidence.locator('[data-anchor="atlas_style_evidence_source"]'))
       .toContainText("factorio-style-catalog.v0");
     await expect(evidence.locator('[data-anchor="atlas_style_evidence_source"]'))

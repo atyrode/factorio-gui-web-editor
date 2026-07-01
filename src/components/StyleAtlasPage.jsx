@@ -322,10 +322,6 @@ export function StyleAtlasPage() {
   return (
     <main className="fx-atlas-shell">
       <div className="fx-atlas-grid">
-        <AtlasSection title="Style Evidence" className="fx-atlas-section--wide">
-          <StyleEvidenceSection />
-        </AtlasSection>
-
         <AtlasSection title="Frames And Insets">
           <div className="fx-atlas-stack">
             <FxInset>
@@ -428,6 +424,10 @@ export function StyleAtlasPage() {
               </div>
             ))}
           </FxInset>
+        </AtlasSection>
+
+        <AtlasSection title="Style Evidence" className="fx-atlas-section--wide">
+          <StyleEvidenceSection />
         </AtlasSection>
       </div>
     </main>
