@@ -1,0 +1,379 @@
+{
+  "schema": "factorio-style-catalog.v0",
+  "generatedAt": "2026-07-01T17:06:57.958Z",
+  "source": {
+    "kind": "factorio-dump-data",
+    "factorioVersion": "2.0.76",
+    "factorioBuild": "84451",
+    "factorioFlavor": "linux64, headless",
+    "factorioVersionRaw": "Version: 2.0.76 (build 84451, linux64, headless)",
+    "factorioBinary": "/mnt/HC_Volume_105232828/shared/games/factorio-headless/factorio/bin/x64/factorio",
+    "command": "$FACTORIO_BINARY --config <scratch>/config.ini --mod-directory <scratch>/mods --dump-data",
+    "rawDumpPath": ".cache/factorio-style-catalog/latest-data-raw-dump.json",
+    "activeMods": [
+      "base",
+      "elevated-rails",
+      "quality",
+      "space-age"
+    ]
+  },
+  "selectedStyleCount": 16,
+  "totalStyleCount": 587,
+  "styles": {
+    "label": {
+      "name": "label",
+      "declared": {
+        "type": "label_style",
+        "fields": {
+          "font": "default",
+          "fontColor": "{1, 1, 1}",
+          "disabledFontColor": "{1, 1, 1, 0.5}",
+          "parentHoveredFontColor": "{0, 0, 0}",
+          "richTextSetting": "enabled",
+          "gameControllerHoveredFontColor": "{1, 0.68, 0}",
+          "singleLine": true
+        }
+      },
+      "resolvedFields": {
+        "font": "default",
+        "fontColor": "{1, 1, 1}",
+        "disabledFontColor": "{1, 1, 1, 0.5}",
+        "parentHoveredFontColor": "{0, 0, 0}",
+        "richTextSetting": "enabled",
+        "gameControllerHoveredFontColor": "{1, 0.68, 0}",
+        "singleLine": true
+      }
+    },
+    "frame_title": {
+      "name": "frame_title",
+      "declared": {
+        "type": "label_style",
+        "parent": "label",
+        "fields": {
+          "font": "heading-1",
+          "fontColor": "{1, 0.901961, 0.752941}"
+        }
+      },
+      "resolvedFields": {
+        "font": "heading-1",
+        "fontColor": "{1, 0.901961, 0.752941}",
+        "disabledFontColor": "{1, 1, 1, 0.5}",
+        "parentHoveredFontColor": "{0, 0, 0}",
+        "richTextSetting": "enabled",
+        "gameControllerHoveredFontColor": "{1, 0.68, 0}",
+        "singleLine": true
+      }
+    },
+    "caption_label": {
+      "name": "caption_label",
+      "declared": {
+        "type": "label_style",
+        "parent": "bold_label",
+        "fields": {
+          "fontColor": "{1, 0.901961, 0.752941}",
+          "ignoredBySearch": true
+        }
+      },
+      "resolvedFields": {
+        "font": "default-bold",
+        "fontColor": "{1, 0.901961, 0.752941}",
+        "disabledFontColor": "{1, 1, 1, 0.5}",
+        "parentHoveredFontColor": "{0, 0, 0}",
+        "richTextSetting": "enabled",
+        "gameControllerHoveredFontColor": "{1, 0.68, 0}",
+        "singleLine": true,
+        "ignoredBySearch": true
+      }
+    },
+    "heading_2_label": {
+      "name": "heading_2_label",
+      "declared": {
+        "type": "label_style",
+        "parent": "label",
+        "fields": {
+          "font": "heading-2",
+          "fontColor": "{1, 0.901961, 0.752941}"
+        }
+      },
+      "resolvedFields": {
+        "font": "heading-2",
+        "fontColor": "{1, 0.901961, 0.752941}",
+        "disabledFontColor": "{1, 1, 1, 0.5}",
+        "parentHoveredFontColor": "{0, 0, 0}",
+        "richTextSetting": "enabled",
+        "gameControllerHoveredFontColor": "{1, 0.68, 0}",
+        "singleLine": true
+      }
+    },
+    "subheader_caption_label": {
+      "name": "subheader_caption_label",
+      "declared": {
+        "type": "label_style",
+        "parent": "heading_2_label",
+        "fields": {
+          "leftPadding": 8
+        }
+      },
+      "resolvedFields": {
+        "font": "heading-2",
+        "fontColor": "{1, 0.901961, 0.752941}",
+        "disabledFontColor": "{1, 1, 1, 0.5}",
+        "parentHoveredFontColor": "{0, 0, 0}",
+        "richTextSetting": "enabled",
+        "gameControllerHoveredFontColor": "{1, 0.68, 0}",
+        "singleLine": true,
+        "leftPadding": 8
+      }
+    },
+    "clickable_label": {
+      "name": "clickable_label",
+      "declared": {
+        "type": "label_style",
+        "fields": {
+          "hoveredFontColor": "{1, 0.74, 0.4}",
+          "clickedFontColor": "{0.98, 0.66, 0.22}"
+        }
+      },
+      "resolvedFields": {
+        "hoveredFontColor": "{1, 0.74, 0.4}",
+        "clickedFontColor": "{0.98, 0.66, 0.22}"
+      }
+    },
+    "empty_widget": {
+      "name": "empty_widget",
+      "declared": {
+        "type": "empty_widget_style",
+        "fields": {
+          "ignoredBySearch": true
+        },
+        "hasGraphicalSet": true
+      },
+      "resolvedFields": {
+        "ignoredBySearch": true
+      }
+    },
+    "draggable_space": {
+      "name": "draggable_space",
+      "declared": {
+        "type": "empty_widget_style",
+        "hasGraphicalSet": true
+      },
+      "resolvedFields": {}
+    },
+    "draggable_space_header": {
+      "name": "draggable_space_header",
+      "declared": {
+        "type": "empty_widget_style",
+        "parent": "draggable_space",
+        "fields": {
+          "leftMargin": 4
+        }
+      },
+      "resolvedFields": {
+        "leftMargin": 4
+      }
+    },
+    "frame": {
+      "name": "frame",
+      "declared": {
+        "type": "frame_style",
+        "fields": {
+          "topPadding": 4,
+          "rightPadding": 8,
+          "bottomPadding": 8,
+          "leftPadding": 8,
+          "useHeaderFiller": true,
+          "dragByTitle": true
+        },
+        "childStyles": {
+          "titleStyle": {
+            "declared": {
+              "type": "label_style",
+              "parent": "frame_title",
+              "fields": {
+                "topMargin": -3,
+                "bottomPadding": 3
+              }
+            },
+            "resolvedFields": {
+              "font": "heading-1",
+              "fontColor": "{1, 0.901961, 0.752941}",
+              "disabledFontColor": "{1, 1, 1, 0.5}",
+              "parentHoveredFontColor": "{0, 0, 0}",
+              "richTextSetting": "enabled",
+              "gameControllerHoveredFontColor": "{1, 0.68, 0}",
+              "singleLine": true,
+              "topMargin": -3,
+              "bottomPadding": 3
+            }
+          },
+          "horizontalFlowStyle": {
+            "declared": {
+              "type": "horizontal_flow_style"
+            },
+            "resolvedFields": {}
+          },
+          "verticalFlowStyle": {
+            "declared": {
+              "type": "vertical_flow_style"
+            },
+            "resolvedFields": {}
+          },
+          "headerFlowStyle": {
+            "declared": {
+              "type": "horizontal_flow_style",
+              "parent": "frame_header_flow"
+            },
+            "resolvedFields": {
+              "horizontallyStretchable": true,
+              "bottomPadding": 4,
+              "horizontalSpacing": 8,
+              "ignoredBySearch": true
+            }
+          },
+          "headerFillerStyle": {
+            "declared": {
+              "type": "empty_widget_style",
+              "parent": "draggable_space_header",
+              "fields": {
+                "horizontallyStretchable": true,
+                "verticallyStretchable": true,
+                "height": 24
+              }
+            },
+            "resolvedFields": {
+              "leftMargin": 4,
+              "horizontallyStretchable": true,
+              "verticallyStretchable": true,
+              "height": 24
+            }
+          }
+        },
+        "hasGraphicalSet": true,
+        "hasBorder": true
+      },
+      "resolvedFields": {
+        "topPadding": 4,
+        "rightPadding": 8,
+        "bottomPadding": 8,
+        "leftPadding": 8,
+        "useHeaderFiller": true,
+        "dragByTitle": true
+      }
+    },
+    "inside_deep_frame": {
+      "name": "inside_deep_frame",
+      "declared": {
+        "type": "frame_style",
+        "parent": "frame",
+        "fields": {
+          "padding": 0
+        },
+        "childStyles": {
+          "verticalFlowStyle": {
+            "declared": {
+              "type": "vertical_flow_style",
+              "fields": {
+                "verticalSpacing": 0
+              }
+            },
+            "resolvedFields": {
+              "verticalSpacing": 0
+            }
+          }
+        },
+        "hasGraphicalSet": true
+      },
+      "resolvedFields": {
+        "topPadding": 4,
+        "rightPadding": 8,
+        "bottomPadding": 8,
+        "leftPadding": 8,
+        "useHeaderFiller": true,
+        "dragByTitle": true,
+        "padding": 0
+      }
+    },
+    "inset_frame_container_frame": {
+      "name": "inset_frame_container_frame",
+      "declared": {
+        "type": "frame_style",
+        "childStyles": {
+          "verticalFlowStyle": {
+            "declared": {
+              "type": "vertical_flow_style",
+              "parent": "inset_frame_container_vertical_flow"
+            },
+            "resolvedFields": {
+              "verticalSpacing": 12
+            }
+          },
+          "horizontalFlowStyle": {
+            "declared": {
+              "type": "horizontal_flow_style",
+              "parent": "inset_frame_container_horizontal_flow"
+            },
+            "resolvedFields": {
+              "horizontalSpacing": 12
+            }
+          }
+        }
+      },
+      "resolvedFields": {}
+    },
+    "horizontal_flow": {
+      "name": "horizontal_flow",
+      "declared": {
+        "type": "horizontal_flow_style",
+        "fields": {
+          "horizontalSpacing": 4
+        }
+      },
+      "resolvedFields": {
+        "horizontalSpacing": 4
+      }
+    },
+    "vertical_flow": {
+      "name": "vertical_flow",
+      "declared": {
+        "type": "vertical_flow_style",
+        "fields": {
+          "verticalSpacing": 4
+        }
+      },
+      "resolvedFields": {
+        "verticalSpacing": 4
+      }
+    },
+    "frame_header_flow": {
+      "name": "frame_header_flow",
+      "declared": {
+        "type": "horizontal_flow_style",
+        "fields": {
+          "horizontallyStretchable": true,
+          "bottomPadding": 4,
+          "horizontalSpacing": 8,
+          "ignoredBySearch": true
+        }
+      },
+      "resolvedFields": {
+        "horizontallyStretchable": true,
+        "bottomPadding": 4,
+        "horizontalSpacing": 8,
+        "ignoredBySearch": true
+      }
+    },
+    "inset_frame_container_horizontal_flow": {
+      "name": "inset_frame_container_horizontal_flow",
+      "declared": {
+        "type": "horizontal_flow_style",
+        "fields": {
+          "horizontalSpacing": 12
+        }
+      },
+      "resolvedFields": {
+        "horizontalSpacing": 12
+      }
+    }
+  }
+}

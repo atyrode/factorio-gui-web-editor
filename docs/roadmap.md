@@ -222,6 +222,14 @@ visual expansion. Manual registry entries are still useful, but they should be
 checked against generated source data instead of becoming the only record of
 Factorio style facts.
 
+Issue #40 tracks the first spike for this catalog pipeline.
+
+The first implementation should be considered complete only when
+`npm run catalog:generate` produces `src/generated/factorioStyleCatalog.generated.json`
+from ignored `--dump-data` output, `scripts/check-style-catalog.mjs` validates
+the current Label, Filler, Frame, and Flow facts against it, and the full
+`scripts/check.sh` gate passes.
+
 Target source order:
 
 1. Official prototype schema: `https://lua-api.factorio.com/latest/prototype-api.json`.
@@ -361,6 +369,8 @@ parity loop, not an automated screenshot harness.
 - [ ] Pin and cite the exact `data.raw` style source used for extraction:
       `style.lua` commit/tag, `--dump-data` Factorio version, wiki dump, or
       helper-mod output path.
+- [ ] Generate the first filtered style catalog and validate Label, Filler,
+      Frame, and Flow source facts against it.
 - [ ] Survey Raiguard's public Factorio repositories on Codeberg for GUI/style
       examples before deeper builder implementation.
 - [ ] Inspect `Osmo/gui-editor` on Codeberg as a possible in-game GUI

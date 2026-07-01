@@ -31,12 +31,16 @@ REQUIRED_FILES = [
     "src/factorioEditorSettings.js",
     "src/factorioLayoutTree.js",
     "src/factorioModExport.js",
+    "src/factorioStyleCatalog.js",
+    "src/generated/factorioStyleCatalog.generated.json",
     "src/main.jsx",
     "package.json",
     "package-lock.json",
     "playwright.config.js",
     "vite.config.js",
     "scripts/copy-static-docs.mjs",
+    "scripts/generate-factorio-style-catalog.mjs",
+    "scripts/check-style-catalog.mjs",
     "scripts/check-hover-drop-geometry.mjs",
     "scripts/check-layout-tree.mjs",
     "tests/browser/layout-builder.spec.js",
@@ -139,6 +143,8 @@ def main() -> int:
             "playwright.config.js",
             "vite.config.js",
             "scripts/copy-static-docs.mjs",
+            "scripts/generate-factorio-style-catalog.mjs",
+            "scripts/check-style-catalog.mjs",
             "scripts/check-hover-drop-geometry.mjs",
             "scripts/check-layout-tree.mjs",
             "tests/browser/layout-builder.spec.js",
@@ -191,6 +197,8 @@ def main() -> int:
     assert_contains(source_blob, "--dump-data", "app source")
     assert_contains(source_blob, "StyleSpecification", "app source")
     assert_contains(source_blob, "LuaPrototypes.style", "app source")
+    assert_contains(source_blob, "factorio-style-catalog.v0", "app source")
+    assert_contains(source_blob, "src/generated/factorioStyleCatalog.generated.json", "app source")
 
     for forbidden in FORBIDDEN_PAYLOADS:
         if forbidden in source_blob:
@@ -206,6 +214,8 @@ def main() -> int:
     assert_contains(package_json, "\"test:browser\"", "package.json")
     assert_contains(package_json, "playwright test", "package.json")
     assert_contains(package_json, "scripts/check-app.py", "package.json")
+    assert_contains(package_json, "scripts/check-style-catalog.mjs", "package.json")
+    assert_contains(package_json, "scripts/generate-factorio-style-catalog.mjs", "package.json")
     assert_contains(package_json, "scripts/check-layout-tree.mjs", "package.json")
     assert_contains(package_json, "scripts/check-hover-drop-geometry.mjs", "package.json")
 
