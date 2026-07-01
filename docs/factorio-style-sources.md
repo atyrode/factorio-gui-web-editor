@@ -102,6 +102,27 @@ headless Factorio `--dump-data` output as the primary machine input when the
 binary is available, keeps raw dumps under `.cache/factorio-style-catalog/`,
 and commits only a filtered structural catalog for model validation.
 
+Regenerate the catalog with:
+
+```sh
+npm run catalog:generate
+```
+
+Set `FACTORIO_BINARY` or pass `--factorio-binary` when the default local
+headless path is not available. The generator runs Factorio with an isolated
+temporary config and write-data path so the shared install directory is not
+used for locks or script output. The raw `data-raw-dump.json` remains ignored;
+the committed artifact is `src/generated/factorioStyleCatalog.generated.json`.
+
+The generated catalog is intentionally narrow. It includes selected GUI styles
+and model-safe fields such as type, parent, padding, margin, spacing, size,
+font/color references, stretch/squash flags, and child style specs. It excludes
+asset-bearing fields such as sprite filenames, sprite positions, raw
+`graphical_set` payloads, sounds, atlas rectangles, and image data. It validates
+declared prototype facts only; it does not prove rendered pixels, shadows,
+clip/content boxes, hover geometry, UI-scale transforms, or other
+renderer-computed values.
+
 For the Label atom specifically, official runtime docs identify `label` as a
 GUI element for text and expose label-compatible `LuaStyle` fields including
 font, font color, disabled/hover/clicked font colors, padding, margins,
