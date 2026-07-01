@@ -257,7 +257,7 @@ Implementation sequence:
    graphical-set payloads, and sound paths during extraction.
 5. Use the catalog to validate atom registry entries for Label, Filler, Frame,
    Horizontal Flow, and future controls.
-6. Add a style-catalog page or Style Atlas mode that lists source-backed style
+6. Keep the Style Atlas evidence mode current. It lists source-backed style
    facts beside the current browser approximation and its remaining capture
    gaps.
 7. Keep visual parity decisions separate from source extraction: style data can
