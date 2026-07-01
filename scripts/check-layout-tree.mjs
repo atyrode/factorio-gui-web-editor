@@ -1086,6 +1086,9 @@ assert.equal(
 assert.equal(packageManifest.schema, FACTORIO_PACKAGE_MANIFEST_SCHEMA);
 assert.equal(packageManifest.entries.design, FACTORIO_PREVIEW_MOD_DESIGN_FILENAME);
 assert.equal(packageManifest.hooks.schema, FACTORIO_PACKAGE_HOOKS_SCHEMA);
+assert.deepEqual(packageManifest.hooks.actions, []);
+assert.deepEqual(packageManifest.hooks.events, []);
+assert.equal(packageManifest.hooks.reserved, undefined);
 assert.ok(
   packageManifest.ownership.some(
     (entry) => entry.path === "gui.lua" && entry.owner === FACTORIO_PACKAGE_OWNER_GENERATED

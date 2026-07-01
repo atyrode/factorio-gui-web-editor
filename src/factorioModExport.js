@@ -3,8 +3,11 @@ import { renderWindowLua } from "./factorioExport.js";
 import {
   FACTORIO_DESIGN_FILE_SCHEMA,
   FACTORIO_DESIGN_FILE_PACKAGE_ENTRY,
-  createFactorioDesignFileDownload
+  createFactorioDesignFile
 } from "./factorioDesignFile.js";
+import {
+  collectFactorioHookElementIds
+} from "./factorioBehaviorHooks.js";
 import {
   FACTORIO_PACKAGE_MANIFEST_ENTRY,
   renderFactorioPackageManifestJson
@@ -88,15 +91,17 @@ export function renderFactorioModFiles(model, { editorState = null } = {}) {
   };
 
   if (editorState) {
-    files[FACTORIO_PREVIEW_MOD_DESIGN_FILENAME] =
-      createFactorioDesignFileDownload(editorState).content;
+    const designFile = createFactorioDesignFile(editorState);
+    files[FACTORIO_PREVIEW_MOD_DESIGN_FILENAME] = `${JSON.stringify(designFile, null, 2)}\n`;
     files[FACTORIO_PREVIEW_MOD_MANIFEST_FILENAME] = renderFactorioPackageManifestJson({
       designEntry: FACTORIO_PREVIEW_MOD_DESIGN_FILENAME,
       designSchema: FACTORIO_DESIGN_FILE_SCHEMA,
       styleCatalog: {
         schema: FACTORIO_STYLE_CATALOG_SCHEMA,
         source: FACTORIO_STYLE_CATALOG_SOURCE
-      }
+      },
+      hooks: designFile.design.hooks,
+      validHookElementIds: collectFactorioHookElementIds(designFile.design)
     });
   }
 
