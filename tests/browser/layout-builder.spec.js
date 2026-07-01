@@ -672,6 +672,27 @@ test.describe("Layout builder canvas preview", () => {
     expect(sampleMetrics[6].state).toBe("hovered");
     expect(sampleMetrics[7].state).toBe("clicked");
     expect(sampleMetrics.filter((sample) => !sample.fits)).toEqual([]);
+
+    const evidence = page.locator('[data-anchor="atlas_style_evidence"]');
+    await expect(evidence).toBeVisible();
+    await expect(evidence.locator('[data-anchor="atlas_style_evidence_source"]'))
+      .toContainText("factorio-style-catalog.v0");
+    await expect(evidence.locator('[data-anchor="atlas_style_evidence_source"]'))
+      .toContainText("2.0.76");
+    await expect(evidence.locator("[data-evidence-style]")).toHaveCount(16);
+    await expect(
+      evidence.locator('[data-evidence-style="frame_header_flow"] [data-evidence-section="catalog"]')
+    ).toContainText("horizontal_spacing");
+    await expect(
+      evidence.locator('[data-evidence-style="frame_header_flow"] [data-evidence-section="browser"]')
+    ).toContainText("captured_spacing");
+    await expect(
+      evidence.locator('[data-evidence-style="draggable_space_header"] [data-evidence-section="gaps"]')
+    ).toContainText("asset-backed drawing data");
+
+    const evidenceText = await evidence.textContent();
+    expect(evidenceText).not.toContain("graphical_set");
+    expect(evidenceText).not.toContain("filename");
   });
 
   test("undo and redo controls restore Window creation and reset", async ({ page }) => {

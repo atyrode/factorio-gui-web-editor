@@ -277,6 +277,12 @@ every reusable atom before that atom becomes important in the editor. Tune the
 atlas against official website/Mod Portal/API docs observations first, then
 against graphical Factorio captures.
 
+The atlas also owns the Style Evidence section for generated catalog data. That
+section should show selected source-backed style names, types, parents, and
+resolved scalar fields beside the current browser approximation and explicit
+capture gaps. It must not expose raw asset-bearing data such as sprite paths,
+atlas rectangles, sounds, or image payloads.
+
 Each atlas section is its own top-level-style GUI frame. This intentionally
 matches the in-game composition baseline: a `frame` with a title, a header
 filler, and an inner content flow. Avoid wrapping the whole atlas in one
