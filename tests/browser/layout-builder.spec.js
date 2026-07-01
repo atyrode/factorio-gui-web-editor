@@ -1969,6 +1969,79 @@ test.describe("Layout builder canvas preview", () => {
     expect(importedState.currentWindow.layoutChildren[0].id).toBe("gui_frame_1");
   });
 
+  test("agent API command batch updates the normal editor UI", async ({ page }) => {
+    await page.addInitScript((key) => window.localStorage.removeItem(key), EDITOR_STORAGE_KEY);
+    await page.goto("/");
+    await page.waitForFunction(() => Boolean(window.labtorioEditorApi));
+
+    const result = await page.evaluate(() => window.labtorioEditorApi.runAll([
+      {
+        type: "createWindow",
+        title: "Agent API Window",
+        size: { width: 760, height: 500 }
+      },
+      {
+        type: "insertAtom",
+        atom: "frame",
+        parentId: "gui_window_body"
+      },
+      {
+        type: "insertAtom",
+        atom: "horizontal-flow",
+        parentId: "gui_frame_1"
+      },
+      {
+        type: "insertAtom",
+        atom: "label",
+        parentId: "gui_horizontal_flow_2"
+      },
+      {
+        type: "editCaption",
+        nodeId: "gui_label_3",
+        caption: "Dispatch"
+      },
+      {
+        type: "insertAtom",
+        atom: "filler",
+        parentId: "gui_horizontal_flow_2"
+      },
+      {
+        type: "moveAtom",
+        nodeId: "gui_filler_4",
+        parentId: "gui_window_body",
+        index: 0
+      },
+      {
+        type: "resizeNode",
+        nodeId: "gui_frame_1",
+        minimalWidth: 220,
+        minimalHeight: 140
+      },
+      {
+        type: "setLuaVariableName",
+        nodeId: "gui_label_3",
+        name: "dispatch_label"
+      },
+      {
+        type: "exportLua"
+      }
+    ]));
+
+    expect(result.ok).toBe(true);
+    expect(result.results.at(-1).exports.lua).toContain("local dispatch_label =");
+    expect(result.results.at(-1).exports.lua).toContain('caption = "Dispatch"');
+    await expect(page.locator('[data-anchor="gui_filler_4"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="gui_label_3"]')).toContainText("Dispatch");
+
+    const storedState = await readStoredEditorState(page);
+    expect(storedState.currentWindow.layoutChildren[0].id).toBe("gui_filler_4");
+    expect(storedState.currentWindow.layoutChildren[1].size).toEqual({
+      minimalWidth: 220,
+      minimalHeight: 140
+    });
+    expect(storedState.currentWindow.luaVariableNames.gui_label_3).toBe("dispatch_label");
+  });
+
   test("downloads and imports the structured design file", async ({ page }) => {
     await seedEditorState(
       page,

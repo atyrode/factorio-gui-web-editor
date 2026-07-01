@@ -1,4 +1,5 @@
 import styleSourcesMarkdown from "../docs/factorio-style-sources.md?raw";
+import agentApiMarkdown from "../docs/agent-api.md?raw";
 import atomSpecsMarkdown from "../docs/atom-specs.md?raw";
 import factorioModExportMarkdown from "../docs/factorio-mod-export.md?raw";
 import modelSchemaMarkdown from "../docs/model-schema.md?raw";
@@ -36,6 +37,12 @@ export const docPages = [
     title: "Model Schema",
     summary: "Structured GUI model used by preview, inspector, and Lua export.",
     markdown: modelSchemaMarkdown
+  },
+  {
+    path: "/agent-api",
+    title: "Agent API",
+    summary: "Local structured command API for agent-reviewed GUI generation.",
+    markdown: agentApiMarkdown
   },
   {
     path: "/factorio-mod-export",
