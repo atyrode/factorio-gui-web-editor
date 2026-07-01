@@ -78,6 +78,14 @@ import {
   collectFactorioHookElementIds,
   normalizeFactorioBehaviorHooks
 } from "../factorioBehaviorHooks.js";
+import {
+  FACTORIO_EDITOR_API_COMMANDS,
+  FACTORIO_EDITOR_API_SCHEMA,
+  createFactorioEditorApiState,
+  runFactorioEditorCommand,
+  runFactorioEditorCommands,
+  validateFactorioEditorApiState
+} from "../factorioEditorApi.js";
 import { BuilderPaletteBar, BuilderTreePanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
@@ -1880,6 +1888,56 @@ export function EditorPage() {
 
   useEffect(() => {
     writeCachedEditorState(editorState);
+  }, [editorState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    function applyApiState(apiState) {
+      const { selectedAnchor = null, ...statePatch } = apiState;
+      replaceEditorState({
+        ...editorStateRef.current,
+        ...statePatch,
+        inspectedAnchor: selectedAnchor,
+        inspectorLocked: Boolean(selectedAnchor),
+        propertiesTab: selectedAnchor ? PROPERTIES_TAB_FACTORIO : PROPERTIES_TAB_PROPERTIES
+      });
+    }
+
+    const api = {
+      schema: FACTORIO_EDITOR_API_SCHEMA,
+      commands: FACTORIO_EDITOR_API_COMMANDS,
+      getState: () => createFactorioEditorApiState({
+        ...editorStateRef.current,
+        selectedAnchor: editorStateRef.current.inspectedAnchor
+      }),
+      run: (command) => {
+        const result = runFactorioEditorCommand(api.getState(), command);
+        if (result.ok && result.mutated) {
+          clearTransientEditorState();
+          applyApiState(result.state);
+        }
+        return result;
+      },
+      runAll: (commands) => {
+        const result = runFactorioEditorCommands(api.getState(), commands);
+        if (result.ok && result.mutated) {
+          clearTransientEditorState();
+          applyApiState(result.state);
+        }
+        return result;
+      },
+      validate: (state = api.getState()) => validateFactorioEditorApiState(state)
+    };
+
+    window.labtorioEditorApi = api;
+    return () => {
+      if (window.labtorioEditorApi === api) {
+        delete window.labtorioEditorApi;
+      }
+    };
   }, [editorState]);
 
   useEffect(() => {

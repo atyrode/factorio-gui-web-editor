@@ -46,6 +46,7 @@ src/docs.js                    Markdown-backed document route registry
 src/factorioModel.js           Structured Factorio GUI seed model and inspector rows
 src/factorioExport.js          Lua export projection from the GUI model
 src/factorioDesignFile.js      Durable design-file import/export schema
+src/factorioEditorApi.js       Agent/test command API over the constrained model
 src/factorioModExport.js       Factorio preview mod zip projection from the Lua export
 src/main.jsx                   React mount and stylesheet import
 src/styles.css                 Stylesheet entry point
@@ -91,6 +92,7 @@ Accepted future directions:
 - component reordering;
 - density and bounded-size tuning;
 - structured design-file import/export for tool-authored layouts;
+- local agent/test command API for constrained scriptable layout generation;
 - Markdown spec diff export;
 - Lua skeleton export with stable anchors and TODO behavior hooks;
 - local Factorio preview mod export for GUI parity checks;
@@ -146,6 +148,15 @@ scripts/check.sh
 The check builds the app, runs browser geometry regressions, verifies layout
 tree behavior, and runs structural source/anchor checks. Browser tests protect
 objective layout contracts; they do not replace human visual review.
+
+## Agent API
+
+For local agent, script, and test harnesses, the app exposes a constrained
+`labtorio-editor-api.v0` command API. In the browser it is available as
+`window.labtorioEditorApi`; in code it lives in `src/factorioEditorApi.js`.
+It can create/edit layouts, return structured diagnostics, export design JSON
+or Lua, and leave the result in the normal editor UI for operator review. It is
+not a remote-control server. See [docs/agent-api.md](docs/agent-api.md).
 
 ## Factorio Preview Mod
 
