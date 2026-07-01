@@ -627,7 +627,7 @@ for (const styleName of [
 }
 assert.equal(labelStyleVariant("frame_title").font, "heading-1");
 assert.equal(labelStyleVariant("clickable_label").font, "default");
-assert.equal(labelStyleVariant("clickable_label").hoveredFontColor, "{1, 0.74, 0.40}");
+assert.equal(labelStyleVariant("clickable_label").hoveredFontColor, "{1, 0.74, 0.4}");
 assert.equal(labelStyleVariant("caption_label").ignoredBySearch, true);
 assert.equal(labelStyleVariant("subheader_caption_label").leftPadding, 8);
 const authoredLabelModel = createWindowModel({
@@ -677,12 +677,15 @@ assert.equal(titlebar.luaVariableName, "window_header");
 assert.equal(titleLabel.luaVariableName, "window_heading");
 assert.equal(titleLabel.primitive, "label");
 assert.equal(titleLabel.style, "frame_title");
-assert.equal(titleLabel.styleDescription, "Frame title label_style from wube/factorio-data");
+assert.equal(
+  titleLabel.styleDescription,
+  "Frame title label_style from generated Factorio style catalog"
+);
 assert.deepEqual(titleLabel.addOptions, {
   ignoredByInteraction: true
 });
 assert.equal(titleLabel.styleReference.variantId, "frame-title");
-assert.equal(titleLabel.styleReference.source, "wube-factorio-data-style-lua");
+assert.equal(titleLabel.styleReference.source, "factorio-style-catalog");
 assert.equal(titleLabel.styleReference.topMargin, -4);
 assert.equal(titleLabel.styleReference.bottomPadding, 4);
 assert.equal(titleLabel.styleReference.font, "heading-1");

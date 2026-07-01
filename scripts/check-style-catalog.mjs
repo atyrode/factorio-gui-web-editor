@@ -14,6 +14,7 @@ import {
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const catalogPath = join(ROOT, "src/generated/factorioStyleCatalog.generated.json");
 const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+const CATALOG_SOURCE = "factorio-style-catalog";
 
 const REQUIRED_STYLES = Object.freeze([
   "label",
@@ -113,12 +114,50 @@ function assertResolvedFields(styleName, expectedFields) {
 
 function assertLabelVariantMatchesCatalog(variant, options = {}) {
   const catalogStyle = style(variant.style);
+  const catalogFields = catalogStyle.resolvedFields ?? {};
   assert.equal(catalogStyle.declared.type, "label_style", `${variant.style} type`);
+  assert.equal(variant.source, CATALOG_SOURCE, `${variant.style} model source`);
+  assert.equal(variant.styleType, "label_style", `${variant.style} model style type`);
+  assert.deepEqual(
+    variant.prototypeFields,
+    catalogFields,
+    `${variant.style} model prototype fields`
+  );
   if (options.parent !== undefined) {
     assert.equal(variant.parent ?? null, options.parent, `${variant.style} model parent`);
     assert.equal(catalogStyle.declared.parent ?? null, options.parent, `${variant.style} catalog parent`);
+  } else {
+    assert.equal(
+      variant.parent ?? null,
+      catalogStyle.declared.parent ?? null,
+      `${variant.style} model parent`
+    );
+  }
+  for (const [fieldName, expectedValue] of Object.entries(options.fields ?? {})) {
+    assertFieldEqual(
+      variant[fieldName],
+      expectedValue,
+      `${variant.style} model ${fieldName}`
+    );
   }
   assertResolvedFields(variant.style, options.fields ?? {});
+}
+
+function assertVariantCatalogEvidence(variant, expectedType, expectedFields = {}) {
+  assert.equal(variant.source, CATALOG_SOURCE, `${variant.style} model source`);
+  assert.equal(variant.styleType, expectedType, `${variant.style} model style type`);
+  assert.deepEqual(
+    variant.prototypeFields,
+    style(variant.style).resolvedFields ?? {},
+    `${variant.style} model prototype fields`
+  );
+  for (const [fieldName, expectedValue] of Object.entries(expectedFields)) {
+    assertFieldEqual(
+      variant.prototypeFields[fieldName],
+      expectedValue,
+      `${variant.style} model prototype ${fieldName}`
+    );
+  }
 }
 
 assert.equal(catalog.schema, "factorio-style-catalog.v0");
@@ -193,6 +232,11 @@ assertStyleParent("draggable_space_header", "draggable_space");
 assertStyleType(frameStyleVariants.insideDeepFrame.style, "frame_style");
 assertStyleParent(frameStyleVariants.insideDeepFrame.style, "frame");
 assertResolvedFields(frameStyleVariants.insideDeepFrame.style, { padding: 0 });
+assertVariantCatalogEvidence(frameStyleVariants.insideDeepFrame, "frame_style", {
+  padding: 0
+});
+assert.equal(frameStyleVariants.insideDeepFrame.topPadding, 0);
+assert.equal(frameStyleVariants.insideDeepFrame.verticalSpacing, 0);
 assert.equal(
   style(frameStyleVariants.insideDeepFrame.style)
     .declared.childStyles.verticalFlowStyle.declared.fields.verticalSpacing,
@@ -203,13 +247,31 @@ assertStyleType(horizontalFlowStyleVariants.generic.style, "horizontal_flow_styl
 assertStyleType(horizontalFlowStyleVariants.frameHeader.style, "horizontal_flow_style");
 assertStyleType(horizontalFlowStyleVariants.insetFrameContainer.style, "horizontal_flow_style");
 assertResolvedFields("horizontal_flow", { horizontalSpacing: 4 });
+assertVariantCatalogEvidence(horizontalFlowStyleVariants.generic, "horizontal_flow_style", {
+  horizontalSpacing: 4
+});
+assert.equal(horizontalFlowStyleVariants.generic.horizontalSpacing, 6);
 assertResolvedFields("frame_header_flow", {
   horizontalSpacing: 8,
   bottomPadding: 4,
   horizontallyStretchable: true,
   ignoredBySearch: true
 });
+assertVariantCatalogEvidence(horizontalFlowStyleVariants.frameHeader, "horizontal_flow_style", {
+  horizontalSpacing: 8,
+  bottomPadding: 4,
+  horizontallyStretchable: true,
+  ignoredBySearch: true
+});
+assert.equal(horizontalFlowStyleVariants.frameHeader.horizontalSpacing, 12);
+assert.equal(horizontalFlowStyleVariants.frameHeader.bottomPadding, 6);
 assertResolvedFields("inset_frame_container_horizontal_flow", { horizontalSpacing: 12 });
+assertVariantCatalogEvidence(
+  horizontalFlowStyleVariants.insetFrameContainer,
+  "horizontal_flow_style",
+  { horizontalSpacing: 12 }
+);
+assert.equal(horizontalFlowStyleVariants.insetFrameContainer.horizontalSpacing, 18);
 
 const windowModel = createWindowModel();
 const titlebar = windowModel.root.children[0];
@@ -222,6 +284,37 @@ assert.ok(style(titlebar.style));
 assert.ok(style(titleLabel.style));
 assert.ok(style(dragHandle.style));
 assert.ok(style(body.style));
+assert.equal(windowModel.root.styleReference.source, CATALOG_SOURCE);
+assert.equal(titlebar.styleReference.source, CATALOG_SOURCE);
+assert.equal(titleLabel.styleReference.source, CATALOG_SOURCE);
+assert.equal(dragHandle.styleReference.source, CATALOG_SOURCE);
+assert.equal(body.styleReference.source, CATALOG_SOURCE);
+assert.equal(
+  titlebar.styleReference.prototypeFields.horizontalSpacing,
+  8,
+  "titlebar keeps prototype horizontal spacing separate"
+);
+assert.equal(
+  titlebar.styleReference.horizontalSpacing,
+  12,
+  "titlebar keeps captured horizontal spacing"
+);
+assert.equal(
+  dragHandle.styleReference.prototypeFields.leftMargin,
+  4,
+  "drag handle records prototype left margin"
+);
+assert.equal(
+  dragHandle.styleReference.leftMargin,
+  6,
+  "drag handle keeps captured left margin"
+);
+assert.equal(
+  body.styleReference.prototypeFields.horizontalSpacing,
+  12,
+  "body keeps prototype horizontal spacing separate"
+);
+assert.equal(body.styleReference.horizontalSpacing, 18, "body keeps captured horizontal spacing");
 
 // The model's captured numeric spacing is browser/in-game evidence at the
 // captured UI scale. Prototype catalog values are unscaled declared facts, so

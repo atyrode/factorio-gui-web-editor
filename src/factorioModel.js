@@ -17,6 +17,12 @@ import {
   luaVariableNameForNode,
   normalizeLuaVariableNames
 } from "./factorioLuaNames.js";
+import {
+  FACTORIO_STYLE_CATALOG_SOURCE,
+  getFactorioStyleParent,
+  getFactorioStyleResolvedFields,
+  getFactorioStyleType
+} from "./factorioStyleCatalog.js";
 
 export const FACTORIO_GUI_MODEL_SCHEMA = "factorio-gui-layout.v0";
 export const FACTORIO_NOT_IMPLEMENTED = "not implemented";
@@ -98,7 +104,43 @@ function freezeCaptureRows(rows = []) {
 function freezeStyleVariant(variant) {
   return Object.freeze({
     ...variant,
+    prototypeFields: variant.prototypeFields
+      ? Object.freeze({ ...variant.prototypeFields })
+      : undefined,
     capturedSize: freezeOptionalSize(variant.capturedSize)
+  });
+}
+
+function catalogPrototypeFields(styleName) {
+  return Object.freeze({ ...getFactorioStyleResolvedFields(styleName) });
+}
+
+function catalogStyleEvidence(styleName) {
+  const parent = getFactorioStyleParent(styleName);
+
+  return {
+    source: FACTORIO_STYLE_CATALOG_SOURCE,
+    styleType: getFactorioStyleType(styleName),
+    ...(parent ? { parent } : {}),
+    prototypeFields: catalogPrototypeFields(styleName)
+  };
+}
+
+function catalogStyleReferenceEvidence(variant) {
+  return {
+    source: variant.source,
+    styleType: variant.styleType,
+    ...(variant.parent ? { parent: variant.parent } : {}),
+    prototypeFields: variant.prototypeFields
+  };
+}
+
+function catalogLabelStyleVariant(styleName, localFields) {
+  return freezeStyleVariant({
+    style: styleName,
+    ...catalogStyleEvidence(styleName),
+    ...getFactorioStyleResolvedFields(styleName),
+    ...localFields
   });
 }
 
@@ -108,6 +150,7 @@ export const horizontalFlowStyleVariants = Object.freeze({
     role: "window-titlebar",
     className: "agui::HorizontalFlow",
     style: "frame_header_flow",
+    ...catalogStyleEvidence("frame_header_flow"),
     styleDescription: "Part of frame definition",
     derivedFrom: "frame_header_flow",
     horizontalSpacing: 12,
@@ -123,6 +166,7 @@ export const horizontalFlowStyleVariants = Object.freeze({
     role: "window-body",
     className: "agui::HorizontalFlow",
     style: "inset_frame_container_horizontal_flow",
+    ...catalogStyleEvidence("inset_frame_container_horizontal_flow"),
     styleDescription: "Part of inset_frame_container_frame definition",
     derivedFrom: "inset_frame_container_horizontal_flow",
     horizontalSpacing: 18,
@@ -144,6 +188,7 @@ export const horizontalFlowStyleVariants = Object.freeze({
     role: "layout-horizontal-flow",
     className: "agui::HorizontalFlow",
     style: "horizontal_flow",
+    ...catalogStyleEvidence("horizontal_flow"),
     styleDescription: "Editor-created Horizontal Flow",
     derivedFrom: "horizontal_flow",
     horizontalSpacing: 6,
@@ -157,6 +202,7 @@ export const frameStyleVariants = Object.freeze({
     role: "body-frame",
     className: "agui::Frame",
     style: "inside_deep_frame",
+    ...catalogStyleEvidence("inside_deep_frame"),
     styleDescription: "Captured Window body child Frame",
     derivedFrom: "frame",
     horizontalSpacing: null,
@@ -170,75 +216,36 @@ export const frameStyleVariants = Object.freeze({
 });
 
 export const labelStyleVariants = Object.freeze({
-  base: freezeStyleVariant({
+  base: catalogLabelStyleVariant("label", {
     id: "label",
-    style: "label",
-    styleDescription: "Base label_style from wube/factorio-data",
-    source: "wube-factorio-data-style-lua",
-    font: "default",
-    fontColor: "{1, 1, 1}",
+    styleDescription: "Base label_style from generated Factorio style catalog",
     browserColor: "#ffffff",
-    disabledFontColor: "{1, 1, 1, 0.5}",
     browserDisabledColor: "rgba(255, 255, 255, 0.5)",
-    parentHoveredFontColor: "{0, 0, 0}",
-    gameControllerHoveredFontColor: "{1, 0.68, 0}",
-    richTextSetting: "enabled",
-    singleLine: true
   }),
-  frameTitle: freezeStyleVariant({
+  frameTitle: catalogLabelStyleVariant("frame_title", {
     id: "frame-title",
-    style: "frame_title",
-    styleDescription: "Frame title label_style from wube/factorio-data",
-    source: "wube-factorio-data-style-lua",
-    parent: "label",
-    font: "heading-1",
-    fontColor: "{1, 0.901961, 0.752941}",
+    styleDescription: "Frame title label_style from generated Factorio style catalog",
     browserColor: "#ffe6c0",
-    singleLine: true
   }),
-  caption: freezeStyleVariant({
+  caption: catalogLabelStyleVariant("caption_label", {
     id: "caption-label",
-    style: "caption_label",
-    styleDescription: "Caption label_style from wube/factorio-data",
-    source: "wube-factorio-data-style-lua",
-    parent: "bold_label",
-    font: "default-bold",
-    fontColor: "{1, 0.901961, 0.752941}",
+    styleDescription: "Caption label_style from generated Factorio style catalog",
     browserColor: "#ffe6c0",
-    ignoredBySearch: true,
-    singleLine: true
   }),
-  heading2: freezeStyleVariant({
+  heading2: catalogLabelStyleVariant("heading_2_label", {
     id: "heading-2-label",
-    style: "heading_2_label",
-    styleDescription: "Heading 2 label_style from wube/factorio-data",
-    source: "wube-factorio-data-style-lua",
-    parent: "label",
-    font: "heading-2",
-    fontColor: "{1, 0.901961, 0.752941}",
+    styleDescription: "Heading 2 label_style from generated Factorio style catalog",
     browserColor: "#ffe6c0",
-    singleLine: true
   }),
-  subheaderCaption: freezeStyleVariant({
+  subheaderCaption: catalogLabelStyleVariant("subheader_caption_label", {
     id: "subheader-caption-label",
-    style: "subheader_caption_label",
-    styleDescription: "Subheader caption label_style from wube/factorio-data",
-    source: "wube-factorio-data-style-lua",
-    parent: "heading_2_label",
-    font: "heading-2",
-    fontColor: "{1, 0.901961, 0.752941}",
+    styleDescription: "Subheader caption label_style from generated Factorio style catalog",
     browserColor: "#ffe6c0",
-    leftPadding: 8,
-    singleLine: true
   }),
-  clickable: freezeStyleVariant({
+  clickable: catalogLabelStyleVariant("clickable_label", {
     id: "clickable-label",
-    style: "clickable_label",
-    styleDescription: "Clickable label_style from wube/factorio-data",
-    source: "wube-factorio-data-style-lua",
-    hoveredFontColor: "{1, 0.74, 0.40}",
+    styleDescription: "Clickable label_style from generated Factorio style catalog",
     browserHoveredColor: "#ffbd66",
-    clickedFontColor: "{0.98, 0.66, 0.22}",
     browserClickedColor: "#faa838"
   })
 });
@@ -831,6 +838,10 @@ export function getWindowReferenceCapture(referenceId = DEFAULT_WINDOW_REFERENCE
 }
 
 function createFrameStyleReference(reference = getWindowReferenceCapture()) {
+  const titlebarVariant = horizontalFlowStyleVariants.frameHeader;
+  const bodyEvidence = catalogStyleEvidence(reference.body.style);
+  const dragHandleEvidence = catalogStyleEvidence("draggable_space_header");
+
   return Object.freeze({
     referenceId: reference.id,
     referenceLabel: reference.label,
@@ -839,6 +850,7 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     rootRelativeSamples: reference.rootRelativeSamples,
     className: reference.className,
     style: reference.style,
+    ...catalogStyleEvidence(reference.style),
     derivedFrom: reference.derivedFrom,
     capturedSize: reference.capturedSize,
     capturedContentSize: reference.capturedContentSize,
@@ -854,6 +866,9 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     useHeaderFiller: reference.useHeaderFiller,
     titlebarClassName: reference.header.className ?? "agui::HorizontalFlow",
     titlebarStyle: reference.header.style ?? "frame_header_flow",
+    titlebarStyleSource: titlebarVariant.source,
+    titlebarStyleType: titlebarVariant.styleType,
+    titlebarPrototypeFields: titlebarVariant.prototypeFields,
     titlebarStyleDescription: reference.header.styleDescription ?? "Part of frame definition",
     titlebarDerivedFrom: reference.header.derivedFrom ?? "frame_header_flow",
     titlebarRelative: reference.header.relative ?? Object.freeze({ x: 0, y: 0 }),
@@ -876,6 +891,8 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     titleLabelStyle: labelStyleVariants.frameTitle.style,
     titleLabelStyleDescription: labelStyleVariants.frameTitle.styleDescription,
     titleLabelStyleSource: labelStyleVariants.frameTitle.source,
+    titleLabelStyleType: labelStyleVariants.frameTitle.styleType,
+    titleLabelPrototypeFields: labelStyleVariants.frameTitle.prototypeFields,
     titleLabelCapturedSize: reference.header.titleLabel?.capturedSize,
     titleLabelCapturedContentSize: reference.header.titleLabel?.capturedContentSize,
     titleLabelCapturedClipSize: reference.header.titleLabel?.capturedClipSize,
@@ -901,6 +918,9 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     titleLabelGameControllerHoveredFontColor:
       labelStyleVariants.base.gameControllerHoveredFontColor,
     dragHandleStyle: "draggable_space_header",
+    dragHandleStyleSource: dragHandleEvidence.source,
+    dragHandleStyleType: dragHandleEvidence.styleType,
+    dragHandlePrototypeFields: dragHandleEvidence.prototypeFields,
     dragHandleStyleDescription: "Part of frame definition",
     dragHandleDerivedFrom: "draggable_space_header",
     dragHandleBaseStyle: "draggable_space",
@@ -922,6 +942,9 @@ function createFrameStyleReference(reference = getWindowReferenceCapture()) {
     dragHandleRightMargin: 6,
     bodyClassName: reference.body.className,
     bodyStyle: reference.body.style,
+    bodyStyleSource: bodyEvidence.source,
+    bodyStyleType: bodyEvidence.styleType,
+    bodyPrototypeFields: bodyEvidence.prototypeFields,
     bodyStyleDescription: reference.body.styleDescription,
     bodyDerivedFrom: reference.body.derivedFrom,
     bodyDirection: reference.body.direction,
@@ -1312,6 +1335,7 @@ function createLayoutFrameNode(spec, layoutSettings, luaVariableNames = {}, dept
     role: variant.role,
     styleReference: {
       variantId: variant.id,
+      ...catalogStyleReferenceEvidence(variant),
       topPadding: variant.topPadding,
       rightPadding: variant.rightPadding,
       bottomPadding: variant.bottomPadding,
@@ -1349,6 +1373,7 @@ function createLayoutHorizontalFlowNode(spec, layoutSettings, luaVariableNames =
     role: variant.role,
     styleReference: {
       variantId: variant.id,
+      ...catalogStyleReferenceEvidence(variant),
       horizontalSpacing: layoutSettings.horizontalFlowSpacing,
       inheritedHorizontalSpacing: null,
       topPadding: layoutSettings.horizontalFlowPadding,
@@ -1387,6 +1412,7 @@ function createLayoutFillerNode(spec, _layoutSettings, luaVariableNames = {}) {
     role: "spacer",
     styleReference: Object.freeze({
       variantId: GENERIC_FILLER_STYLE_VARIANT,
+      ...catalogStyleEvidence("draggable_space"),
       baseStyle: "empty_widget",
       horizontallyStretchable: true,
       verticallyStretchable: true,
@@ -1416,13 +1442,15 @@ function createLayoutLabelNode(spec, _layoutSettings, luaVariableNames = {}) {
     role: "text-label",
     styleReference: Object.freeze({
       variantId: variant.id,
-      source: variant.source,
+      ...catalogStyleReferenceEvidence(variant),
       font: variant.font,
       fontColor: variant.fontColor,
       browserColor: variant.browserColor,
       disabledFontColor: variant.disabledFontColor,
       parentHoveredFontColor: variant.parentHoveredFontColor,
       gameControllerHoveredFontColor: variant.gameControllerHoveredFontColor,
+      hoveredFontColor: variant.hoveredFontColor,
+      clickedFontColor: variant.clickedFontColor,
       singleLine: variant.singleLine,
       ignoredBySearch: variant.ignoredBySearch ?? false
     }),
@@ -1574,6 +1602,9 @@ export function createWindowModel({
       styleReference.bodyDirection === HORIZONTAL_FLOW_DIRECTION
         ? horizontalFlowStyleVariants.insetFrameContainer.id
         : "inside-deep-frame-vertical-flow",
+    source: styleReference.bodyStyleSource,
+    styleType: styleReference.bodyStyleType,
+    prototypeFields: styleReference.bodyPrototypeFields,
     horizontalSpacing: styleReference.bodyHorizontalSpacing,
     inheritedHorizontalSpacing: styleReference.bodyInheritedHorizontalSpacing,
     verticalSpacing: styleReference.bodyVerticalSpacing,
@@ -1644,6 +1675,9 @@ export function createWindowModel({
           referenceSize: { height: styleReference.titlebarHeight },
           styleReference: {
             variantId: horizontalFlowStyleVariants.frameHeader.id,
+            source: styleReference.titlebarStyleSource,
+            styleType: styleReference.titlebarStyleType,
+            prototypeFields: styleReference.titlebarPrototypeFields,
             bottomPadding: styleReference.titlebarBottomPadding,
             horizontalSpacing: styleReference.titlebarHorizontalSpacing,
             inheritedHorizontalSpacing: styleReference.titlebarInheritedHorizontalSpacing,
@@ -1671,6 +1705,8 @@ export function createWindowModel({
               styleReference: {
                 variantId: labelStyleVariants.frameTitle.id,
                 source: styleReference.titleLabelStyleSource,
+                styleType: styleReference.titleLabelStyleType,
+                prototypeFields: styleReference.titleLabelPrototypeFields,
                 topMargin: styleReference.titleLabelTopMargin,
                 bottomPadding: styleReference.titleLabelBottomPadding,
                 verticallyStretchable: true,
@@ -1706,6 +1742,9 @@ export function createWindowModel({
               },
               styleReference: {
                 variantId: "draggable-space-header",
+                source: styleReference.dragHandleStyleSource,
+                styleType: styleReference.dragHandleStyleType,
+                prototypeFields: styleReference.dragHandlePrototypeFields,
                 baseStyle: styleReference.dragHandleBaseStyle,
                 primitiveStyle: styleReference.dragHandlePrimitiveStyle,
                 graphicalSet: styleReference.dragHandleGraphicalSet,
