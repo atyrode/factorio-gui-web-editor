@@ -19,6 +19,9 @@ import {
   normalizeFactorioBehaviorHooks
 } from "./factorioBehaviorHooks.js";
 import {
+  normalizeFactorioAgentProvenance
+} from "./factorioAgentProvenance.js";
+import {
   FACTORIO_PACKAGE_MANIFEST_ENTRY,
   parseFactorioPackageManifestText
 } from "./factorioPackageManifest.js";
@@ -105,7 +108,8 @@ export function normalizeDesignState(value = {}, { invalidHooks = "drop" } = {})
     hooks: normalizeFactorioBehaviorHooks(source.hooks, {
       validElementIds: collectFactorioHookElementIds(designShape),
       invalid: invalidHooks
-    })
+    }),
+    provenance: normalizeFactorioAgentProvenance(source.provenance)
   };
 }
 

@@ -44,6 +44,10 @@ import {
   collectFactorioHookElementIds,
   normalizeFactorioBehaviorHooks
 } from "./factorioBehaviorHooks.js";
+import {
+  appendFactorioAgentProvenanceEntry,
+  createFactorioAgentProvenanceEntry
+} from "./factorioAgentProvenance.js";
 
 export const FACTORIO_EDITOR_API_SCHEMA = "labtorio-editor-api.v0";
 
@@ -194,7 +198,8 @@ export function createFactorioEditorApiState(value = {}) {
     windowBodyDirection: source.windowBodyDirection,
     currentWindow: source.currentWindow,
     layoutSettings: source.layoutSettings,
-    hooks: source.hooks
+    hooks: source.hooks,
+    provenance: source.provenance
   });
   const state = {
     ...source,
@@ -203,7 +208,8 @@ export function createFactorioEditorApiState(value = {}) {
     windowBodyDirection: design.windowBodyDirection,
     currentWindow: design.currentWindow,
     layoutSettings: design.layoutSettings,
-    hooks: design.hooks
+    hooks: design.hooks,
+    provenance: design.provenance
   };
 
   return {
@@ -618,6 +624,7 @@ function importDesignFileCommand(state, command) {
       currentWindow: design.currentWindow,
       layoutSettings: design.layoutSettings,
       hooks: design.hooks,
+      provenance: design.provenance,
       selectedAnchor: design.currentWindow ? BODY_LAYOUT_ROOT_ID : null
     }, {
       mutated: true
@@ -780,6 +787,18 @@ export function runFactorioEditorCommands(sourceState = {}, commands = []) {
     results,
     diagnostics
   };
+}
+
+export function createFactorioEditorApiProvenanceEntry(options = {}) {
+  return createFactorioAgentProvenanceEntry(options);
+}
+
+export function appendFactorioEditorApiProvenance(state, entry) {
+  const normalizedState = createFactorioEditorApiState(state);
+  return createFactorioEditorApiState({
+    ...normalizedState,
+    provenance: appendFactorioAgentProvenanceEntry(normalizedState.provenance, entry)
+  });
 }
 
 export function isFactorioEditorApiMutatingCommand(command) {

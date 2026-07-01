@@ -208,6 +208,8 @@ def main() -> int:
     assert_contains(source_blob, "labtorio-editor-api.v0", "app source")
     assert_contains(source_blob, "window.labtorioEditorApi", "app source")
     assert_contains(source_blob, "docs/agent-api.md", "app source")
+    assert_contains(source_blob, "labtorio-agent-provenance.v0", "app source")
+    assert_contains(source_blob, "agent_provenance_panel", "app source")
     assert_contains(source_blob, "labtorio_gui_preview_0.1.0", "app source")
     assert_contains(source_blob, "data.raw[\"gui-style\"][\"default\"]", "app source")
     assert_contains(source_blob, "--dump-data", "app source")

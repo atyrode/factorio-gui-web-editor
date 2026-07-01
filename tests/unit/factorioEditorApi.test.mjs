@@ -5,6 +5,8 @@ import {
   FACTORIO_EDITOR_API_COMMANDS,
   FACTORIO_EDITOR_API_DIRECTIONS,
   FACTORIO_EDITOR_API_SCHEMA,
+  appendFactorioEditorApiProvenance,
+  createFactorioEditorApiProvenanceEntry,
   runFactorioEditorCommand,
   runFactorioEditorCommands,
   validateFactorioEditorApiState
@@ -166,4 +168,45 @@ test("validateFactorioEditorApiState returns structured diagnostics", () => {
 
   assert.equal(diagnostics[0].code, "missing_window");
   assert.equal(diagnostics[1].code, "invalid_hooks");
+});
+
+test("agent provenance helper records command types and touched nodes", () => {
+  const result = runFactorioEditorCommands({}, [
+    {
+      type: FACTORIO_EDITOR_API_COMMANDS.CREATE_WINDOW,
+      title: "Provenance"
+    },
+    {
+      type: FACTORIO_EDITOR_API_COMMANDS.INSERT_ATOM,
+      atom: "label",
+      parentId: BODY_LAYOUT_ROOT_ID
+    },
+    {
+      type: FACTORIO_EDITOR_API_COMMANDS.EDIT_CAPTION,
+      nodeId: "gui_label_1",
+      caption: "Tracked"
+    }
+  ]);
+  const entry = createFactorioEditorApiProvenanceEntry({
+    commands: [
+      { type: FACTORIO_EDITOR_API_COMMANDS.CREATE_WINDOW },
+      { type: FACTORIO_EDITOR_API_COMMANDS.INSERT_ATOM, parentId: BODY_LAYOUT_ROOT_ID },
+      { type: FACTORIO_EDITOR_API_COMMANDS.EDIT_CAPTION, nodeId: "gui_label_1" }
+    ],
+    results: result.results,
+    at: new Date("2026-07-01T12:34:56Z"),
+    label: "Codex test"
+  });
+  const state = appendFactorioEditorApiProvenance(result.state, entry);
+
+  assert.deepEqual(state.provenance.entries, [
+    {
+      at: "2026-07-01T12:34:56.000Z",
+      author: "agent",
+      label: "Codex test",
+      commandTypes: ["createWindow", "insertAtom", "editCaption"],
+      touchedNodeIds: [BODY_LAYOUT_ROOT_ID, "gui_label_1"],
+      summary: "3 command types applied through the editor API."
+    }
+  ]);
 });

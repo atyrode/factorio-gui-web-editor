@@ -155,8 +155,9 @@ For local agent, script, and test harnesses, the app exposes a constrained
 `labtorio-editor-api.v0` command API. In the browser it is available as
 `window.labtorioEditorApi`; in code it lives in `src/factorioEditorApi.js`.
 It can create/edit layouts, return structured diagnostics, export design JSON
-or Lua, and leave the result in the normal editor UI for operator review. It is
-not a remote-control server. See [docs/agent-api.md](docs/agent-api.md).
+or Lua, stamp agent provenance metadata, and leave the result in the normal
+editor UI for operator review. It is not a remote-control server. See
+[docs/agent-api.md](docs/agent-api.md).
 
 ## Factorio Preview Mod
 

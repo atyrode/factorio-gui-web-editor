@@ -146,6 +146,40 @@ test("createFactorioDesignFileDownload serializes normalized behavior hooks", ()
   });
 });
 
+test("createFactorioDesignFileDownload serializes normalized agent provenance", () => {
+  const { content } = createFactorioDesignFileDownload({
+    ...roughDesignState(),
+    provenance: {
+      schema: "labtorio-agent-provenance.v0",
+      entries: [
+        {
+          at: "2026-07-01T12:34:56Z",
+          author: "agent",
+          label: "Codex",
+          commandTypes: ["createWindow", "insertAtom", "insertAtom"],
+          touchedNodeIds: ["gui_label_2", "gui_label_2", ""],
+          summary: "Created initial draft."
+        }
+      ]
+    }
+  });
+  const designFile = JSON.parse(content);
+
+  assert.deepEqual(designFile.design.provenance, {
+    schema: "labtorio-agent-provenance.v0",
+    entries: [
+      {
+        at: "2026-07-01T12:34:56.000Z",
+        author: "agent",
+        label: "Codex",
+        commandTypes: ["createWindow", "insertAtom"],
+        touchedNodeIds: ["gui_label_2"],
+        summary: "Created initial draft."
+      }
+    ]
+  });
+});
+
 test("parseFactorioDesignFileText returns migrated normalized design state", () => {
   const migrated = parseFactorioDesignFileText(JSON.stringify({
     schema: FACTORIO_DESIGN_FILE_CURRENT_SCHEMA,

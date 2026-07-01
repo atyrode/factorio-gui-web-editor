@@ -109,10 +109,26 @@ When `result.ok` is true, the browser facade updates the normal editor state.
 The operator can then inspect the canvas, component tree, Factorio properties,
 Lua output, and preview mod export as usual.
 
+Successful mutating `run` and `runAll` calls also append
+`labtorio-agent-provenance.v0` metadata to the editor state. The caller may pass
+an optional label and summary:
+
+```js
+window.labtorioEditorApi.runAll(commands, {
+  label: "Codex agent",
+  summary: "Created first pass of the dispatch window."
+});
+```
+
+The provenance entry records timestamp, author, command types, touched node ids,
+and summary text. The Properties tab shows the latest agent entry so the
+operator can tell that the current draft came from the API and which nodes were
+most directly touched. The metadata is also serialized into
+`*.labtorio-gui.json` design files.
+
 ## Current Limits
 
 The v0 API does not create new atom types beyond the existing builder palette,
-does not expose a remote transport, does not track per-node authorship
-provenance in the UI yet, and does not generate Lua behavior handlers. Behavior
-intent should use the package hook metadata contract from
-[factorio-mod-export.md](factorio-mod-export.md).
+does not expose a remote transport, does not provide a full per-node authorship
+diff, and does not generate Lua behavior handlers. Behavior intent should use
+the package hook metadata contract from [factorio-mod-export.md](factorio-mod-export.md).

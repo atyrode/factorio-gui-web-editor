@@ -2025,13 +2025,27 @@ test.describe("Layout builder canvas preview", () => {
       {
         type: "exportLua"
       }
-    ]));
+    ], {
+      label: "Codex agent",
+      summary: "Created dispatch layout draft."
+    }));
 
     expect(result.ok).toBe(true);
     expect(result.results.at(-1).exports.lua).toContain("local dispatch_label =");
     expect(result.results.at(-1).exports.lua).toContain('caption = "Dispatch"');
     await expect(page.locator('[data-anchor="gui_filler_4"]')).toBeVisible();
     await expect(page.locator('[data-anchor="gui_label_3"]')).toContainText("Dispatch");
+    await page.locator('[data-anchor="properties_tab_properties"]').click();
+    await expect(page.locator('[data-anchor="agent_provenance_panel"]')).toBeVisible();
+    await expect(page.locator('[data-anchor="agent_provenance_author"]')).toContainText(
+      "Codex agent"
+    );
+    await expect(page.locator('[data-anchor="agent_provenance_commands"]')).toContainText(
+      "createWindow"
+    );
+    await expect(page.locator('[data-anchor="agent_provenance_touched"]')).toContainText(
+      "gui_label_3"
+    );
 
     const storedState = await readStoredEditorState(page);
     expect(storedState.currentWindow.layoutChildren[0].id).toBe("gui_filler_4");
@@ -2040,6 +2054,14 @@ test.describe("Layout builder canvas preview", () => {
       minimalHeight: 140
     });
     expect(storedState.currentWindow.luaVariableNames.gui_label_3).toBe("dispatch_label");
+    expect(storedState.provenance.entries.at(-1)).toEqual(
+      expect.objectContaining({
+        author: "agent",
+        label: "Codex agent",
+        summary: "Created dispatch layout draft."
+      })
+    );
+    expect(storedState.provenance.entries.at(-1).touchedNodeIds).toContain("gui_label_3");
   });
 
   test("downloads and imports the structured design file", async ({ page }) => {

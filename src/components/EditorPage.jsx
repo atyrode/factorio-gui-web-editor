@@ -81,11 +81,17 @@ import {
 import {
   FACTORIO_EDITOR_API_COMMANDS,
   FACTORIO_EDITOR_API_SCHEMA,
+  appendFactorioEditorApiProvenance,
   createFactorioEditorApiState,
+  createFactorioEditorApiProvenanceEntry,
   runFactorioEditorCommand,
   runFactorioEditorCommands,
   validateFactorioEditorApiState
 } from "../factorioEditorApi.js";
+import {
+  latestFactorioAgentProvenanceEntry,
+  normalizeFactorioAgentProvenance
+} from "../factorioAgentProvenance.js";
 import { BuilderPaletteBar, BuilderTreePanel } from "./BuilderPanel.jsx";
 
 function windowTitle(value) {
@@ -103,6 +109,7 @@ const CANVAS_TOOL_RESIZE = "resize";
 const PROPERTIES_TAB_PROPERTIES = "properties";
 const PROPERTIES_TAB_FACTORIO = "factorio";
 const DEFAULT_BEHAVIOR_HOOKS = normalizeFactorioBehaviorHooks();
+const DEFAULT_AGENT_PROVENANCE = normalizeFactorioAgentProvenance();
 const DEFAULT_EDITOR_STATE = {
   title: "Untitled window",
   windowSize: DEFAULT_WINDOW_SIZE,
@@ -121,6 +128,7 @@ const DEFAULT_EDITOR_STATE = {
   showComponentTreeShell: false,
   layoutSettings: DEFAULT_LAYOUT_SETTINGS,
   hooks: DEFAULT_BEHAVIOR_HOOKS,
+  provenance: DEFAULT_AGENT_PROVENANCE,
   sidebarWidth: 260
 };
 
@@ -247,6 +255,7 @@ function readCachedEditorState() {
     const hooks = normalizeFactorioBehaviorHooks(parsedValue.hooks, {
       validElementIds: collectFactorioHookElementIds({ currentWindow })
     });
+    const provenance = normalizeFactorioAgentProvenance(parsedValue.provenance);
     return normalizeEditorStateShape({
       title: String(parsedValue.title ?? DEFAULT_EDITOR_STATE.title),
       windowSize: normalizeWindowSize(parsedValue.windowSize ?? currentWindow?.size),
@@ -287,6 +296,7 @@ function readCachedEditorState() {
           : DEFAULT_EDITOR_STATE.showComponentTreeShell,
       layoutSettings: normalizeLayoutSettings(parsedValue.layoutSettings),
       hooks,
+      provenance,
       sidebarWidth: clampSidebarWidth(
         Number(parsedValue.sidebarWidth ?? DEFAULT_EDITOR_STATE.sidebarWidth)
       )
@@ -338,6 +348,7 @@ function snapshotEditorState(state) {
     hooks: cloneHistoryValue(normalizeFactorioBehaviorHooks(state.hooks, {
       validElementIds: collectFactorioHookElementIds({ currentWindow })
     })),
+    provenance: cloneHistoryValue(normalizeFactorioAgentProvenance(state.provenance)),
     inspectedAnchor: typeof state.inspectedAnchor === "string" ? state.inspectedAnchor : null,
     inspectorLocked: Boolean(state.inspectorLocked)
   };
@@ -407,6 +418,7 @@ function restoreHistorySnapshot(state, snapshot) {
     hooks: normalizeFactorioBehaviorHooks(snapshot.hooks, {
       validElementIds: collectFactorioHookElementIds({ currentWindow })
     }),
+    provenance: normalizeFactorioAgentProvenance(snapshot.provenance),
     ...selection
   };
 }
@@ -1728,6 +1740,44 @@ function PropertiesTabButton({ active, anchor, children, onClick }) {
   );
 }
 
+function AgentProvenancePanel({ provenance }) {
+  const latest = latestFactorioAgentProvenanceEntry(provenance);
+  if (!latest) {
+    return null;
+  }
+
+  const commandLabel = latest.commandTypes.length
+    ? latest.commandTypes.join(", ")
+    : "No mutating commands";
+  const touchedLabel = latest.touchedNodeIds.length
+    ? latest.touchedNodeIds.join(", ")
+    : "No specific nodes";
+  const timestamp = new Date(latest.at).toLocaleString();
+
+  return (
+    <section className="fx-agent-provenance" data-anchor="agent_provenance_panel">
+      <div className="fx-agent-provenance__header">
+        <span>Agent provenance</span>
+        <span data-anchor="agent_provenance_author">{latest.label}</span>
+      </div>
+      <dl className="fx-agent-provenance__rows">
+        <div>
+          <dt>Updated</dt>
+          <dd data-anchor="agent_provenance_timestamp">{timestamp}</dd>
+        </div>
+        <div>
+          <dt>Commands</dt>
+          <dd data-anchor="agent_provenance_commands">{commandLabel}</dd>
+        </div>
+        <div>
+          <dt>Touched</dt>
+          <dd data-anchor="agent_provenance_touched">{touchedLabel}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
 export function EditorPage() {
   const [editorState, setEditorState] = useState(readCachedEditorState);
   const [editorHistory, setEditorHistory] = useState({ undo: [], redo: [] });
@@ -1760,6 +1810,7 @@ export function EditorPage() {
     showLayoutSettings,
     showComponentTreeShell,
     layoutSettings,
+    provenance,
     sidebarWidth
   } = editorState;
   const normalizedLayoutSettings = normalizeLayoutSettings(layoutSettings);
@@ -1895,11 +1946,15 @@ export function EditorPage() {
       return undefined;
     }
 
-    function applyApiState(apiState) {
+    function applyApiState(apiState, provenanceEntry = null) {
       const { selectedAnchor = null, ...statePatch } = apiState;
+      const nextState = provenanceEntry
+        ? appendFactorioEditorApiProvenance(statePatch, provenanceEntry)
+        : createFactorioEditorApiState(statePatch);
+      const { selectedAnchor: _nextSelectedAnchor, ...normalizedPatch } = nextState;
       replaceEditorState({
         ...editorStateRef.current,
-        ...statePatch,
+        ...normalizedPatch,
         inspectedAnchor: selectedAnchor,
         inspectorLocked: Boolean(selectedAnchor),
         propertiesTab: selectedAnchor ? PROPERTIES_TAB_FACTORIO : PROPERTIES_TAB_PROPERTIES
@@ -1913,19 +1968,35 @@ export function EditorPage() {
         ...editorStateRef.current,
         selectedAnchor: editorStateRef.current.inspectedAnchor
       }),
-      run: (command) => {
+      run: (command, options = {}) => {
         const result = runFactorioEditorCommand(api.getState(), command);
         if (result.ok && result.mutated) {
           clearTransientEditorState();
-          applyApiState(result.state);
+          applyApiState(
+            result.state,
+            createFactorioEditorApiProvenanceEntry({
+              commands: [command],
+              results: [result],
+              label: options.label,
+              summary: options.summary
+            })
+          );
         }
         return result;
       },
-      runAll: (commands) => {
+      runAll: (commands, options = {}) => {
         const result = runFactorioEditorCommands(api.getState(), commands);
         if (result.ok && result.mutated) {
           clearTransientEditorState();
-          applyApiState(result.state);
+          applyApiState(
+            result.state,
+            createFactorioEditorApiProvenanceEntry({
+              commands,
+              results: result.results,
+              label: options.label,
+              summary: options.summary
+            })
+          );
         }
         return result;
       },
@@ -2149,6 +2220,7 @@ export function EditorPage() {
       currentWindow: designState.currentWindow,
       layoutSettings: designState.layoutSettings,
       hooks: designState.hooks,
+      provenance: designState.provenance,
       activeCanvasTool: CANVAS_TOOL_SELECT,
       propertiesTab: PROPERTIES_TAB_PROPERTIES,
       showInspector: false,
@@ -3083,6 +3155,7 @@ export function EditorPage() {
                   windowSize={windowSize}
                   showComponentTreeShell={showComponentTreeShell}
                 />
+                <AgentProvenancePanel provenance={provenance} />
               </div>
             ) : (
               <StyleInspector

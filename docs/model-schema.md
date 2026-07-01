@@ -207,6 +207,12 @@ want round-trip editing should store or provide this tool-authored design
 payload instead of expecting the editor to recover intent from imperative Lua
 code.
 
+Design payloads also include optional `labtorio-agent-provenance.v0` metadata.
+The browser API appends entries for successful agent-authored command batches,
+including timestamp, label, command types, touched node ids, and a short
+summary. This metadata is for operator review and audit context only; it does
+not change layout hydration, Factorio Lua export, or package import behavior.
+
 Legacy cached windows normalize to an empty `layoutChildren` array with
 `nextLayoutNodeNumber: 1`. Existing Frame and Horizontal Flow specs keep their
 atom identity if their parent capability accepts them. Unknown atoms are
