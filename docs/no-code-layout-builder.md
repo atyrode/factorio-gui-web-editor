@@ -139,15 +139,18 @@ files are the supported tool-authored round trip. Lua output remains a
 generated export surface; it is not an always-visible editing surface or an
 import format.
 
-Select, Inspect, and Resize are exclusive canvas tools. Select is the default
-passive pointer mode: canvas clicks do not change inspected selection or switch
-the properties tab, and the preview remains available for normal interactions
-such as Window dragging. Inspect enables Ctrl+F6-style hover/click inspection
-and routes facts to the Factorio tab. Resize shows a measured overlay for the
-selected GUI node; supported nodes show side and corner handles, while
-unsupported nodes show a disabled resize state. Inspect, Resize, Builder rows,
-and inspector navigation reuse the same selected anchor, so precision operations
-target the same model node.
+Select, Move, Inspect, and Resize are exclusive canvas tools. Select is the
+default passive pointer mode: canvas clicks do not change inspected selection or
+switch the properties tab, and the preview remains available for normal
+interactions such as Window dragging. Move makes authored Frame, Horizontal
+Flow, Label, and Filler atoms draggable on the canvas, using the same active
+parent highlight, ghost preview, `{parentId, index}` target, and structural
+constraints as palette insertion and Builder tree moves. Inspect enables
+Ctrl+F6-style hover/click inspection and routes facts to the Factorio tab.
+Resize shows a measured overlay for the selected GUI node; supported nodes show
+side and corner handles, while unsupported nodes show a disabled resize state.
+Move, Inspect, Resize, Builder rows, and inspector navigation reuse the same
+selected anchor, so precision operations target the same model node.
 
 ## Data Contract
 
@@ -330,6 +333,9 @@ paste.
   will exist after drop. Highlight paint must not extend the future node's
   bounds. Previews are atom render states: Frame, Horizontal Flow, Label, and Filler
   previews render through the same shells as their real nodes.
+- Canvas Move drags use the same canvas drop targets as palette drags, but
+  commit through `moveLayoutNode` so the original node id, subtree, caption,
+  size, Lua variable name, and export order move together.
 - Removing a row removes its subtree in this slice.
 
 ## Resize Rules
@@ -364,6 +370,7 @@ paste.
 | `label-caption` | Authored Label in body, Frame, or Horizontal Flow | Label is visible, selectable, movable, removable, exports as `label`, rejects children, and owns editable caption text through the component-tree edit action, Factorio Inspector caption row, and Select-mode canvas double-click. |
 | `filler-spacer` | Authored Filler in body, Frame, or Horizontal Flow | Filler is visible, selectable, movable, removable, exports as `empty-widget`, and rejects children. |
 | `cross-parent-move` | Two root Frames, one nested Frame | Tree drag can move a Frame between body and another compatible flow, preserving order. |
+| `canvas-move-authored-atoms` | Root Frame, nested Horizontal Flow, Label, Filler, and second root Frame | Move tool can reorder a root Frame, reparent the Horizontal Flow subtree, move Label/Filler atoms, reject descendant drops, and keep Builder tree, Lua, localStorage, and undo/redo synchronized. |
 | `invalid-descendant-drop` | Parent with child | Dragging parent into its child is rejected and keeps the model unchanged. |
 | `copy-paste-subtree` | Frame -> Horizontal Flow -> two Frames, copied from the root Frame | Paste creates a sibling subtree with fresh ids, selects the pasted root, updates Lua output/localStorage, and leaves copied Lua variable overrides behind. |
 | `undo-redo-authored-state` | Window with authored layout, size, title, settings, and Lua aliases | Undo and redo restore shared model state across canvas, Builder tree, Inspector selection, Lua output, and localStorage while excluding transient view state. |
@@ -374,6 +381,7 @@ paste.
 
 - `editor_command_bar`
 - `editor_tool_select`
+- `editor_tool_move`
 - `editor_tool_inspect`
 - `editor_export_drawer`
 - `builder_panel`

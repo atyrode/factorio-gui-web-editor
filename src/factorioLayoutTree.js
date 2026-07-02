@@ -475,8 +475,19 @@ export function moveLayoutNode(layoutChildren = [], sourceId, targetParentId, in
     return { layoutChildren, changed: false };
   }
 
+  const targetChildren = findLayoutParentChildren(layoutChildren, targetParentId);
+  const normalizedIndex = clampInsertionIndex(index, targetChildren?.length ?? 0);
+  if (
+    sourceMatch.parentId === targetParentId &&
+    (normalizedIndex === sourceMatch.index || normalizedIndex === sourceMatch.index + 1)
+  ) {
+    return { layoutChildren, changed: false };
+  }
+
   const adjustedIndex =
-    sourceMatch.parentId === targetParentId && sourceMatch.index < index ? index - 1 : index;
+    sourceMatch.parentId === targetParentId && sourceMatch.index < normalizedIndex
+      ? normalizedIndex - 1
+      : normalizedIndex;
   const removal = removeLayoutNode(layoutChildren, sourceId);
   if (!removal.changed) {
     return { layoutChildren, changed: false };

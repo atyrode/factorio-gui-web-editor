@@ -6,6 +6,7 @@ import {
   Eye,
   Maximize2,
   MousePointer2,
+  Move,
   PanelBottomOpen,
   ScanSearch,
   SlidersHorizontal,
@@ -61,7 +62,9 @@ import {
   updateLayoutNodeSize
 } from "../factorioLayoutTree.js";
 import {
-  readBuilderPaletteDrag
+  readBuilderNodeDrag,
+  readBuilderPaletteDrag,
+  writeBuilderNodeDrag
 } from "../factorioLayoutBuilderDnd.js";
 import {
   DEFAULT_LAYOUT_SETTINGS,
@@ -100,6 +103,7 @@ const SIDEBAR_MIN_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 640;
 const SIDEBAR_STAGE_MIN_WIDTH = 420;
 const CANVAS_TOOL_SELECT = "select";
+const CANVAS_TOOL_MOVE = "move";
 const CANVAS_TOOL_INSPECT = "inspect";
 const CANVAS_TOOL_RESIZE = "resize";
 const PROPERTIES_TAB_PROPERTIES = "properties";
@@ -167,7 +171,8 @@ function normalizeWindow(value) {
 }
 
 function normalizeCanvasTool(value, fallback = CANVAS_TOOL_SELECT) {
-  return [CANVAS_TOOL_SELECT, CANVAS_TOOL_INSPECT, CANVAS_TOOL_RESIZE].includes(value)
+  return [CANVAS_TOOL_SELECT, CANVAS_TOOL_MOVE, CANVAS_TOOL_INSPECT, CANVAS_TOOL_RESIZE]
+    .includes(value)
     ? value
     : fallback;
 }
@@ -708,11 +713,15 @@ function EditorCanvas({
   onWindowLocationChange,
   builderDragActive,
   builderDragAtom = null,
+  builderDragSourceId = null,
   builderDropTarget,
   editingLabelId = null,
   onLabelTextEditCancel,
   onLabelTextEditCommit,
   onLabelTextEditStart,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart,
+  moveMode = false,
   resizeMode = false,
   shadowsVisible = true
 }) {
@@ -793,7 +802,7 @@ function EditorCanvas({
   }, [currentWindow, inspectorActive, inspectorPreview]);
 
   function startWindowDrag(event) {
-    if (inspectorActive || event.button !== 0 || !currentWindow || !canvasRef.current) {
+    if (inspectorActive || moveMode || event.button !== 0 || !currentWindow || !canvasRef.current) {
       return;
     }
 
@@ -890,8 +899,12 @@ function EditorCanvas({
           bodyStyleReference={bodyStyleReference}
           builderDragActive={builderDragActive}
           builderDragAtom={builderDragAtom}
+          builderDragSourceId={builderDragSourceId}
           builderDropTarget={builderDropTarget}
           editingLabelId={editingLabelId}
+          moveMode={moveMode}
+          onCanvasMoveDragEnd={onCanvasMoveDragEnd}
+          onCanvasMoveDragStart={onCanvasMoveDragStart}
           onLabelTextEditCancel={onLabelTextEditCancel}
           onLabelTextEditCommit={onLabelTextEditCommit}
           onLabelTextEditStart={onLabelTextEditStart}
@@ -1112,6 +1125,10 @@ function createSpecForAtom(atom, nodeNumber) {
 
 function dragAtom(drag) {
   return drag?.atom ?? null;
+}
+
+function dragSourceId(drag) {
+  return typeof drag?.sourceId === "string" ? drag.sourceId : null;
 }
 
 const LAYOUT_SETTING_FIELDS = Object.freeze([
@@ -2074,6 +2091,8 @@ export function EditorPage() {
     const nextTool = normalizeCanvasTool(tool);
     setResizeDraft(null);
     setLabelTextEditingId(null);
+    setBuilderDrag(null);
+    setBuilderDropTarget(null);
     if (nextTool !== CANVAS_TOOL_INSPECT) {
       setInspectorPreview(null);
     }
@@ -2594,6 +2613,23 @@ export function EditorPage() {
     };
   }, [currentWindow, inspectedAnchor, layoutClipboard]);
 
+  useEffect(() => {
+    if (!builderDrag) {
+      return undefined;
+    }
+
+    function handleBuilderDragCancel(event) {
+      if (event.key === "Escape") {
+        clearBuilderDrag();
+      }
+    }
+
+    window.addEventListener("keydown", handleBuilderDragCancel);
+    return () => {
+      window.removeEventListener("keydown", handleBuilderDragCancel);
+    };
+  }, [builderDrag]);
+
   function normalizeDropTarget(
     target,
     drag = builderDrag,
@@ -2604,7 +2640,7 @@ export function EditorPage() {
       !drag ||
       !canDropLayoutNode(
         layoutChildren,
-        null,
+        dragSourceId(drag),
         target.parentId,
         dragAtom(drag)
       )
@@ -2655,8 +2691,44 @@ export function EditorPage() {
     setBuilderDropTarget(null);
   }
 
+  function handleCanvasMoveDragStart({ nodeId, atom }, event) {
+    if (activeCanvasTool !== CANVAS_TOOL_MOVE || !currentWindow) {
+      clearBuilderDrag();
+      return false;
+    }
+
+    const match = findLayoutNode(currentWindow.layoutChildren, nodeId);
+    if (!match) {
+      clearBuilderDrag();
+      return false;
+    }
+
+    const drag =
+      writeBuilderNodeDrag(event?.dataTransfer, {
+        sourceId: nodeId,
+        atom: match.node.atom ?? atom
+      }) ?? {
+        kind: "canvas",
+        sourceId: nodeId,
+        atom: match.node.atom ?? atom
+      };
+
+    setResizeDraft(null);
+    setLabelTextEditingId(null);
+    setBuilderDrag(drag);
+    setBuilderDropTarget(null);
+    selectInspectorComponent(nodeId, PROPERTIES_TAB_PROPERTIES);
+    return true;
+  }
+
+  function readCanvasDrag(event, readPayload = true) {
+    return readBuilderNodeDrag(event?.dataTransfer, readPayload) ??
+      readBuilderPaletteDrag(event?.dataTransfer, readPayload) ??
+      builderDrag;
+  }
+
   function handleCanvasDropTargetOver(target, event) {
-    const drag = readBuilderPaletteDrag(event?.dataTransfer, false) ?? builderDrag;
+    const drag = readCanvasDrag(event, false);
 
     if (!drag) {
       return false;
@@ -2666,7 +2738,7 @@ export function EditorPage() {
   }
 
   function handleCanvasDrop(target, event) {
-    const drag = readBuilderPaletteDrag(event?.dataTransfer, true) ?? builderDrag;
+    const drag = readCanvasDrag(event, true);
     return commitBuilderDrop(target, drag);
   }
 
@@ -2803,6 +2875,20 @@ export function EditorPage() {
         };
       }
 
+      if (drag.kind === "canvas" && drag.sourceId) {
+        const movement = moveLayoutNode(
+          layoutState.layoutChildren,
+          drag.sourceId,
+          currentTarget.parentId,
+          currentTarget.index
+        );
+        return {
+          ...movement,
+          selectedAnchor: drag.sourceId,
+          nextLayoutNodeNumber: layoutState.nextLayoutNodeNumber
+        };
+      }
+
       return { changed: false };
     });
 
@@ -2898,6 +2984,7 @@ export function EditorPage() {
   const activeTool = normalizeCanvasTool(activeCanvasTool);
   const selectedPropertiesTab = normalizePropertiesTab(propertiesTab);
   const inspectToolActive = activeTool === CANVAS_TOOL_INSPECT;
+  const moveToolActive = activeTool === CANVAS_TOOL_MOVE;
   const resizeToolActive = activeTool === CANVAS_TOOL_RESIZE;
 
   return (
@@ -2981,6 +3068,13 @@ export function EditorPage() {
               onClick={() => activateCanvasTool(CANVAS_TOOL_SELECT)}
             />
             <EditorToolButton
+              active={moveToolActive}
+              anchor="editor_tool_move"
+              icon={Move}
+              label="Move atoms"
+              onClick={() => activateCanvasTool(CANVAS_TOOL_MOVE)}
+            />
+            <EditorToolButton
               active={inspectToolActive}
               anchor="editor_tool_inspect"
               icon={ScanSearch}
@@ -3012,7 +3106,7 @@ export function EditorPage() {
               currentWindow={previewWindow}
               model={currentModel}
               inspectorActive={inspectToolActive}
-              selectionActive={resizeToolActive}
+              selectionActive={resizeToolActive || moveToolActive}
               inspectorLocked={inspectToolActive ? inspectorLocked : true}
               inspectedAnchor={inspectedAnchor}
               inspectorPreview={inspectorPreview}
@@ -3035,13 +3129,17 @@ export function EditorPage() {
               onLabelTextEditStart={
                 activeTool === CANVAS_TOOL_SELECT ? startLabelTextEdit : undefined
               }
+              onCanvasMoveDragEnd={clearBuilderDrag}
+              onCanvasMoveDragStart={handleCanvasMoveDragStart}
               onResizeCancel={() => setResizeDraft(null)}
               onResizeCommit={commitResizeDraft}
               onResizeDraft={setResizeDraft}
               onWindowLocationChange={updateWindowLocation}
               builderDragActive={Boolean(builderDrag)}
-              builderDragAtom={builderDrag?.kind === "palette" ? builderDrag.atom : null}
+              builderDragAtom={dragAtom(builderDrag)}
+              builderDragSourceId={dragSourceId(builderDrag)}
               builderDropTarget={builderDropTarget}
+              moveMode={moveToolActive}
               resizeMode={resizeToolActive}
               shadowsVisible={showGuiShadows}
             />
