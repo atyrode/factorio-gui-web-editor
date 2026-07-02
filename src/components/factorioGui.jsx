@@ -747,6 +747,7 @@ function nearestCanvasDropTarget(event, parentId, nodes = []) {
 
 function canvasDropHandlers({
   dragActive,
+  dragEffect = "copy",
   onBuilderDrop,
   onBuilderDropTargetOver,
   resolveTarget
@@ -766,7 +767,7 @@ function canvasDropHandlers({
       event.preventDefault();
       event.stopPropagation();
       if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "copy";
+        event.dataTransfer.dropEffect = dragEffect;
       }
     }
   }
@@ -788,6 +789,39 @@ function canvasDropHandlers({
     onDragEnter: handleDragOver,
     onDragOver: handleDragOver,
     onDrop: handleDrop
+  };
+}
+
+function canvasMoveDragHandlers({
+  atom,
+  moveMode = false,
+  node,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart
+}) {
+  const moveAtom = atom ?? node?.atom;
+  if (!moveMode || !node?.id || !moveAtom || !onCanvasMoveDragStart) {
+    return {};
+  }
+
+  function handleDragStart(event) {
+    event.stopPropagation();
+    const accepted = onCanvasMoveDragStart({ nodeId: node.id, atom: moveAtom }, event);
+    if (accepted === false) {
+      event.preventDefault();
+    }
+  }
+
+  function handleDragEnd(event) {
+    event.stopPropagation();
+    onCanvasMoveDragEnd?.(event);
+  }
+
+  return {
+    "data-fx-move-draggable": "true",
+    draggable: true,
+    onDragEnd: handleDragEnd,
+    onDragStart: handleDragStart
   };
 }
 
@@ -890,9 +924,13 @@ function FlowChildren({
   onBuilderDrop,
   onBuilderDropTargetOver,
   builderDragActive,
+  builderDragSourceId = null,
   builderDropTarget,
   parentStyleReference,
   builderDragAtom = null,
+  moveMode = false,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart,
   editingLabelId = null,
   onLabelTextEditCancel,
   onLabelTextEditCommit,
@@ -938,14 +976,18 @@ function FlowChildren({
       <GuiLayoutNode
         builderDragAtom={builderDragAtom}
         builderDragActive={builderDragActive}
+        builderDragSourceId={builderDragSourceId}
         builderDropTarget={builderDropTarget}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
         key={node.id}
+        moveMode={moveMode}
         node={node}
         onBuilderDrop={onBuilderDrop}
         onBuilderDropTargetOver={onBuilderDropTargetOver}
+        onCanvasMoveDragEnd={onCanvasMoveDragEnd}
+        onCanvasMoveDragStart={onCanvasMoveDragStart}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
         editingLabelId={editingLabelId}
@@ -993,6 +1035,10 @@ export function GuiLabel({
   inspectorActive = false,
   inspectorLocked = false,
   inspectedAnchor = node.id,
+  builderDragSourceId = null,
+  moveMode = false,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart,
   onInspect,
   onInspectLock,
   editingLabelId = null,
@@ -1008,6 +1054,13 @@ export function GuiLabel({
     inspectedAnchor,
     onInspect,
     onInspectLock
+  });
+  const moveHandlers = canvasMoveDragHandlers({
+    atom: LABEL_ATOM_ID,
+    moveMode: moveMode && !editing,
+    node,
+    onCanvasMoveDragEnd,
+    onCanvasMoveDragStart
   });
 
   function startTextEdit(event) {
@@ -1025,6 +1078,8 @@ export function GuiLabel({
       node={node}
       className={[
         labelInspector.className,
+        moveMode && !editing ? "is-move-draggable" : "",
+        builderDragSourceId === node.id ? "is-builder-drag-source" : "",
         editing ? "is-editing" : ""
       ]
         .filter(Boolean)
@@ -1035,6 +1090,7 @@ export function GuiLabel({
       onFocus={labelInspector.onFocus}
       onMouseEnter={labelInspector.onMouseEnter}
       onMouseMove={labelInspector.onMouseMove}
+      {...moveHandlers}
     >
       {editing ? (
         <GuiLabelTextEditor
@@ -1052,6 +1108,10 @@ export function GuiFiller({
   inspectorActive = false,
   inspectorLocked = false,
   inspectedAnchor = node.id,
+  builderDragSourceId = null,
+  moveMode = false,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart,
   onInspect,
   onInspectLock
 }) {
@@ -1063,16 +1123,30 @@ export function GuiFiller({
     onInspect,
     onInspectLock
   });
+  const moveHandlers = canvasMoveDragHandlers({
+    atom: FILLER_ATOM_ID,
+    moveMode,
+    node,
+    onCanvasMoveDragEnd,
+    onCanvasMoveDragStart
+  });
 
   return (
     <GuiFillerShell
       node={node}
-      className={fillerInspector.className}
+      className={[
+        fillerInspector.className,
+        moveMode ? "is-move-draggable" : "",
+        builderDragSourceId === node.id ? "is-builder-drag-source" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
       tabIndex={fillerInspector.tabIndex}
       onClick={fillerInspector.onClick}
       onFocus={fillerInspector.onFocus}
       onMouseEnter={fillerInspector.onMouseEnter}
       onMouseMove={fillerInspector.onMouseMove}
+      {...moveHandlers}
     />
   );
 }
@@ -1087,8 +1161,12 @@ export function GuiFrame({
   onInspect,
   onInspectLock,
   builderDragActive = false,
+  builderDragSourceId = null,
   builderDropTarget = null,
   builderDragAtom = null,
+  moveMode = false,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart,
   editingLabelId = null,
   onLabelTextEditCancel,
   onLabelTextEditCommit,
@@ -1112,7 +1190,15 @@ export function GuiFrame({
     dragActive: builderDragActive,
     onBuilderDrop,
     onBuilderDropTargetOver,
+    dragEffect: builderDragSourceId ? "move" : "copy",
     resolveTarget: (event) => nearestCanvasDropTarget(event, node.id, children)
+  });
+  const moveHandlers = canvasMoveDragHandlers({
+    atom: FRAME_ATOM_ID,
+    moveMode,
+    node,
+    onCanvasMoveDragEnd,
+    onCanvasMoveDragStart
   });
 
   return (
@@ -1122,6 +1208,8 @@ export function GuiFrame({
         isCanvasDropParent(builderDropTarget, parentDropTarget?.parentId)
           ? "is-builder-drop-parent"
           : "",
+        moveMode ? "is-move-draggable" : "",
+        builderDragSourceId === node.id ? "is-builder-drag-source" : "",
         frameInspector.className
       ]
         .filter(Boolean)
@@ -1134,17 +1222,22 @@ export function GuiFrame({
       onFocus={frameInspector.onFocus}
       onMouseEnter={frameInspector.onMouseEnter}
       onMouseMove={frameInspector.onMouseMove}
+      {...moveHandlers}
     >
       <FlowChildren
         builderDragActive={builderDragActive}
         builderDragAtom={builderDragAtom}
+        builderDragSourceId={builderDragSourceId}
         builderDropTarget={builderDropTarget}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
+        moveMode={moveMode}
         nodes={children}
         onBuilderDrop={onBuilderDrop}
         onBuilderDropTargetOver={onBuilderDropTargetOver}
+        onCanvasMoveDragEnd={onCanvasMoveDragEnd}
+        onCanvasMoveDragStart={onCanvasMoveDragStart}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
         editingLabelId={editingLabelId}
@@ -1169,8 +1262,12 @@ export function GuiHorizontalFlow({
   onInspect,
   onInspectLock,
   builderDragActive = false,
+  builderDragSourceId = null,
   builderDropTarget = null,
   builderDragAtom = null,
+  moveMode = false,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart,
   editingLabelId = null,
   onLabelTextEditCancel,
   onLabelTextEditCommit,
@@ -1194,7 +1291,15 @@ export function GuiHorizontalFlow({
     dragActive: builderDragActive,
     onBuilderDrop,
     onBuilderDropTargetOver,
+    dragEffect: builderDragSourceId ? "move" : "copy",
     resolveTarget: (event) => nearestCanvasDropTarget(event, node.id, children)
+  });
+  const moveHandlers = canvasMoveDragHandlers({
+    atom: HORIZONTAL_FLOW_ATOM_ID,
+    moveMode,
+    node,
+    onCanvasMoveDragEnd,
+    onCanvasMoveDragStart
   });
 
   return (
@@ -1204,6 +1309,8 @@ export function GuiHorizontalFlow({
         isCanvasDropParent(builderDropTarget, parentDropTarget?.parentId)
           ? "is-builder-drop-parent"
           : "",
+        moveMode ? "is-move-draggable" : "",
+        builderDragSourceId === node.id ? "is-builder-drag-source" : "",
         flowInspector.className
       ]
         .filter(Boolean)
@@ -1216,17 +1323,22 @@ export function GuiHorizontalFlow({
       onFocus={flowInspector.onFocus}
       onMouseEnter={flowInspector.onMouseEnter}
       onMouseMove={flowInspector.onMouseMove}
+      {...moveHandlers}
     >
       <FlowChildren
         builderDragActive={builderDragActive}
         builderDragAtom={builderDragAtom}
+        builderDragSourceId={builderDragSourceId}
         builderDropTarget={builderDropTarget}
         inspectedAnchor={inspectedAnchor}
         inspectorActive={inspectorActive}
         inspectorLocked={inspectorLocked}
+        moveMode={moveMode}
         nodes={children}
         onBuilderDrop={onBuilderDrop}
         onBuilderDropTargetOver={onBuilderDropTargetOver}
+        onCanvasMoveDragEnd={onCanvasMoveDragEnd}
+        onCanvasMoveDragStart={onCanvasMoveDragStart}
         onInspect={onInspect}
         onInspectLock={onInspectLock}
         editingLabelId={editingLabelId}
@@ -1262,12 +1374,16 @@ export function GuiWindow({
   onTitlebarPointerUp,
   onTitlebarPointerCancel,
   builderDragActive = false,
+  builderDragSourceId = null,
   builderDropTarget = null,
   builderDragAtom = null,
   editingLabelId = null,
   onLabelTextEditCancel,
   onLabelTextEditCommit,
   onLabelTextEditStart,
+  moveMode = false,
+  onCanvasMoveDragEnd,
+  onCanvasMoveDragStart,
   styleReference = frameStyleReference,
   shadowsVisible = true
 }) {
@@ -1333,6 +1449,7 @@ export function GuiWindow({
   });
   const bodyDropHandlers = canvasDropHandlers({
     dragActive: builderDragActive,
+    dragEffect: builderDragSourceId ? "move" : "copy",
     onBuilderDrop,
     onBuilderDropTargetOver,
     resolveTarget: (event) => nearestCanvasDropTarget(event, bodyAnchor, bodyChildren)
@@ -1502,13 +1619,17 @@ export function GuiWindow({
         <FlowChildren
           builderDragActive={builderDragActive}
           builderDragAtom={builderDragAtom}
+          builderDragSourceId={builderDragSourceId}
           builderDropTarget={builderDropTarget}
           inspectedAnchor={inspectedAnchor}
           inspectorActive={inspectorActive}
           inspectorLocked={inspectorLocked}
+          moveMode={moveMode}
           nodes={bodyChildren}
           onBuilderDrop={onBuilderDrop}
           onBuilderDropTargetOver={onBuilderDropTargetOver}
+          onCanvasMoveDragEnd={onCanvasMoveDragEnd}
+          onCanvasMoveDragStart={onCanvasMoveDragStart}
           onInspect={onInspect}
           onInspectLock={onInspectLock}
           editingLabelId={editingLabelId}

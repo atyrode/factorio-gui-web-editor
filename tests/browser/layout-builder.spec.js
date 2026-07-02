@@ -101,6 +101,52 @@ const NESTED_TREE_STATE = {
     nextLayoutNodeNumber: 5
   }
 };
+const CANVAS_MOVE_STATE = {
+  ...ONE_FRAME_STATE,
+  showLuaOutput: true,
+  currentWindow: {
+    ...ONE_FRAME_STATE.currentWindow,
+    layoutChildren: [
+      {
+        id: "gui_frame_1",
+        atom: "frame",
+        styleVariant: "inside-deep-frame",
+        children: [
+          {
+            id: "gui_horizontal_flow_2",
+            atom: "horizontal-flow",
+            styleVariant: "generic-horizontal-flow",
+            children: [
+              {
+                id: "gui_label_3",
+                atom: "label",
+                styleVariant: "label",
+                caption: "Dispatch",
+                children: []
+              },
+              {
+                id: "gui_filler_4",
+                atom: "filler",
+                styleVariant: "draggable-space",
+                children: []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "gui_frame_5",
+        atom: "frame",
+        styleVariant: "inside-deep-frame",
+        children: []
+      }
+    ],
+    nextLayoutNodeNumber: 6,
+    luaVariableNames: {
+      gui_label_3: "dispatch_label"
+    }
+  }
+};
 const BODY_FILLER_STATE = {
   ...ONE_FRAME_STATE,
   currentWindow: {
@@ -391,6 +437,91 @@ async function dropActiveNativePalette(page, targetSelector, position = {}) {
   }, { targetSelector, position });
 }
 
+async function startNativeCanvasMoveDrag(page, sourceAnchor) {
+  const source = page.locator(`[data-anchor="${sourceAnchor}"]`);
+  await expect(source).toBeVisible();
+  await expect(source).toHaveAttribute("data-fx-move-draggable", "true");
+
+  await page.evaluate(({ sourceAnchor }) => {
+    const source = document.querySelector(`[data-anchor="${sourceAnchor}"]`);
+    if (!source) {
+      throw new Error(`Missing canvas move source: ${sourceAnchor}`);
+    }
+
+    const dataTransfer = new DataTransfer();
+    const sourceRect = source.getBoundingClientRect();
+    window.__layoutBuilderCanvasMoveDrag = { dataTransfer, source };
+
+    source.dispatchEvent(new DragEvent("dragstart", {
+      bubbles: true,
+      cancelable: true,
+      clientX: sourceRect.left + sourceRect.width / 2,
+      clientY: sourceRect.top + sourceRect.height / 2,
+      dataTransfer
+    }));
+  }, { sourceAnchor });
+
+  await expect(source).toHaveClass(/is-builder-drag-source/);
+}
+
+async function dragActiveNativeCanvasMoveOver(page, targetSelector, position = {}) {
+  await page.locator(targetSelector).waitFor({ state: "visible" });
+
+  await page.evaluate(({ targetSelector, position }) => {
+    const drag = window.__layoutBuilderCanvasMoveDrag;
+    const target = document.querySelector(targetSelector);
+    if (!drag?.dataTransfer || !target) {
+      throw new Error(`Missing active canvas move or target: ${targetSelector}`);
+    }
+
+    const rect = target.getBoundingClientRect();
+    const clientX = rect.left + (position.x ?? rect.width / 2);
+    const clientY = rect.top + (position.y ?? rect.height / 2);
+
+    for (const type of ["dragenter", "dragover"]) {
+      target.dispatchEvent(new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX,
+        clientY,
+        dataTransfer: drag.dataTransfer
+      }));
+    }
+  }, { targetSelector, position });
+}
+
+async function dropActiveNativeCanvasMove(page, targetSelector, position = {}) {
+  await page.locator(targetSelector).waitFor({ state: "visible" });
+
+  await page.evaluate(({ targetSelector, position }) => {
+    const drag = window.__layoutBuilderCanvasMoveDrag;
+    const target = document.querySelector(targetSelector);
+    if (!drag?.dataTransfer || !target) {
+      throw new Error(`Missing active canvas move or target: ${targetSelector}`);
+    }
+
+    const rect = target.getBoundingClientRect();
+    const clientX = rect.left + (position.x ?? rect.width / 2);
+    const clientY = rect.top + (position.y ?? rect.height / 2);
+
+    target.dispatchEvent(new DragEvent("drop", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer: drag.dataTransfer
+    }));
+    drag.source.dispatchEvent(new DragEvent("dragend", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer: drag.dataTransfer
+    }));
+    delete window.__layoutBuilderCanvasMoveDrag;
+  }, { targetSelector, position });
+}
+
 async function dragPaletteToBodyStart(page) {
   await startNativePaletteDrag(page, "frame_palette_item");
   await dragActiveNativePaletteOver(
@@ -555,7 +686,9 @@ async function dropPaletteTileOverTreeRow(page, paletteAnchor, targetId) {
 
 async function endNativeDrag(page) {
   await page.evaluate(() => {
-    const drag = window.__layoutBuilderNativeDrag ?? window.__layoutBuilderTreeDrag;
+    const drag = window.__layoutBuilderNativeDrag ??
+      window.__layoutBuilderTreeDrag ??
+      window.__layoutBuilderCanvasMoveDrag;
     const dataTransfer = drag?.dataTransfer ?? new DataTransfer();
     const source = drag?.source ?? window;
     source.dispatchEvent(new DragEvent("dragend", {
@@ -565,6 +698,7 @@ async function endNativeDrag(page) {
     }));
     delete window.__layoutBuilderNativeDrag;
     delete window.__layoutBuilderTreeDrag;
+    delete window.__layoutBuilderCanvasMoveDrag;
   });
 }
 
@@ -1195,6 +1329,143 @@ test.describe("Layout builder canvas preview", () => {
     const luaOutput = page.locator(".fx-editor-output__code code");
     await expect(luaOutput).toContainText("local gui_frame_4 = gui_window_body.add{");
     await expect(luaOutput).toContainText("local gui_frame_3 = gui_horizontal_flow_2.add{");
+  });
+
+  test("Move tool repositions authored atoms on the canvas", async ({ page }) => {
+    await seedEditorState(page, CANVAS_MOVE_STATE);
+
+    await page.locator('[data-anchor="editor_tool_move"]').click();
+    await expect(page.locator('[data-anchor="editor_tool_move"]')).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(page.locator('[data-anchor="gui_frame_1"]'))
+      .toHaveAttribute("data-fx-move-draggable", "true");
+    await expect(page.locator('[data-anchor="gui_horizontal_flow_2"]'))
+      .toHaveAttribute("data-fx-move-draggable", "true");
+    await expect(page.locator('[data-anchor="gui_label_3"]'))
+      .toHaveAttribute("data-fx-move-draggable", "true");
+    await expect(page.locator('[data-anchor="gui_filler_4"]'))
+      .toHaveAttribute("data-fx-move-draggable", "true");
+
+    await startNativeCanvasMoveDrag(page, "gui_frame_5");
+    await dragActiveNativeCanvasMoveOver(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
+    await expect(
+      page.locator('[data-anchor="gui_window_body"] > .fx-gui-flow-drop-preview-slot')
+    ).toHaveCount(1);
+    await dropActiveNativeCanvasMove(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
+
+    let state = await readStoredEditorState(page);
+    expect(state.currentWindow.layoutChildren.map((node) => node.id)).toEqual([
+      "gui_frame_5",
+      "gui_frame_1"
+    ]);
+
+    await startNativeCanvasMoveDrag(page, "gui_horizontal_flow_2");
+    await dragActiveNativeCanvasMoveOver(
+      page,
+      '[data-anchor="gui_frame_5"] > .fx-gui-flow-drop-target.is-empty-parent',
+      { x: 8, y: 8 }
+    );
+    await expect(page.locator('[data-anchor="gui_frame_5"] > .fx-gui-flow-drop-preview-slot'))
+      .toHaveCount(1);
+    await dropActiveNativeCanvasMove(
+      page,
+      '[data-anchor="gui_frame_5"] > .fx-gui-flow-drop-target.is-empty-parent',
+      { x: 8, y: 8 }
+    );
+
+    await expect(
+      page.locator('[data-anchor="gui_frame_5"] > [data-anchor="gui_horizontal_flow_2"]')
+    ).toHaveCount(1);
+    await expect(
+      page.locator('[data-anchor="gui_horizontal_flow_2"] > [data-anchor="gui_label_3"]')
+    ).toHaveCount(1);
+    await expect(
+      page.locator('[data-anchor="gui_horizontal_flow_2"] > [data-anchor="gui_filler_4"]')
+    ).toHaveCount(1);
+
+    await startNativeCanvasMoveDrag(page, "gui_frame_5");
+    await dragActiveNativeCanvasMoveOver(
+      page,
+      '[data-anchor="gui_horizontal_flow_2"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
+    await expect(
+      page.locator('[data-anchor="gui_horizontal_flow_2"] > .fx-gui-flow-drop-preview-slot')
+    ).toHaveCount(0);
+    await dropActiveNativeCanvasMove(
+      page,
+      '[data-anchor="gui_horizontal_flow_2"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
+    await expect(
+      page.locator('[data-anchor="gui_frame_5"] > [data-anchor="gui_horizontal_flow_2"]')
+    ).toHaveCount(1);
+
+    await startNativeCanvasMoveDrag(page, "gui_label_3");
+    await dragActiveNativeCanvasMoveOver(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
+    await dropActiveNativeCanvasMove(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-start-edge',
+      { x: 8 }
+    );
+    await expect(page.locator('[data-anchor="gui_window_body"] > [data-anchor="gui_label_3"]'))
+      .toHaveCount(1);
+
+    await startNativeCanvasMoveDrag(page, "gui_filler_4");
+    await dragActiveNativeCanvasMoveOver(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-end-edge',
+      { x: 24 }
+    );
+    await dropActiveNativeCanvasMove(
+      page,
+      '[data-anchor="gui_window_body"] > .fx-gui-flow-drop-target.is-end-edge',
+      { x: 24 }
+    );
+    await expect(page.locator('[data-anchor="gui_window_body"] > [data-anchor="gui_filler_4"]'))
+      .toHaveCount(1);
+
+    state = await readStoredEditorState(page);
+    expect(state.currentWindow.layoutChildren.map((node) => node.id)).toEqual([
+      "gui_label_3",
+      "gui_frame_5",
+      "gui_frame_1",
+      "gui_filler_4"
+    ]);
+    expect(state.currentWindow.layoutChildren[1].children[0].id)
+      .toBe("gui_horizontal_flow_2");
+    expect(state.currentWindow.layoutChildren[1].children[0].children).toEqual([]);
+    expect(state.currentWindow.luaVariableNames.gui_label_3).toBe("dispatch_label");
+    expect(state.inspectedAnchor).toBe("gui_filler_4");
+
+    const luaOutput = await page.locator(".fx-editor-output__code code").textContent();
+    expect(luaOutput).toContain("local dispatch_label = gui_window_body.add{");
+    expect(luaOutput.indexOf("local dispatch_label = gui_window_body.add{"))
+      .toBeLessThan(luaOutput.indexOf("local gui_frame_5 = gui_window_body.add{"));
+    expect(luaOutput).toContain("local gui_filler_4 = gui_window_body.add{");
+
+    await page.locator('[data-anchor="editor_undo"]').click();
+    await expect(
+      page.locator('[data-anchor="gui_horizontal_flow_2"] > [data-anchor="gui_filler_4"]')
+    ).toHaveCount(1);
+
+    await page.locator('[data-anchor="editor_redo"]').click();
+    await expect(page.locator('[data-anchor="gui_window_body"] > [data-anchor="gui_filler_4"]'))
+      .toHaveCount(1);
   });
 
   test("component tree copy and paste duplicates a subtree across all projections", async ({ page }) => {

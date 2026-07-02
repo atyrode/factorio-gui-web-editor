@@ -1147,6 +1147,24 @@
   pointer-events: none;
 }
 
+.fx-gui-frame.is-move-draggable,
+.fx-gui-horizontal-flow.is-move-draggable,
+.fx-gui-label.is-move-draggable,
+.fx-gui-filler.is-move-draggable,
+.fx-gui-window.is-inspecting .fx-gui-frame.is-move-draggable,
+.fx-gui-window.is-inspecting .fx-gui-horizontal-flow.is-move-draggable,
+.fx-gui-window.is-inspecting .fx-gui-label.is-move-draggable,
+.fx-gui-window.is-inspecting .fx-gui-filler.is-move-draggable {
+  cursor: grab;
+}
+
+.fx-gui-frame.is-builder-drag-source,
+.fx-gui-horizontal-flow.is-builder-drag-source,
+.fx-gui-label.is-builder-drag-source,
+.fx-gui-filler.is-builder-drag-source {
+  opacity: 0.45;
+}
+
 .fx-scroll-pane {
   max-height: 180px;
   overflow: auto;

@@ -318,6 +318,13 @@ assert.deepEqual(ids(tree), ["gui_frame_1", "gui_frame_3"]);
 assert.deepEqual(tree[1].size, { minimalWidth: 800, minimalHeight: 48 });
 assert.deepEqual(ids(tree[0].children), ["gui_horizontal_flow_2", "gui_filler_4", "gui_label_5"]);
 
+let noOpMovement = moveLayoutNode(tree, "gui_frame_3", BODY_LAYOUT_ROOT_ID, 1);
+assert.equal(noOpMovement.changed, false);
+assert.equal(noOpMovement.layoutChildren, tree);
+noOpMovement = moveLayoutNode(tree, "gui_frame_3", BODY_LAYOUT_ROOT_ID, 2);
+assert.equal(noOpMovement.changed, false);
+assert.equal(noOpMovement.layoutChildren, tree);
+
 movement = moveLayoutNode(tree, "gui_horizontal_flow_2", "gui_frame_3", 0);
 assert.equal(movement.changed, true);
 tree = movement.layoutChildren;

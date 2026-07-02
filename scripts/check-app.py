@@ -85,6 +85,7 @@ REQUIRED_ANCHORS = [
     "gui_window_body",
     "editor_command_bar",
     "editor_tool_select",
+    "editor_tool_move",
     "editor_tool_inspect",
     "editor_export_drawer",
     "builder_panel",
