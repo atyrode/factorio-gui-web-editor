@@ -47,6 +47,7 @@ src/factorioModel.js           Structured Factorio GUI seed model and inspector 
 src/factorioExport.js          Lua export projection from the GUI model
 src/factorioDesignFile.js      Durable design-file import/export schema
 src/factorioEditorApi.js       Script/test command API over the constrained model
+src/factorioEditorApiDescription.js Machine-readable API command/atom contract
 src/factorioEditorApiSummary.js Machine-readable API state summaries
 src/factorioModExport.js       Factorio preview mod zip projection from the Lua export
 src/main.jsx                   React mount and stylesheet import
@@ -58,6 +59,7 @@ docs/scriptable-api.md         Browser and headless command API notes
 docs/factorio-mod-export.md    Local Factorio preview mod export workflow
 docs/roadmap.md                Builder/shared-renderer roadmap
 docs/factorio-style-sources.md Style/source research notes
+examples/api/                  Scriptable API command/design examples
 scripts/check.sh               Local validation
 scripts/editor-api.mjs         Headless command API runner
 scripts/copy-static-docs.mjs   Copies Markdown docs into production builds
@@ -161,6 +163,11 @@ For local scripts and test harnesses, the app exposes a constrained
 ```sh
 npm run api:run -- --commands commands.json
 ```
+
+Use `npm run api:run -- --describe --pretty` to inspect supported commands,
+atoms, parent rules, output flags, and result envelopes. Checked-in examples in
+`examples/api/` show both creating a layout from commands and revising an
+existing design file.
 
 It can create/edit layouts, return structured diagnostics and
 machine-readable summaries, export design JSON or Lua, and leave browser-run

@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "type": "setTitle",
+      "title": "Scriptable Revised"
+    },
+    {
+      "type": "editCaption",
+      "nodeId": "gui_label_3",
+      "caption": "Revised from commands"
+    },
+    {
+      "type": "setLuaVariableName",
+      "nodeId": "gui_label_3",
+      "name": "revised_label"
+    },
+    {
+      "type": "resizeNode",
+      "nodeId": "gui_frame_1",
+      "minimalWidth": 260,
+      "minimalHeight": 150
+    },
+    {
+      "type": "insertAtom",
+      "atom": "filler",
+      "parentId": "gui_horizontal_flow_2"
+    },
+    {
+      "type": "exportDesignFile"
+    },
+    {
+      "type": "exportLua"
+    }
+  ]
+}

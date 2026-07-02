@@ -1973,6 +1973,12 @@ test.describe("Layout builder canvas preview", () => {
     await page.addInitScript((key) => window.localStorage.removeItem(key), EDITOR_STORAGE_KEY);
     await page.goto("/");
     await page.waitForFunction(() => Boolean(window.labtorioEditorApi));
+    const description = await page.evaluate(() => window.labtorioEditorApi.describe());
+    expect(description.schema).toBe("labtorio-editor-api-description.v0");
+    expect(description.commands.insertAtom.mutating).toBe(true);
+    expect(description.commands.validate.readOnly).toBe(true);
+    expect(description.layout.bodyRootId).toBe("gui_window_body");
+    expect(description.layout.parents.gui_window_body.allowedChildren).toContain("frame");
 
     const result = await page.evaluate(() => window.labtorioEditorApi.runAll([
       {

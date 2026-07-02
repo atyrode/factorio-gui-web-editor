@@ -119,6 +119,88 @@ test("editor API runner writes outputs and a machine-readable summary", async ()
   assert.equal(stdoutResult.outputs.modZip.byteLength, zipStats.size);
 });
 
+test("editor API runner describes the supported API without command input", async () => {
+  const run = await runApiRunner(["--describe", "--pretty"]);
+
+  assert.equal(run.code, 0, run.stderr);
+  const description = JSON.parse(run.stdout);
+  assert.equal(description.schema, "labtorio-editor-api-description.v0");
+  assert.equal(description.apiSchema, "labtorio-editor-api.v0");
+  assert.equal(description.commands.insertAtom.mutating, true);
+  assert.equal(description.commands.validate.readOnly, true);
+  assert.deepEqual(description.layout.parents.gui_window_body.allowedChildren, [
+    "frame",
+    "horizontal-flow",
+    "label",
+    "filler"
+  ]);
+  assert.equal(description.runner.outputFlags.lua.flag, "--out-lua");
+});
+
+test("editor API runner executes the checked-in create example", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "labtorio-api-runner-"));
+  const designPath = join(dir, "created.labtorio-gui.json");
+  const luaPath = join(dir, "created.lua");
+  const run = await runApiRunner([
+    "--commands",
+    "examples/api/create-window.commands.json",
+    "--out-design",
+    designPath,
+    "--out-lua",
+    luaPath
+  ]);
+
+  assert.equal(run.code, 0, run.stderr);
+  const result = JSON.parse(run.stdout);
+  const designFile = JSON.parse(await readFile(designPath, "utf8"));
+  const lua = await readFile(luaPath, "utf8");
+
+  assert.equal(result.ok, true);
+  assert.equal(result.summary.window.title, "Scriptable API Example");
+  assert.equal(result.summary.nodeCount, 4);
+  assert.equal(
+    result.summary.nodes.find((node) => node.id === "gui_filler_4").parentId,
+    "gui_horizontal_flow_2"
+  );
+  assert.equal(designFile.design.currentWindow.luaVariableNames.gui_label_3, "dispatch_label");
+  assert.match(lua, /caption = "Dispatch"/);
+});
+
+test("editor API runner revises the checked-in design example", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "labtorio-api-runner-"));
+  const designPath = join(dir, "revised.labtorio-gui.json");
+  const luaPath = join(dir, "revised.lua");
+  const run = await runApiRunner([
+    "--input-design",
+    "examples/api/base-design.labtorio-gui.json",
+    "--commands",
+    "examples/api/revise-existing.commands.json",
+    "--out-design",
+    designPath,
+    "--out-lua",
+    luaPath
+  ]);
+
+  assert.equal(run.code, 0, run.stderr);
+  const result = JSON.parse(run.stdout);
+  const designFile = JSON.parse(await readFile(designPath, "utf8"));
+  const lua = await readFile(luaPath, "utf8");
+
+  assert.equal(result.ok, true);
+  assert.equal(result.summary.window.title, "Scriptable Revised");
+  assert.equal(
+    result.summary.nodes.find((node) => node.id === "gui_label_3").caption,
+    "Revised from commands"
+  );
+  assert.deepEqual(result.summary.nodes.find((node) => node.id === "gui_frame_1").size, {
+    minimalWidth: 260,
+    minimalHeight: 150
+  });
+  assert.equal(result.summary.nodes.find((node) => node.id === "gui_filler_4").atom, "filler");
+  assert.equal(designFile.design.currentWindow.luaVariableNames.gui_label_3, "revised_label");
+  assert.match(lua, /local revised_label =/);
+});
+
 test("editor API runner reports command failures as structured JSON", async () => {
   const dir = await mkdtemp(join(tmpdir(), "labtorio-api-runner-"));
   const commandsPath = join(dir, "commands.json");
